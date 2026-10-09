@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw, ScrollText } from "lucide-react";
 import { fetchBrief } from "@/lib/ask";
 import { MODELS } from "@/lib/models";
 import { useStore } from "@/lib/store";
@@ -19,21 +19,24 @@ export function Brief() {
   const setUI = useStore((s) => s.setUI);
   const hydrated = useStore((s) => s.hydrated);
 
-  if (!hydrated) return <div className="h-[58px]" />;
+  if (!hydrated) return <div className="mt-6 h-[66px]" />;
 
   if (!brief) {
     return (
-      <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-rule py-3.5">
-        <button
-          type="button"
-          onClick={() => fetchBrief(ix)}
-          className="group inline-flex h-9 items-center gap-2 rounded-full bg-ink pl-4 pr-3.5 text-[13.5px] font-medium text-bg transition-transform active:scale-[0.98]"
-        >
-          Brief me
-          <kbd className="!border-transparent !bg-bg/15 !text-bg/80">B</kbd>
-        </button>
-        <p className="text-[13.5px] leading-snug text-ink-3">The gist, the key claims, and a map of the text before you start.</p>
-      </div>
+      <button
+        type="button"
+        onClick={() => fetchBrief(ix)}
+        className="group mt-6 flex w-full items-center gap-3.5 rounded-[16px] border border-rule bg-raised/60 py-3 pl-3 pr-4 text-left transition-[border-color,background-color,transform] duration-200 hover:border-rule-strong hover:bg-raised active:scale-[0.995]"
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-[11px] bg-rubric-wash text-rubric-text transition-transform duration-300 ease-[var(--ease-spring)] group-hover:scale-105">
+          <ScrollText size={18} strokeWidth={1.8} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-medium leading-tight text-ink">Brief me</span>
+          <span className="mt-0.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
+        </span>
+        <kbd className="hidden sm:inline">B</kbd>
+      </button>
     );
   }
 
@@ -41,7 +44,7 @@ export function Brief() {
 
   if (brief.status === "error") {
     return (
-      <div className="mt-9 flex flex-wrap items-center gap-3 border-y border-rule py-3.5 text-[13.5px]">
+      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[16px] border border-rule px-4 py-3.5 text-[13.5px]">
         <p className="text-rubric-text">{brief.error}</p>
         {!brief.demo && (
           <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
@@ -54,19 +57,22 @@ export function Brief() {
 
   const { data, usage, modelKey } = brief;
   return (
-    <section aria-label="Brief" className="mt-9 border-y border-rule">
+    <section aria-label="Brief" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
       <button
         type="button"
         onClick={() => setUI({ briefOpen: !open })}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 py-3.5 text-left text-[12.5px] font-medium text-rubric-text"
+        className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        Brief
-        <span className="font-normal text-ink-4">{data.sections.length} parts, {data.claims.length} claims</span>
-        <ChevronDown size={15} className={`ml-auto text-ink-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ScrollText size={16} strokeWidth={1.8} className="text-rubric-text" />
+        <span className="text-[13.5px] font-medium text-ink">Brief</span>
+        <span className="text-[13px] text-ink-3">
+          {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
+        </span>
+        <ChevronDown size={16} className={`ml-auto text-ink-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="rise pb-6" style={{ animationDuration: "0.45s" }}>
+        <div className="rise border-t border-rule pb-5 pt-4" style={{ animationDuration: "0.45s" }}>
           <div className="gloss-body !text-[16px] !leading-[1.6] text-pretty">
             <Answer text={data.gist} />
           </div>
@@ -139,7 +145,7 @@ function BriefLoading({ words }: { words: number }) {
     return () => clearInterval(t);
   }, [steps.length]);
   return (
-    <section aria-busy aria-live="polite" className="mt-9 border-y border-rule py-5">
+    <section aria-busy aria-live="polite" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5 py-5">
       <div className="mb-5 flex items-center gap-3">
         <p key={step} className="text-[12.5px] font-medium text-rubric-text" style={{ animation: "rise 0.4s var(--ease-out) both" }}>
           {steps[step]}

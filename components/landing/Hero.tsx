@@ -359,7 +359,7 @@ export function Hero({ children }: { children: ReactNode }) {
       <div ref={colRef} className="relative min-h-[1px]">
         <div ref={noteRef} style={{ marginTop: geo.noteTop }} className={`hero-note ${phase >= 4 ? "is-in" : ""}`} aria-live="polite">
           <p data-anchor className="flex items-center gap-1.5 text-[12.5px] leading-none text-ink-3">
-            On <span className="truncate font-serif text-[14px] italic text-ink-2">&ldquo;{short(note.quote)}&rdquo;</span>
+            On <span className="truncate font-medium text-ink-2">&ldquo;{short(note.quote)}&rdquo;</span>
           </p>
           <h2 key={`q${stroke}`} className="mt-3 font-serif text-[22px] font-[420] leading-[1.15] tracking-[-0.012em] text-ink [font-variation-settings:'opsz'_36]">
             <Words text={note.question} start={note.demo ? 520 : 0} step={18} />

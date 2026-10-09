@@ -132,7 +132,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       </header>
 
       {!collapsed && gloss.anchor && gloss.action !== "ask" && (
-        <p className="mb-2 line-clamp-2 font-serif text-[14.5px] italic leading-snug text-ink-3">“{gloss.anchor.quote}”</p>
+        <p className="mb-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-2.5 font-serif text-[15px] leading-snug text-ink-3">{gloss.anchor.quote}</p>
       )}
       {gloss.question && <p className={`mb-1.5 text-[14px] font-medium leading-snug text-ink ${collapsed ? "line-clamp-1" : ""}`}>{gloss.question}</p>}
 

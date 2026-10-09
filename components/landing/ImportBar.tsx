@@ -45,7 +45,7 @@ export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar(
           type="submit"
           disabled={!url.trim() || !!busy}
           aria-label="Read"
-          className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[13px] bg-ink px-4 text-[14.5px] font-medium text-bg transition-[opacity,transform] active:scale-[0.97] disabled:opacity-30 sm:px-5"
+          className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[13px] bg-ink px-4 text-[14.5px] font-medium text-bg transition-[opacity,transform] focus-visible:outline-offset-[-4px] focus-visible:outline-bg active:scale-[0.97] disabled:opacity-30 sm:px-5"
         >
           <span className="hidden sm:inline">Read</span> <ArrowRight size={16} />
         </button>

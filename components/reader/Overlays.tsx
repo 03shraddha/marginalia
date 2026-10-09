@@ -79,8 +79,8 @@ export function Toast({ children, onClose }: { children: React.ReactNode; onClos
   return (
     <div
       role="status"
-      className="fixed left-1/2 top-[calc(var(--topbar-h)+14px)] z-[55] flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full bg-lens py-1.5 pl-4 pr-1.5 text-[13px] text-lens-fg shadow-pop"
-      style={{ animation: "drop 0.4s var(--ease-out) both" }}
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+84px)] left-1/2 z-[55] flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-[18px] bg-lens py-1.5 pl-4 pr-1.5 text-[13px] leading-snug text-lens-fg shadow-pop sm:bottom-[96px] sm:rounded-full"
+      style={{ animation: "rise 0.45s var(--ease-spring) both" }}
     >
       {children}
       <button type="button" aria-label="Dismiss" onClick={onClose} className="grid size-7 place-items-center rounded-full text-lens-mute hover:bg-lens-hover hover:text-lens-fg">

@@ -216,7 +216,7 @@ function GlossEntry({ g }: { g: Gloss }) {
       <button type="button" onClick={go} className="block w-full pr-7 text-left" title="Show it in the text">
         <Meta n={n} label={label} at={g.createdAt} />
         {g.anchor && (
-          <span className="mt-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-3 font-serif text-[14.5px] italic leading-[1.45] text-ink-3 transition-colors group-hover:text-ink-2">
+          <span className="mt-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-3 font-serif text-[15px] leading-[1.45] text-ink-3 transition-colors group-hover:text-ink-2">
             {g.anchor.quote}
           </span>
         )}
@@ -226,11 +226,11 @@ function GlossEntry({ g }: { g: Gloss }) {
         {pairsOf(g).map((p, i) => (
           <div key={i} className={i > 0 ? "border-t border-rule pt-3.5" : ""}>
             <div className="grid grid-cols-[16px_minmax(0,1fr)] items-baseline gap-x-2">
-              <span aria-hidden className="font-serif text-[14px] italic leading-none text-rubric-text">Q</span>
+              <span aria-hidden className="text-[11.5px] font-semibold leading-none text-rubric-text">Q</span>
               <p className="font-serif text-[16.5px] leading-[1.35] text-ink [font-variation-settings:'opsz'_24]">{p.q}</p>
             </div>
             <div className="mt-2 grid grid-cols-[16px_minmax(0,1fr)] items-baseline gap-x-2">
-              <span aria-hidden className="font-serif text-[14px] italic leading-none text-ink-4">A</span>
+              <span aria-hidden className="text-[11.5px] font-semibold leading-none text-ink-4">A</span>
               <div className="min-w-0">
                 <AnswerBody t={p.a} />
               </div>

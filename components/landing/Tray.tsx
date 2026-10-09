@@ -51,7 +51,7 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
                 <span className="shrink-0 tabular-nums text-ink-4">{it.pct > 0 && it.pct < 1 ? `${Math.round(it.pct * 100)}%` : `${readingMinutes(it.words)} min`}</span>
               </p>
               <p className="mt-1.5 line-clamp-2 font-serif text-[20px] leading-[1.15] tracking-[-0.01em] text-ink">{tidyTitle(it.title)}</p>
-              {it.dek && <p className="mt-3 line-clamp-3 font-serif text-[14px] italic leading-[1.45] text-ink-2">{it.dek}</p>}
+              {it.dek && <p className="mt-2.5 line-clamp-3 text-[13px] leading-[1.5] text-ink-3">{it.dek}</p>}
               <div className="mt-auto flex items-center gap-3 pt-3 text-[12px] text-ink-3">
                 <span className="relative h-[3px] flex-1 overflow-hidden rounded-full bg-rule" aria-hidden>
                   <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--rubric)]" style={{ width: `${Math.round(it.pct * 100)}%` }} />

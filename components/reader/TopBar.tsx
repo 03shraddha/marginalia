@@ -9,7 +9,7 @@ import { barBtn } from "@/components/ui/Popover";
 import { useGlosses, useHighlights, useStore } from "@/lib/store";
 import { useReader } from "./context";
 
-export function TopBar({ currentN, minutesLeft, pastTitle }: { currentN: number | null; minutesLeft: number; pastTitle: boolean }) {
+export function TopBar({ currentN, pastTitle }: { currentN: number | null; pastTitle: boolean }) {
   const { ix, jumpTo } = useReader();
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -63,7 +63,7 @@ export function TopBar({ currentN, minutesLeft, pastTitle }: { currentN: number 
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="min-w-0 truncate rounded-full px-2 py-1.5 font-serif text-[16px] italic leading-none text-ink hover:bg-sunk"
+              className="min-w-0 truncate rounded-full px-2.5 py-1.5 font-serif text-[16px] leading-none text-ink transition-colors hover:bg-sunk"
               title="Back to the top"
             >
               {ix.article.title}
@@ -84,9 +84,6 @@ export function TopBar({ currentN, minutesLeft, pastTitle }: { currentN: number 
         </div>
 
         <nav aria-label="Reader tools" className="flex items-center gap-1">
-          <span className="mr-2 hidden text-[13px] leading-none tabular-nums text-ink-3 lg:block" aria-live="polite">
-            {minutesLeft > 0 ? `${minutesLeft} min left` : "Finished"}
-          </span>
           <span className="hidden sm:block">
             <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
               <Keyboard size={17} strokeWidth={1.8} />

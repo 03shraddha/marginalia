@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
 import { blockEl, selectBlock, spanIn } from "@/lib/anchor";
 import { displayArticle, isHeading, readingMinutes, titleClass, type Article } from "@/lib/article";
 import { ARTICLE_QUESTIONS } from "@/lib/actions";
@@ -415,21 +415,15 @@ function ReaderInner({ article }: { article: Article }) {
 
   const gutter = withRail ? GUTTER_WIDE : GUTTER_MID;
 
-  const minutesLeft = (() => {
-    if (!current) return readingMinutes(ix.words);
-    const i = ix.order.get(current) ?? 0;
-    let w = 0;
-    for (let k = i; k < article.blocks.length; k++) w += (ix.texts.get(article.blocks[k].id) ?? "").split(/\s+/).length;
-    return w < 60 ? 0 : readingMinutes(w);
-  })();
-
   const paraCount = ix.byNumber.size;
+  // A short line above the title: where this came from.
+  const kicker = article.source ? article.source.split(/,|\(/)[0].trim() : article.origin === "paste" ? "Pasted text" : undefined;
 
   return (
     <ReaderContext.Provider value={api}>
       <title>{`${article.title}, glossed`}</title>
       <div className={`${focusMode ? "focus-mode" : ""} ${showNumbers ? "" : "hide-nums"} ${notebookOpen ? "nb-open" : ""}`}>
-        <TopBar currentN={current ? ix.numbers.get(current) ?? null : null} minutesLeft={minutesLeft} pastTitle={pastTitle} />
+        <TopBar currentN={current ? ix.numbers.get(current) ?? null : null} pastTitle={pastTitle} />
 
         <main className="relative z-[1] px-4 pb-10 pt-[calc(var(--topbar-h)+64px)] sm:px-6">
           <div className="reader-grid">
@@ -439,23 +433,41 @@ function ReaderInner({ article }: { article: Article }) {
             <div className="rg-numgap" aria-hidden />
 
             <div className="min-w-0">
-              <header className="mb-12">
-                <h1 className={`rise font-serif font-[380] tracking-[-0.022em] text-ink text-balance [font-variation-settings:'opsz'_72] ${titleClass(article.title)}`}>
+              <header className="mb-14">
+                {kicker && (
+                  <p className="rise mb-6 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+                    <span aria-hidden className="size-1.5 rounded-full bg-[var(--rubric)]" />
+                    <span className="truncate">{kicker}</span>
+                  </p>
+                )}
+                <h1 className={`rise font-serif font-[380] tracking-[-0.022em] text-ink text-balance [font-variation-settings:'opsz'_72] ${titleClass(article.title)}`} style={{ animationDelay: "40ms" }}>
                   {article.title}
                 </h1>
                 {article.dek && (
-                  <p className="rise mt-5 font-serif text-[clamp(1.1rem,2.2vw,1.32rem)] italic leading-[1.45] text-ink-2 text-pretty" style={{ animationDelay: "80ms" }}>
+                  <p className="rise mt-5 max-w-[38rem] text-[clamp(1.05rem,1.7vw,1.19rem)] leading-[1.55] text-ink-2 text-pretty" style={{ animationDelay: "90ms" }}>
                     {article.dek}
                   </p>
                 )}
-                <div className="rise mt-7 flex flex-wrap items-baseline gap-x-5 gap-y-1.5 text-[13.5px]" style={{ animationDelay: "140ms" }}>
-                  {article.author && <span className="font-medium text-ink">{article.author}</span>}
-                  {article.published && <span className="text-ink-3">{article.published}</span>}
-                  <span className="text-ink-3">{readingMinutes(ix.words)} min read</span>
-                  <span className="text-ink-3">{paraCount} paragraphs</span>
+
+                {/* Byline: who and when on one line, how long underneath, the original on the right. */}
+                <div className="rise mt-8 flex items-center gap-4 border-t border-rule pt-5" style={{ animationDelay: "140ms" }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14.5px] leading-snug text-ink">
+                      {article.author ? <span className="font-medium">{article.author}</span> : <span className="font-medium">{kicker ?? "Untitled source"}</span>}
+                      {article.published && <span className="text-ink-3">{`  \u00b7  ${article.published}`}</span>}
+                    </p>
+                    <p className="mt-1 text-[13px] leading-snug text-ink-3">
+                      {readingMinutes(ix.words)} min read <span className="text-ink-4">{"\u00b7"}</span> {paraCount} paragraphs
+                    </p>
+                  </div>
                   {article.sourceUrl && (
-                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-ink-3 underline decoration-rule-strong underline-offset-4 hover:text-ink">
-                      {article.origin === "url" ? article.source ?? "Original" : "Source"}
+                    <a
+                      href={article.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rule px-3.5 text-[13px] font-medium text-ink-2 transition-[border-color,color,transform] hover:border-rule-strong hover:text-ink active:scale-[0.97]"
+                    >
+                      Original <ArrowUpRight size={14} strokeWidth={2} />
                     </a>
                   )}
                 </div>

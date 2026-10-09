@@ -919,6 +919,11 @@ kbd,
   transform: scale(0.95);
 }
 
+/* The bar scrolls sideways on phones, so focus rings sit inside the buttons. */
+.lens-btn:focus-visible {
+  outline-offset: -2px;
+}
+
 .lens-caret {
   width: 1.5px;
   height: 14px;

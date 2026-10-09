@@ -325,7 +325,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
 
             {existing ? (
               <>
-                <div className="flex items-center gap-1 px-1.5" role="radiogroup" aria-label="Highlight colour">
+                <div className="flex items-center gap-2 px-2" role="radiogroup" aria-label="Highlight colour">
                   {MARKERS.map((m) => (
                     <button
                       key={m.key}
@@ -353,13 +353,15 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               </>
             ) : (
               <div className="group/hl flex items-center">
-                <LensIcon label="Highlight" tip={tipProps({ label: "Highlight", hint: "Hover for colours" })} onClick={() => highlight(marker)}>
+                <LensIcon label="Highlight" tip={tipProps({ label: "Highlight", hint: "Or pick a colour" })} onClick={() => highlight(marker)}>
                   <span className="relative">
                     <Highlighter size={15} />
                     <span aria-hidden className="absolute -bottom-[3px] -right-[3px] size-[7px] rounded-full ring-2 ring-[var(--lens-bg)]" style={{ background: markerColor }} />
                   </span>
                 </LensIcon>
-                <div className="flex w-0 items-center gap-1 overflow-hidden transition-[width] duration-300 ease-[var(--ease-out)] group-focus-within/hl:w-[78px] group-hover/hl:w-[78px]">
+                {/* The rings need room: the clip box is padded, and opens to the padded width. */}
+                <div className="h-8 w-0 overflow-hidden transition-[width] duration-300 ease-[var(--ease-out)] group-focus-within/hl:w-[94px] group-hover/hl:w-[94px]">
+                  <div className="flex h-full w-[94px] items-center gap-2 px-2">
                   {MARKERS.map((m) => (
                     <button
                       key={m.key}
@@ -371,6 +373,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                       style={{ background: m.color }}
                     />
                   ))}
+                  </div>
                 </div>
               </div>
             )}
