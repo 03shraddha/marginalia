@@ -42,15 +42,17 @@ export async function POST(req: Request) {
   // Keep only well-formed, in-range items so the UI never links to nothing.
   const valid = new Set(doc.paras.map((p) => p.n));
   const d = result.data;
+  // The shared system prompt asks glosses to ==mark== their answer; a brief has no use for it.
+  const clean = (t: string) => undash(t).replace(/==/g, "");
   const brief: BriefData = {
-    gist: undash(String(d.gist ?? "")),
+    gist: clean(String(d.gist ?? "")),
     claims: (Array.isArray(d.claims) ? d.claims : [])
       .filter((c) => c && typeof c.text === "string")
-      .map((c) => ({ text: undash(c.text), cite: valid.has(Number(c.cite)) ? Number(c.cite) : 0 }))
+      .map((c) => ({ text: clean(c.text), cite: valid.has(Number(c.cite)) ? Number(c.cite) : 0 }))
       .slice(0, 6),
     sections: (Array.isArray(d.sections) ? d.sections : [])
       .filter((s) => s && typeof s.title === "string" && valid.has(Number(s.start)))
-      .map((s) => ({ title: undash(s.title), start: Number(s.start) }))
+      .map((s) => ({ title: clean(s.title), start: Number(s.start) }))
       .sort((a, b) => a.start - b.start)
       .slice(0, 10),
   };

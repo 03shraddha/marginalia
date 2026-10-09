@@ -5,10 +5,16 @@ import { anchorToRange, blockEl } from "@/lib/anchor";
 import { useStore, type Gloss } from "@/lib/store";
 import { GlossCard } from "./GlossCard";
 
-const GAP = 12;
+/** Room between notes; one-line notes in a crowded stretch sit close, like a list. */
+const GAP = 16;
+const GAP_MINI = 4;
+/** Notes whose passages start closer than this are a crowd. */
+const CROWD = 88;
 
-type Item = { id: string; desired: number; anchorY: number; h: number; created: number };
-type Layout = { tops: Record<string, number>; anchors: Record<string, number>; height: number; hintTop: number };
+type Item = { id: string; desired: number; anchorY: number; h: number; created: number; mini: boolean };
+type Layout = { tops: Record<string, number>; anchors: Record<string, number>; mini: Record<string, boolean>; height: number; hintTop: number };
+
+const gapAfter = (a: Item, b: Item) => (a.mini && b.mini ? GAP_MINI : GAP);
 
 /**
  * Places glosses beside their passages. The active gloss sits exactly at its
@@ -19,14 +25,14 @@ function place(items: Item[], activeId: string | null): Record<string, number> {
   const tops: number[] = items.map((it) => it.desired);
   const ai = activeId ? items.findIndex((it) => it.id === activeId) : -1;
   const forward = (from: number) => {
-    for (let i = Math.max(1, from); i < items.length; i++) tops[i] = Math.max(tops[i], tops[i - 1] + items[i - 1].h + GAP);
+    for (let i = Math.max(1, from); i < items.length; i++) tops[i] = Math.max(tops[i], tops[i - 1] + items[i - 1].h + gapAfter(items[i - 1], items[i]));
   };
   if (ai < 0) {
     tops[0] = Math.max(0, tops[0] ?? 0);
     forward(1);
   } else {
     forward(ai + 1);
-    for (let i = ai - 1; i >= 0; i--) tops[i] = Math.min(tops[i], tops[i + 1] - GAP - items[i].h);
+    for (let i = ai - 1; i >= 0; i--) tops[i] = Math.min(tops[i], tops[i + 1] - gapAfter(items[i], items[i + 1]) - items[i].h);
     if (tops[0] < 0) {
       tops[0] = 0;
       forward(1);
@@ -45,7 +51,7 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
   const entering = useStore((s) => s.enteringGloss);
   const setUI = useStore((s) => s.setUI);
   const size = useStore((s) => s.settings.size);
-  const [layout, setLayout] = useState<Layout>({ tops: {}, anchors: {}, height: 0, hintTop: 0 });
+  const [layout, setLayout] = useState<Layout>({ tops: {}, anchors: {}, mini: {}, height: 0, hintTop: 0 });
   const raf = useRef(0);
 
   const compute = useCallback(() => {
@@ -68,9 +74,16 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
         desired = r.top - base;
         anchorY = r.top - base + 14;
       }
-      items.push({ id: g.id, desired, anchorY, h: cards.current.get(g.id)?.offsetHeight ?? 90, created: g.createdAt });
+      items.push({ id: g.id, desired, anchorY, h: cards.current.get(g.id)?.offsetHeight ?? 64, created: g.createdAt, mini: false });
     }
     items.sort((a, b) => a.desired - b.desired || a.created - b.created);
+    // Crowding is read from where the passages are, not from card sizes, so it never oscillates.
+    const mini: Record<string, boolean> = {};
+    items.forEach((it, i) => {
+      const near = (j: number) => j >= 0 && j < items.length && Math.abs(items[j].desired - it.desired) < CROWD;
+      it.mini = it.id !== active && (near(i - 1) || near(i + 1));
+      mini[it.id] = it.mini;
+    });
     const tops = place(items, active);
     const anchors: Record<string, number> = {};
     let height = 0;
@@ -86,7 +99,8 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
         Math.abs(prev.hintTop - hintTop) < 0.5 &&
         Object.keys(tops).length === Object.keys(prev.tops).length &&
         Object.entries(tops).every(([k, v]) => Math.abs((prev.tops[k] ?? -1e9) - v) < 0.5 && Math.abs((prev.anchors[k] ?? -1e9) - anchors[k]) < 0.5);
-      return same ? prev : { tops, anchors, height, hintTop };
+      const sameMini = Object.keys(mini).length === Object.keys(prev.mini).length && Object.entries(mini).every(([k, v]) => prev.mini[k] === v);
+      return same && sameMini ? prev : { tops, anchors, mini, height, hintTop };
     });
   }, [glosses, active, articleEl]);
 
@@ -148,6 +162,7 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
           variant="margin"
           top={layout.tops[g.id] ?? 0}
           active={active === g.id}
+          mini={layout.mini[g.id] ?? false}
           hover={hover === g.id}
           entering={entering === g.id}
           onActivate={() => setUI({ activeGloss: g.id, activeHighlight: null })}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, BadgeCheck, BookA, Check, Copy, Ellipsis, Eraser, Highlighter, Lightbulb, Scale, WandSparkles, Waypoints, type LucideIcon } from "lucide-react";
+import { ArrowUp, BadgeCheck, BookA, Check, Copy, Ellipsis, Eraser, Feather, Highlighter, Lightbulb, Scale, Waypoints, type LucideIcon } from "lucide-react";
 import { ACTIONS, isShortSelection, type Action } from "@/lib/actions";
 import { MARKERS, type Marker } from "@/lib/settings";
 import { anchorToRange, selectionToAnchor } from "@/lib/anchor";
@@ -20,7 +20,7 @@ type LensState = {
 const ICONS: Partial<Record<Action, LucideIcon>> = {
   explain: Lightbulb,
   define: BookA,
-  simplify: WandSparkles,
+  simplify: Feather,
   check: BadgeCheck,
   connect: Waypoints,
   counter: Scale,
@@ -31,8 +31,6 @@ const STARTERS = {
   word: ["Why this word here?", "Where does it come from?", "Use it in a sentence"],
   passage: ["Give me an example", "Why does it matter?", "What is the evidence?"],
 };
-
-type Tip = { label: string; hint?: string };
 
 /**
  * The selection lens. Select text and it appears; start typing and it becomes
@@ -45,9 +43,6 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
   const [draft, setDraft] = useState("");
   const [copied, setCopied] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [tip, setTip] = useState<Tip | null>(null);
-  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tipWarm = useRef(0);
   const marker = useStore((s) => s.settings.marker);
   const setSettings = useStore((s) => s.setSettings);
   const updateHighlight = useStore((s) => s.updateHighlight);
@@ -66,7 +61,6 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
       setPos(null);
       setDraft("");
       setMenu(false);
-      setTip(null);
       setUI({ pending: null, activeHighlight: null });
       if (clearSelection) window.getSelection()?.removeAllRanges();
     },
@@ -177,7 +171,6 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
       setDraft(initial);
       setLens({ ...l, mode: "ask" });
       setMenu(false);
-      setTip(null);
       if (!l.highlightId) setUI({ pending: l.anchor });
       window.getSelection()?.removeAllRanges();
     },
@@ -233,22 +226,11 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
   const existing = lens.highlightId ? useStore.getState().highlights[ix.article.id]?.find((h) => h.id === lens.highlightId) : undefined;
   const markerColor = MARKERS.find((m) => m.key === marker)?.color;
 
-  // Captions explain each control without crowding the bar: slow to appear, quick to follow.
-  const showTip = (t: Tip | null) => {
-    if (tipTimer.current) clearTimeout(tipTimer.current);
-    if (!t) {
-      tipWarm.current = Date.now();
-      tipTimer.current = setTimeout(() => setTip(null), 80);
-      return;
-    }
-    const warm = Date.now() - tipWarm.current < 700 || tip !== null;
-    tipTimer.current = setTimeout(() => setTip(t), warm ? 0 : 420);
-  };
-  const tipProps = (t: Tip) => ({
-    onMouseEnter: () => showTip(t),
-    onMouseLeave: () => showTip(null),
-    onFocus: () => showTip(t),
-    onBlur: () => showTip(null),
+  // Captions open on the side away from the text, so they never cover what was selected.
+  const tipProps = (label: string, hint?: string) => ({
+    "data-tip": label,
+    "data-tip-hint": hint,
+    "data-tip-side": pos?.below ? "bottom" : "top",
   });
 
   const highlight = (color: Marker) => {
@@ -281,6 +263,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
       role={lens.mode === "ask" ? "dialog" : "toolbar"}
       aria-label={lens.mode === "ask" ? "Ask about the selection" : "Actions for the selection"}
       className="lens fixed z-50"
+      data-tip-tone="paper"
       style={{ ...style, ["--origin" as string]: pos?.below ? "top center" : "bottom center" }}
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).tagName !== "INPUT") e.preventDefault();
@@ -292,7 +275,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
             <button
               type="button"
               onClick={() => toAsk("")}
-              {...tipProps({ label: "Ask", hint: "Or just start typing" })}
+              {...tipProps("Ask", "Or just start typing")}
               className="lens-btn group gap-2 pl-3 pr-2.5 font-medium"
             >
               Ask
@@ -302,7 +285,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
             {primary.map((a) => {
               const Icon = ICONS[a]!;
               return (
-                <button key={a} type="button" onClick={() => run(a)} {...tipProps({ label: ACTIONS[a].label, hint: ACTIONS[a].hint })} className="lens-btn group gap-1.5 pl-2.5 pr-3">
+                <button key={a} type="button" onClick={() => run(a)} {...tipProps(ACTIONS[a].label, ACTIONS[a].hint)} className="lens-btn group gap-1.5 pl-2.5 pr-3">
                   <Icon size={15} strokeWidth={1.9} className="text-lens-mute transition-colors group-hover:text-lens-fg" aria-hidden />
                   {ACTIONS[a].label}
                 </button>
@@ -312,11 +295,8 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               type="button"
               aria-label="More actions"
               aria-expanded={menu}
-              onClick={() => {
-                setMenu((v) => !v);
-                setTip(null);
-              }}
-              {...tipProps({ label: "More", hint: "Fact-check, related passages, counterpoint" })}
+              onClick={() => setMenu((v) => !v)}
+              {...tipProps("More", "Fact-check, related, counterpoint")}
               className={`lens-btn w-8 justify-center ${menu ? "bg-lens-hover" : ""}`}
             >
               <Ellipsis size={16} />
@@ -334,7 +314,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                       aria-checked={(existing.color ?? "yellow") === m.key}
                       aria-label={`${m.label} highlight`}
                       onClick={() => highlight(m.key)}
-                      {...tipProps({ label: `${m.label}` })}
+                      {...tipProps(m.label)}
                       className={`lens-dot ${(existing.color ?? "yellow") === m.key ? "is-on" : ""}`}
                       style={{ background: m.color }}
                     />
@@ -342,7 +322,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 </div>
                 <LensIcon
                   label="Remove highlight"
-                  tip={tipProps({ label: "Remove highlight" })}
+                  tip={tipProps("Remove highlight")}
                   onClick={() => {
                     removeHighlight(ix.article.id, lens.highlightId!);
                     close();
@@ -353,7 +333,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               </>
             ) : (
               <div className="group/hl flex items-center">
-                <LensIcon label="Highlight" tip={tipProps({ label: "Highlight", hint: "Or pick a colour" })} onClick={() => highlight(marker)}>
+                <LensIcon label="Highlight" tip={tipProps("Highlight", "Hover for colours")} onClick={() => highlight(marker)}>
                   <span className="relative">
                     <Highlighter size={15} />
                     <span aria-hidden className="absolute -bottom-[3px] -right-[3px] size-[7px] rounded-full ring-2 ring-[var(--lens-bg)]" style={{ background: markerColor }} />
@@ -368,7 +348,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                       type="button"
                       aria-label={`Highlight in ${m.label.toLowerCase()}`}
                       onClick={() => highlight(m.key)}
-                      {...tipProps({ label: `Highlight in ${m.label.toLowerCase()}` })}
+                      {...tipProps(m.label)}
                       className={`lens-dot ${m.key === marker ? "is-on" : ""}`}
                       style={{ background: m.color }}
                     />
@@ -377,7 +357,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 </div>
               </div>
             )}
-            <LensIcon label="Copy quote" tip={tipProps({ label: "Copy quote", hint: "With the title and paragraph number" })} onClick={copy}>
+            <LensIcon label="Copy quote" tip={tipProps(copied ? "Copied" : "Copy quote", copied ? undefined : "With its source")} onClick={copy}>
               {copied ? <Check size={15} /> : <Copy size={15} />}
             </LensIcon>
           </div>
@@ -411,6 +391,8 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 type="submit"
                 disabled={!draft.trim()}
                 aria-label="Ask"
+                data-tip="Ask"
+                data-tip-kbd={"\u21b5"}
                 className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[var(--rubric)] text-white transition-[opacity,transform] active:scale-90 disabled:opacity-30"
               >
                 <ArrowUp size={16} strokeWidth={2.4} />
@@ -465,12 +447,6 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
           </div>
         )}
 
-        {tip && !menu && lens.mode === "actions" && (
-          <div role="tooltip" className={`lens-tip pointer-events-none absolute left-1/2 ${outside} -translate-x-1/2 whitespace-nowrap rounded-[9px] border border-rule bg-raised px-2.5 py-1.5 text-[12px] leading-none text-ink shadow-card`}>
-            <span className="font-medium">{tip.label}</span>
-            {tip.hint && <span className="text-ink-3">{`  ${tip.hint}`}</span>}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -484,7 +460,7 @@ function LensIcon({
 }: {
   label: string;
   onClick: () => void;
-  tip?: Record<string, () => void>;
+  tip?: Record<string, string | undefined>;
   children: React.ReactNode;
 }) {
   return (

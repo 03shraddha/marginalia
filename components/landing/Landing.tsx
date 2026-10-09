@@ -174,6 +174,7 @@ export function Landing() {
       pct: p(x.id),
       glosses: g(x.id),
       sample: false,
+      touched: (hydrated ? progress[x.id]?.at : 0) || x.addedAt,
     }));
     const samples = SAMPLES.map((a) => ({
       id: a.id,
@@ -184,9 +185,11 @@ export function Landing() {
       pct: p(a.id),
       glosses: g(a.id),
       sample: true,
+      touched: hydrated ? progress[a.id]?.at ?? 0 : 0,
     }));
-    // What you are in the middle of comes first.
-    return [...mine, ...samples].sort((a, b) => Number(b.pct > 0 && b.pct < 1) - Number(a.pct > 0 && a.pct < 1));
+    // What you are in the middle of comes first, then whatever was touched last.
+    const reading = (x: TrayItem) => Number(x.pct > 0 && x.pct < 1);
+    return [...mine, ...samples].sort((a, b) => reading(b) - reading(a) || b.touched - a.touched);
   }, [library, progress, glosses, hydrated]);
 
   return (

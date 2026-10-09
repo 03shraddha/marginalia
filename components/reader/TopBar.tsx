@@ -64,7 +64,7 @@ export function TopBar({ currentN, pastTitle }: { currentN: number | null; pastT
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="min-w-0 truncate rounded-full px-2.5 py-1.5 font-serif text-[16px] leading-none text-ink transition-colors hover:bg-sunk"
-              title="Back to the top"
+              data-tip="Back to the top"
             >
               {ix.article.title}
             </button>
@@ -74,6 +74,7 @@ export function TopBar({ currentN, pastTitle }: { currentN: number | null; pastT
                 <button
                   type="button"
                   onClick={() => jumpTo(section.start, { flash: false })}
+                  data-tip="Go to the start of this part"
                   className="min-w-0 truncate rounded-full px-2 py-1.5 leading-none text-ink-3 hover:bg-sunk hover:text-ink"
                 >
                   {section.title}
@@ -85,7 +86,7 @@ export function TopBar({ currentN, pastTitle }: { currentN: number | null; pastT
 
         <nav aria-label="Reader tools" className="flex items-center gap-1">
           <span className="hidden sm:block">
-            <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
+            <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="Keyboard shortcuts" data-tip="Shortcuts" data-tip-kbd="?">
               <Keyboard size={17} strokeWidth={1.8} />
             </button>
           </span>
@@ -96,7 +97,9 @@ export function TopBar({ currentN, pastTitle }: { currentN: number | null; pastT
             className={`${barBtn} !px-3 ${notebookOpen ? "bg-sunk text-ink" : ""}`}
             onClick={() => setUI({ notebookOpen: !notebookOpen })}
             aria-pressed={notebookOpen}
-            title="Notebook (N)"
+            aria-label="Notebook"
+            data-tip={notebookOpen ? "Close notebook" : "Your notes and highlights"}
+            data-tip-kbd="N"
           >
             <NotebookPen size={16} strokeWidth={1.8} />
             <span className="hidden sm:inline">Notebook</span>

@@ -114,7 +114,8 @@ function BlockImpl({ block, n, first, marks, activeGloss, hoverGloss, activeHigh
           className="pnum"
           onClick={() => onAsk(block.id)}
           aria-label={`Ask about paragraph ${n}`}
-          title={`Paragraph ${n}. Click to ask about it.`}
+          data-tip={`Ask about \u00b6${n}`}
+          data-tip-side="left"
         >
           {hasAt && <span className="pnum-dot" aria-hidden />}
           <span className="pnum-ask" aria-hidden>

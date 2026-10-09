@@ -90,6 +90,7 @@
   --hl-strong: rgb(240 196 70 / 0.34);
   --hl-a: 24%;
   --hl-a-strong: 38%;
+  --key-a: 19%;
   --lens-bg: #ece6d9;
   --lens-fg: #191714;
   --lens-mute: #7d766a;
@@ -118,6 +119,7 @@
   --hl-strong: rgb(240 200 80 / 0.34);
   --hl-a: 24%;
   --hl-a-strong: 38%;
+  --key-a: 19%;
   --lens-bg: #e3e8f0;
   --lens-fg: #10141a;
   --lens-mute: #6c7685;
@@ -163,6 +165,7 @@
   --rubric-line: color-mix(in oklab, var(--rubric) 52%, transparent);
   --rubric-wash: color-mix(in oklab, var(--rubric) 9%, transparent);
   --rubric-wash-strong: color-mix(in oklab, var(--rubric) 17%, transparent);
+  --rubric-key: color-mix(in oklab, var(--rubric) var(--key-a, 13%), transparent);
   --selection: color-mix(in oklab, var(--rubric) 18%, transparent);
   --font-serif: var(--nf-serif), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--nf-sans), ui-sans-serif, system-ui, sans-serif;
@@ -705,8 +708,25 @@ kbd,
   border-left-color: var(--rubric-line);
 }
 
-.gloss.is-collapsed:hover {
-  background: color-mix(in oklab, var(--bg-raised) 60%, transparent);
+/* Closed notes: a question and its one-line answer, quiet until reached for. */
+.gloss.is-collapsed {
+  padding: 7px 12px 8px 14px;
+  cursor: pointer;
+  border-radius: 0 9px 9px 0;
+}
+
+.gloss.is-collapsed:hover,
+.gloss.is-collapsed:focus-visible {
+  background: color-mix(in oklab, var(--bg-raised) 70%, transparent);
+  border-left-color: var(--rubric-line);
+}
+
+.gloss.is-collapsed:focus-visible {
+  outline-offset: -2px;
+}
+
+.gloss.is-mini {
+  padding-block: 5px;
 }
 
 .gloss.is-active {
@@ -784,38 +804,56 @@ kbd,
   border-radius: 4px;
 }
 
-.gloss.is-collapsed .gloss-body {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  color: var(--ink-2);
-}
-
-/* A paragraph citation inside an answer: click to jump, hover to preview. */
+/* A paragraph citation inside an answer: quiet as a footnote, the pen on hover. */
 .cite {
   display: inline-flex;
   align-items: center;
-  height: 1.45em;
-  padding: 0 0.42em;
-  margin: 0 0.06em;
+  height: 1.4em;
+  padding: 0 0.38em;
+  margin: 0 0.04em;
   font-family: var(--font-sans);
-  font-size: 0.76em;
-  font-weight: 600;
+  font-size: 0.72em;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  vertical-align: 0.08em;
+  vertical-align: 0.1em;
   line-height: 1;
-  color: var(--rubric-text);
-  background: var(--rubric-wash);
+  color: var(--ink-3);
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
   border-radius: 5px;
   border: 0;
   transition: background-color 0.15s, color 0.15s;
   white-space: nowrap;
 }
 
-.cite:hover {
-  background: var(--rubric);
-  color: var(--bg);
+.cite:hover,
+.cite:focus-visible {
+  background: var(--rubric-wash-strong);
+  color: var(--rubric-text);
+}
+
+.cite:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The key answer: the model marks the words a skimmer needs, and the rest steps back. */
+mark.key {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--rubric-key);
+  border-radius: 0.22em;
+  padding: 0.05em 0.16em;
+  margin: 0 -0.06em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.gloss-body:has(mark.key) {
+  color: var(--ink-2);
+}
+
+mark.key .cite {
+  background: transparent;
 }
 
 .caret {
@@ -851,6 +889,14 @@ kbd,
   animation: shimmer 1.5s linear infinite;
 }
 
+.writing-line {
+  height: 0.55em;
+  width: 70%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--rubric-wash) 0%, var(--rubric-wash-strong) 45%, var(--rubric-wash) 90%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
 .writing > span:nth-child(2) {
   animation-delay: 0.12s;
 }
@@ -990,21 +1036,10 @@ kbd,
   animation: fade 0.25s var(--ease-out) both;
 }
 
-.lens-tip {
-  animation: tip-in 0.16s var(--ease-out);
-}
-
 @keyframes menu-in {
   from {
     opacity: 0;
     transform: translateY(-4px) scale(0.98);
-  }
-}
-
-@keyframes tip-in {
-  from {
-    opacity: 0;
-    transform: translateY(3px);
   }
 }
 
@@ -1124,10 +1159,11 @@ kbd,
 }
 
 .demo-mark::before {
-  /* the selection, then the pen's wash */
+  /* the selection, then the pen's wash: from above the ascenders (the l, the dot
+     of the i) to just under the descenders, with the same breath on every side */
   content: "";
   position: absolute;
-  inset: 0.1em -0.05em 0.04em;
+  inset: -0.05em -0.07em 0.02em;
   z-index: -1;
   border-radius: 0.06em;
   background: var(--selection);
@@ -1354,8 +1390,20 @@ kbd,
   background-color: var(--selection);
 }
 
-::highlight(hero-gloss) {
-  background-color: var(--rubric-wash);
+.hero-wash {
+  position: absolute;
+  z-index: -1;
+  border-radius: 5px;
+  background: var(--rubric-wash);
+  pointer-events: none;
+  transform-origin: left;
+  animation: wash-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+@keyframes wash-in {
+  from {
+    transform: scaleX(0);
+  }
 }
 
 /* ---------- notebook ---------- */
@@ -1492,6 +1540,68 @@ kbd,
   box-shadow: none;
 }
 
+/* More than the desk holds: a pile, its lower sheets peeking above the top one. */
+.tray-pile {
+  position: relative;
+  isolation: isolate;
+  cursor: pointer;
+}
+
+.tray-pile::before,
+.tray-pile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.45s var(--ease-out);
+}
+
+.tray-pile::before {
+  transform: translateY(-7px) rotate(-2.2deg);
+}
+
+.tray-pile::after {
+  transform: translateY(-12px) rotate(1.6deg);
+  z-index: -2;
+}
+
+.tray-slot:hover .tray-pile::before {
+  transform: translate(-6px, -10px) rotate(-4deg);
+}
+
+.tray-slot:hover .tray-pile::after {
+  transform: translate(7px, -16px) rotate(3.5deg);
+}
+
+/* The whole shelf, pulled up over the desk. */
+.shelf-sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: min(86dvh, 820px);
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid var(--rule);
+  background: var(--bg-raised);
+  box-shadow: 0 -24px 60px -24px rgb(0 0 0 / 0.28);
+  animation: shelf-up 0.5s var(--ease-out) both;
+}
+
+@keyframes shelf-up {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+}
+
+.shelf-row {
+  border-bottom: 1px solid var(--rule);
+  animation: rise 0.4s var(--ease-out) both;
+}
+
 .tray-ribbon {
   position: absolute;
   top: -1px;
@@ -1567,12 +1677,140 @@ kbd,
 
 }
 
+/* ---------- the text in miniature, read by the pen while the brief is written ---------- */
+
+.text-shape {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 54px;
+  height: 30px;
+}
+
+.text-shape > span {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+
+.text-shape.is-scan > span {
+  animation: shape-scan 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 110ms);
+}
+
+@keyframes shape-scan {
+  0%,
+  60%,
+  100% {
+    background: var(--rule-strong);
+  }
+  25% {
+    background: var(--rubric);
+  }
+}
+
+/* ---------- tooltips: one for the whole app, instant, in the lens's inks ---------- */
+
+.tip-box {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.tip-box.is-warm {
+  transition: transform 0.16s var(--ease-out);
+}
+
+.tip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: max-content;
+  max-width: 240px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.3;
+  background: var(--lens-bg);
+  color: var(--lens-fg);
+  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.12);
+  animation: tip-pop 0.12s var(--ease-out);
+}
+
+.tip-box[data-side="top"] .tip {
+  --ty: 3px;
+}
+.tip-box[data-side="bottom"] .tip {
+  --ty: -3px;
+}
+
+.tip-box.is-warm .tip {
+  animation: none;
+}
+
+.tip-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tip-hint {
+  color: var(--lens-mute);
+}
+
+.tip:has(.tip-hint) {
+  padding: 6px 9px 7px;
+}
+
+.tip-kbd {
+  margin-right: -2px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: var(--lens-fg);
+  background: color-mix(in oklab, var(--lens-fg) 14%, transparent);
+}
+
+/* On a dark surface (the lens), the tip is paper. */
+.tip-paper {
+  background: var(--bg-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--rule);
+}
+.tip-paper .tip-hint {
+  color: var(--ink-3);
+}
+.tip-paper .tip-kbd {
+  color: var(--ink-2);
+  background: var(--bg-sunk);
+}
+
+@keyframes tip-pop {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ty, 0)) scale(0.97);
+  }
+}
+
 /* ---------- a new theme pours in from the swatch you picked ---------- */
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+
+/* The page stays live while the new theme pours in: clicks go through the snapshot. */
+::view-transition {
+  pointer-events: none;
 }
 
 .theme-swap *,

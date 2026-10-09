@@ -20,7 +20,8 @@ function Seg<T extends string>({ value, options, onChange, label }: { value: T; 
           onClick={() => onChange(o.key)}
           className={`inline-flex h-7 items-center justify-center gap-1.5 rounded-[8px] text-[12.5px] font-medium transition-colors ${value === o.key ? "bg-pill text-ink shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-ink-3 hover:text-ink"}`}
         >
-          {o.label}
+          {/* Optically centred: the pill's shadow weighs its bottom edge, so the label sits a pixel lower. */}
+          <span className="inline-flex translate-y-px items-center gap-1.5">{o.label}</span>
         </button>
       ))}
     </div>
@@ -88,6 +89,8 @@ function Swatch({ theme, on }: { theme: (typeof THEMES)[number]; on: boolean }) 
   );
 }
 
+let swap: { finished: Promise<void> } | null = null;
+
 /**
  * Type, colour and answers in one small panel. Every change applies to the
  * page underneath immediately, so the page itself is the preview.
@@ -121,7 +124,9 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
     const end = ((Math.hypot(Math.max(x, w - x), Math.max(y, h - y)) / (Math.hypot(w, h) / Math.SQRT2)) * 100).toFixed(2);
     const root = document.documentElement;
     root.classList.add("theme-swap");
+    // A new pick while one is pouring skips the old one; only the newest clears the flag.
     const vt = doc.startViewTransition(() => flushSync(() => set({ theme: key })));
+    swap = vt;
     vt.ready
       .then(() =>
         root.animate(
@@ -130,11 +135,16 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
         )
       )
       .catch(() => {});
-    vt.finished.finally(() => root.classList.remove("theme-swap"));
+    vt.finished.finally(() => {
+      if (swap === vt) {
+        swap = null;
+        root.classList.remove("theme-swap");
+      }
+    });
   };
 
   return (
-    <Popover label="Appearance and answers" width={compact ? 316 : 348} triggerClass={barBtn} trigger={<span className="block translate-y-[0.5px] font-serif text-[18px] leading-none">Aa</span>}>
+    <Popover label="Appearance and answers" tip="Appearance" width={compact ? 316 : 348} triggerClass={barBtn} trigger={<span className="block translate-y-[0.5px] font-serif text-[18px] leading-none">Aa</span>}>
       {() => (
         <div>
           {!compact && (
@@ -163,7 +173,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                       type="button"
                       onClick={(e) => pickTheme(t.key, e)}
                       aria-pressed={settings.theme === t.key}
-                      title={t.key === "auto" ? "Auto: follows your system" : t.label}
+                      data-tip={t.key === "auto" ? "Follows your system" : undefined}
                       className="group flex flex-col items-center gap-1.5 rounded-[12px] focus-visible:outline-offset-4"
                     >
                       <Swatch theme={t} on={settings.theme === t.key} />
@@ -181,8 +191,8 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                       type="button"
                       onClick={() => set({ pen: p.key })}
                       aria-pressed={settings.pen === p.key}
-                      title={`${p.label} pen`}
                       aria-label={`${p.label} pen`}
+                      data-tip={p.label}
                       className={`grid size-7 place-items-center rounded-full transition-[box-shadow,transform] active:scale-90 ${settings.pen === p.key ? "shadow-[0_0_0_2px_var(--bg-raised),0_0_0_3.5px_var(--ink-3)]" : ""}`}
                     >
                       <span className="size-5 rounded-full" style={{ background: dark ? p.dark : p.light }} />
@@ -202,8 +212,8 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                           type="button"
                           onClick={() => set({ marker: m.key })}
                           aria-pressed={settings.marker === m.key}
-                          title={`${m.label} highlighter`}
                           aria-label={`${m.label} highlighter`}
+                          data-tip={m.label}
                           className={`grid size-7 place-items-center rounded-full transition-[box-shadow,transform] active:scale-90 ${settings.marker === m.key ? "shadow-[0_0_0_2px_var(--bg-raised),0_0_0_3.5px_var(--ink-3)]" : ""}`}
                         >
                           <span className="h-3 w-5 -rotate-12 rounded-[3px] opacity-80" style={{ background: m.color }} />
@@ -247,7 +257,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
               </div>
               <Row label="Size">
                 <div className="flex items-center gap-1.5">
-                  <button type="button" aria-label="Smaller text" onClick={() => size(settings.size - 1)} className="grid size-7 place-items-center rounded-lg text-ink-2 transition-transform hover:bg-sunk active:scale-90">
+                  <button type="button" aria-label="Smaller text" data-tip="Smaller" onClick={() => size(settings.size - 1)} className="grid size-7 place-items-center rounded-lg text-ink-2 transition-transform hover:bg-sunk active:scale-90">
                     <Minus size={14} />
                   </button>
                   <input
@@ -259,7 +269,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                     aria-label="Text size"
                     className="h-1 min-w-0 flex-1 accent-[var(--rubric)]"
                   />
-                  <button type="button" aria-label="Larger text" onClick={() => size(settings.size + 1)} className="grid size-7 place-items-center rounded-lg text-ink-2 transition-transform hover:bg-sunk active:scale-90">
+                  <button type="button" aria-label="Larger text" data-tip="Larger" onClick={() => size(settings.size + 1)} className="grid size-7 place-items-center rounded-lg text-ink-2 transition-transform hover:bg-sunk active:scale-90">
                     <Plus size={14} />
                   </button>
                   <span className="w-6 text-right text-[12px] tabular-nums text-ink-3">{settings.size}</span>

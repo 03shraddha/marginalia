@@ -1,13 +1,13 @@
 "use client";
 
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, Copy, CornerDownRight, RotateCcw, Sparkles, Square, Trash2 } from "lucide-react";
+import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, Microscope, RotateCcw, Square, Trash2 } from "lucide-react";
 import { ACTIONS } from "@/lib/actions";
 import { followUp, retry, stopGloss } from "@/lib/ask";
 import { MODELS } from "@/lib/models";
 import { useStore, type Gloss, type Turn } from "@/lib/store";
 import { undash } from "@/lib/article";
-import { Answer } from "./Answer";
+import { Answer, keyLine, unmark } from "./Answer";
 import { Writing } from "./Writing";
 import { fmtCost, fmtTokens, useReader } from "./context";
 
@@ -16,6 +16,8 @@ type Props = {
   active: boolean;
   hover: boolean;
   entering: boolean;
+  /** In a crowded stretch of margin, a closed note is just its question. */
+  mini?: boolean;
   /** "margin" cards are absolutely placed; "sheet" and "list" flow normally. */
   variant: "margin" | "sheet" | "list";
   top?: number;
@@ -27,7 +29,7 @@ function Receipt({ t }: { t: Turn }) {
   if (!t.usage) return <span>{t.model}</span>;
   const u = t.usage;
   return (
-    <span title={`${u.promptTokens.toLocaleString()} prompt tokens, ${u.cachedTokens.toLocaleString()} served from cache, ${u.completionTokens} written`}>
+    <span data-tip={`${u.promptTokens.toLocaleString()} prompt tokens, ${u.cachedTokens.toLocaleString()} cached, ${u.completionTokens} written`}>
       {t.model}
       <span className="mx-1.5 text-ink-4/70">/</span>
       {fmtTokens(u.promptTokens)} in{u.cachedTokens > 0 ? ` (${Math.round((u.cachedTokens / Math.max(1, u.promptTokens)) * 100)}% cached)` : ""}, {u.completionTokens} out
@@ -49,7 +51,7 @@ function TurnBody({ t }: { t: Turn }) {
   );
 }
 
-export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ gloss, active, hover, entering, variant, top, onActivate }, ref) {
+export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ gloss, active, hover, entering, mini = false, variant, top, onActivate }, ref) {
   const { ix, jumpToBlock } = useReader();
   const removeGloss = useStore((s) => s.removeGloss);
   const setUI = useStore((s) => s.setUI);
@@ -83,7 +85,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
   const copy = async () => {
     const text = gloss.turns
       .filter((t) => t.content)
-      .map((t) => (t.role === "user" ? `Q: ${t.content}` : undash(t.content)))
+      .map((t) => (t.role === "user" ? `Q: ${t.content}` : undash(unmark(t.content))))
       .join("\n\n");
     try {
       await navigator.clipboard.writeText(gloss.anchor ? `“${gloss.anchor.quote}”\n\n${text}` : text);
@@ -93,27 +95,69 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
   };
 
   const style = variant === "margin" ? { transform: `translateY(${Math.round(top ?? 0)}px)` } : undefined;
+  const follow = Math.floor((gloss.turns.length - 1) / 2);
+  const where = n !== undefined ? `\u00b6${n}${nEnd && nEnd !== n ? `-${nEnd}` : ""}` : null;
+
+  // Closed: the question, and under it the one line that answers it.
+  if (collapsed) {
+    return (
+      <article
+        ref={ref}
+        data-gloss={gloss.id}
+        aria-label={`${gloss.question ?? label}${n ? `, paragraph ${n}` : ""}. Open note.`}
+        role="button"
+        tabIndex={0}
+        className={["gloss is-collapsed", mini ? "is-mini" : "", hover ? "is-hover" : "", entering ? "is-entering" : ""].join(" ")}
+        style={style}
+        onClick={onActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onActivate();
+          }
+        }}
+        onMouseEnter={() => setUI({ hoverGloss: gloss.id })}
+        onMouseLeave={() => setUI({ hoverGloss: null })}
+      >
+        <div className="flex items-baseline gap-2">
+          <p className="min-w-0 flex-1 truncate text-[13.5px] font-medium leading-[1.4] text-ink">
+            {gloss.question ?? (
+              <>
+                <span className="text-rubric-text">{label}</span>
+                {gloss.anchor && <span className="font-normal text-ink-2">{` \u201c${gloss.anchor.quote}\u201d`}</span>}
+              </>
+            )}
+          </p>
+          {follow > 0 && (
+            <span className="shrink-0 text-[11px] tabular-nums text-ink-4" data-tip={`${follow} follow-up${follow > 1 ? "s" : ""}`}>
+              +{follow}
+            </span>
+          )}
+          {where && <span className="shrink-0 text-[11px] tabular-nums text-ink-4">{where}</span>}
+        </div>
+        {!mini && <Gist t={first} />}
+      </article>
+    );
+  }
 
   return (
     <article
       ref={ref}
       data-gloss={gloss.id}
-      aria-label={`${label} gloss${n ? ` on paragraph ${n}` : ""}`}
+      aria-label={`${label} note${n ? ` on paragraph ${n}` : ""}`}
       className={[
         variant === "margin" ? "gloss" : "gloss !relative !transform-none",
         active ? "is-active" : "",
         hover ? "is-hover" : "",
-        collapsed ? "is-collapsed cursor-pointer" : "",
         entering ? "is-entering" : "",
       ].join(" ")}
       style={style}
-      onClick={() => !active && onActivate()}
       onMouseEnter={() => setUI({ hoverGloss: gloss.id })}
       onMouseLeave={() => setUI({ hoverGloss: null })}
     >
-      <header className="mb-1.5 flex items-center gap-2 text-[12px] leading-none">
+      <header className="mb-2 flex h-5 items-center gap-2 text-[12px] leading-none">
         <span className="font-semibold text-rubric-text">{label}</span>
-        {n !== undefined && (
+        {where && (
           <button
             type="button"
             className="cite !text-[11px]"
@@ -122,41 +166,54 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               if (blockId) jumpToBlock(blockId);
             }}
             aria-label={`Go to paragraph ${n}`}
+            data-tip="Show in the text"
           >
-            ¶{n}
-            {nEnd && nEnd !== n ? `-${nEnd}` : ""}
+            {where}
           </button>
         )}
-        {gloss.turns.length > 2 && <span className="text-ink-3">{Math.floor(gloss.turns.length / 2)} follow-up{gloss.turns.length > 3 ? "s" : ""}</span>}
-        <span className="ml-auto text-[11px] text-ink-4">{first.modelKey ? MODELS[first.modelKey].short : ""}</span>
+        {follow > 0 && <span className="text-ink-4">{`${follow} follow-up${follow > 1 ? "s" : ""}`}</span>}
+        {variant === "margin" && (
+          <button
+            type="button"
+            aria-label="Collapse note"
+            data-tip="Collapse"
+            data-tip-kbd="Esc"
+            onClick={(e) => {
+              e.stopPropagation();
+              setUI({ activeGloss: null });
+            }}
+            className="-mr-1.5 ml-auto grid size-6 place-items-center rounded-md text-ink-4 transition-colors hover:bg-sunk hover:text-ink"
+          >
+            <ChevronsDownUp size={14} />
+          </button>
+        )}
       </header>
 
-      {!collapsed && gloss.anchor && gloss.action !== "ask" && (
+      {gloss.anchor && gloss.action !== "ask" && (
         <p className="mb-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-2.5 font-serif text-[15px] leading-snug text-ink-3">{gloss.anchor.quote}</p>
       )}
-      {gloss.question && <p className={`mb-1.5 text-[14px] font-medium leading-snug text-ink ${collapsed ? "line-clamp-1" : ""}`}>{gloss.question}</p>}
+      {gloss.question && <p className="mb-1.5 text-[14px] font-medium leading-snug text-ink">{gloss.question}</p>}
 
       <div className="gloss-body">
         <TurnBody t={first} />
       </div>
 
-      {!collapsed &&
-        gloss.turns.slice(1).map((t, i) =>
-          t.role === "user" ? (
-            <p key={i} className="mt-3.5 flex gap-1.5 border-t border-rule pt-3 text-[13.5px] font-medium leading-snug text-ink">
-              <CornerDownRight size={14} className="mt-[2px] shrink-0 text-ink-4" aria-hidden />
-              {t.content}
-            </p>
-          ) : (
-            <div key={i} className="gloss-body mt-1.5">
-              <TurnBody t={t} />
-            </div>
-          )
-        )}
+      {gloss.turns.slice(1).map((t, i) =>
+        t.role === "user" ? (
+          <p key={i} className="mt-3.5 flex gap-1.5 border-t border-rule pt-3 text-[13.5px] font-medium leading-snug text-ink">
+            <CornerDownRight size={14} className="mt-[2px] shrink-0 text-ink-4" aria-hidden />
+            {t.content}
+          </p>
+        ) : (
+          <div key={i} className="gloss-body mt-1.5">
+            <TurnBody t={t} />
+          </div>
+        )
+      )}
 
       {active && variant !== "list" && (
         <>
-          <footer className="mt-3 flex items-center gap-1 text-ink-3">
+          <footer className="mt-3 flex items-center gap-0.5 text-ink-3">
             <span className="min-w-0 flex-1 truncate text-[11.5px] tabular-nums text-ink-4">
               <Receipt t={last.role === "assistant" ? last : first} />
             </span>
@@ -167,18 +224,18 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
             ) : (
               <>
                 {last.modelKey !== "pro" && (
-                  <IconBtn label="Ask the deeper model to try" onClick={() => retry(ix, gloss.id, "pro")}>
-                    <Sparkles size={14} />
+                  <IconBtn label="Ask Deep instead" onClick={() => retry(ix, gloss.id, "pro")}>
+                    <Microscope size={14} />
                   </IconBtn>
                 )}
                 <IconBtn label="Try again" onClick={() => retry(ix, gloss.id)}>
                   <RotateCcw size={14} />
                 </IconBtn>
-                <IconBtn label="Copy" onClick={copy}>
+                <IconBtn label={copied ? "Copied" : "Copy"} onClick={copy}>
                   {copied ? <Check size={14} className="text-good" /> : <Copy size={14} />}
                 </IconBtn>
                 <IconBtn
-                  label="Delete gloss"
+                  label="Delete"
                   onClick={() => {
                     stopGloss(gloss.id);
                     removeGloss(gloss.articleId, gloss.id);
@@ -215,6 +272,8 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               type="submit"
               disabled={!draft.trim() || busy}
               aria-label="Send follow-up"
+              data-tip="Send"
+              data-tip-kbd={"\u21b5"}
               className="grid size-6 place-items-center rounded-md bg-ink text-bg transition-opacity disabled:opacity-20"
             >
               <ArrowUp size={14} strokeWidth={2.4} />
@@ -226,12 +285,20 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
   );
 });
 
+/** The closed note's second line: the key answer, or the pen still writing. */
+function Gist({ t }: { t: Turn }) {
+  if (t.error && !t.content) return <p className="mt-1 line-clamp-1 text-[13px] leading-[1.45] text-rubric-text">{t.error}</p>;
+  if (t.streaming && !t.content) return <span className="writing-line mt-2 block" aria-label="Writing" role="status" />;
+  const line = keyLine(t.content);
+  return line ? <p className="mt-1 line-clamp-2 text-[13px] leading-[1.45] text-ink-3">{line}</p> : null;
+}
+
 function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       aria-label={label}
-      title={label}
+      data-tip={label}
       onClick={(e) => {
         e.stopPropagation();
         onClick();

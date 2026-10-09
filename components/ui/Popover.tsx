@@ -10,6 +10,7 @@ export function Popover({
   align = "right",
   width = 300,
   triggerClass = "",
+  tip,
 }: {
   label: string;
   trigger: ReactNode;
@@ -17,6 +18,8 @@ export function Popover({
   align?: "left" | "right";
   width?: number;
   triggerClass?: string;
+  /** The trigger's tooltip; defaults to the label. */
+  tip?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -24,6 +27,8 @@ export function Popover({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
+      // During a view transition the pointer lands on the root's snapshot, not on the page.
+      if (e.target === document.documentElement && document.documentElement.classList.contains("theme-swap")) return;
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -45,7 +50,7 @@ export function Popover({
       <button
         type="button"
         aria-label={label}
-        title={label}
+        data-tip={open ? undefined : tip ?? label}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}

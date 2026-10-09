@@ -53,7 +53,7 @@ export function Shortcuts() {
       <div role="dialog" aria-label="Keyboard shortcuts" className="pop w-full max-w-[420px] p-6" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-serif text-[22px] leading-none text-ink">Keys</h2>
-          <button type="button" aria-label="Close" onClick={() => setUI({ shortcutsOpen: false })} className="grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-sunk">
+          <button type="button" aria-label="Close" data-tip="Close" data-tip-kbd="Esc" onClick={() => setUI({ shortcutsOpen: false })} className="grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-sunk">
             <X size={16} />
           </button>
         </div>

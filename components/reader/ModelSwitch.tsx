@@ -23,7 +23,8 @@ export function ModelSwitch({ tone = "plain" }: { tone?: "plain" | "lens" }) {
             type="button"
             role="radio"
             aria-checked={on}
-            title={`${MODELS[k].label}. ${MODELS[k].blurb}`}
+            data-tip={MODELS[k].label}
+            data-tip-hint={k === "flash" ? "Fast, for most questions" : "Slower, more careful"}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setSettings({ model: k })}
             className={`h-6 rounded-[6px] px-2 transition-colors ${

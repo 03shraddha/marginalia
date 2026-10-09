@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Literata, Newsreader, Schibsted_Grotesk } from "next/font/google";
 import { BOOT_SCRIPT } from "@/lib/settings";
 import "./globals.css";
+import { Tooltips } from "@/components/ui/Tooltips";
 
 const serif = Newsreader({
   subsets: ["latin", "latin-ext"],
@@ -62,7 +63,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Tooltips />
+      </body>
     </html>
   );
 }

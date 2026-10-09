@@ -18,7 +18,7 @@ export function PasteSheet({ open, onClose, onRead }: { open: boolean; onClose: 
       <div role="dialog" aria-label="Paste text to read" className="pop w-full max-w-[640px] p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-serif text-[24px] leading-none text-ink">Paste something to read</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="grid size-8 place-items-center rounded-full text-ink-3 hover:bg-sunk hover:text-ink">
+          <button type="button" aria-label="Close" data-tip="Close" data-tip-kbd="Esc" onClick={onClose} className="grid size-8 place-items-center rounded-full text-ink-3 hover:bg-sunk hover:text-ink">
             <X size={16} />
           </button>
         </div>

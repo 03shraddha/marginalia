@@ -6,9 +6,38 @@ import { useReader } from "./context";
 
 /**
  * A deliberately small Markdown subset for glosses: paragraphs, lists, bold,
- * italic, code, and paragraph citations ([¶12], [¶3-5], ¶7) as live chips.
+ * italic, code, paragraph citations ([¶12], [¶3-5], ¶7) as live chips, and
+ * the ==key answer==, which the model marks once so a skimmer can stop there.
  * Small enough to re-parse on every streamed token without a dependency.
  */
+
+/** The answer without its key-answer marks, for copying and exporting. */
+export const unmark = (s: string) => s.replace(/==/g, "");
+
+/**
+ * One line that stands for the whole answer: the marked key answer, or else
+ * the first sentence. Citations and Markdown are dropped.
+ */
+export function keyLine(s: string): string {
+  const marked = s.match(/==([^=]+?)==/)?.[1];
+  const src = marked ?? s.replace(/^\s*([-*•]|\d+[.)])\s+/gm, "").split(/\n+/).find((l) => l.trim()) ?? "";
+  // A citation that is part of the sentence ("[¶1] and [¶4] agree") stays as plain ¶1; trailing ones go.
+  const clean = undash(src)
+    .replace(/==/g, "")
+    .replace(/(^|\b(?:and|or|to|in|with)\s|,\s)\[\s*¶\s?([\d\s-]+)\]/g, "$1¶$2")
+    .replace(/\s?\[\s*¶[^\]]{0,60}\]/g, "")
+    .replace(/[*`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (marked) return clean;
+  // Whole sentences until there is enough to stand on ("No." alone says little).
+  let out = "";
+  for (const sentence of clean.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []) {
+    out += sentence;
+    if (out.trim().length >= 40) break;
+  }
+  return out.trim();
+}
 
 type Part = { kind: "p" | "ul" | "ol"; lines: string[] };
 
@@ -73,7 +102,28 @@ function citesFrom(raw: string): ReactNode[] {
   return out;
 }
 
+/** Splits out the ==key answer==; an unclosed mark runs to the end while it streams in. */
 function inline(text: string, plain = false): ReactNode[] {
+  if (!text.includes("==")) return tokens(text, plain);
+  const out: ReactNode[] = [];
+  const re = /==([^=]*?)(?:==|$)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last, m.index), plain)}</Fragment>);
+    if (m[1].trim())
+      out.push(
+        <mark key={`k${m.index}`} className="key">
+          {tokens(m[1], plain)}
+        </mark>
+      );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last), plain)}</Fragment>);
+  return out;
+}
+
+function tokens(text: string, plain = false): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;

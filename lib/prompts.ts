@@ -38,6 +38,7 @@ ${body}
 
 How to write a gloss:
 - Answer directly. No preamble, no restating the question, no sign-off.
+- Lead with the answer and mark it: wrap the words a skimmer most needs (the direct answer itself, from a few words up to one sentence) in ==double equals==, exactly once per reply. Example: "==It is a joke at his own expense.== The line before ..." Never mark a citation or a whole paragraph.
 - Plain, vivid prose. Short paragraphs. Use a list only for several distinct pointers.
 - Keep to the length the reader asked for (given after the text). Brevity is respect for their attention.
 - When you refer to the text, cite it inline as [¶n]. Only cite paragraphs that exist above.
@@ -116,5 +117,5 @@ Rules: 3 to 5 claims, each citing the single paragraph that best supports it. 4 
 /** Canned demo answers, shown only when no key is available, always labelled. */
 export function demoAnswer(t: ThreadPayload): string {
   const where = t.from ? ` about [¶${t.from}]` : "";
-  return `This is demo output, not a model answer. With a Together API key, DeepSeek V4.1 Flash would read the whole text and write a real gloss${where} here, citing paragraphs like [¶3] so you can jump straight to them. Add your key from the key button in the top bar.`;
+  return `==This is demo output, not a model answer.== With a Together API key, DeepSeek V4.1 Flash would read the whole text and write a real gloss${where} here, citing paragraphs like [¶3] so you can jump straight to them. Add your key from the key button in the top bar.`;
 }

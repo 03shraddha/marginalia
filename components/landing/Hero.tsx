@@ -21,7 +21,8 @@ const DEMO_NOTE =
 type Phase = 0 | 1 | 2 | 3 | 4 | 5;
 type Note = { quote: string; question: string; text: string; streaming: boolean; error?: string; demo: boolean };
 type Line = { x0: number; x1: number; y: number };
-type Geo = { noteTop: number; ruleX: number; lines: Line[]; width: number; leader: { x0: number; y0: number; x1: number; y1: number; gap: boolean } | null };
+type Wash = { x: number; y: number; w: number; h: number };
+type Geo = { noteTop: number; ruleX: number; lines: Line[]; washes: Wash[]; width: number; leader: { x0: number; y0: number; x1: number; y1: number; gap: boolean } | null };
 
 const DEMO: Note = { quote: DEMO_QUOTE, question: "How does this work?", text: DEMO_NOTE, streaming: false, demo: true };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -94,7 +95,7 @@ export function Hero({ children }: { children: ReactNode }) {
   const [sent, setSent] = useState(false);
   const [note, setNote] = useState<Note>(DEMO);
   const [stroke, setStroke] = useState(0);
-  const [geo, setGeo] = useState<Geo>({ noteTop: 0, ruleX: 0, lines: [], width: 3, leader: null });
+  const [geo, setGeo] = useState<Geo>({ noteTop: 0, ruleX: 0, lines: [], washes: [], width: 3, leader: null });
   const [live, setLive] = useState<Range | null>(null);
   const [lens, setLens] = useState<null | { range: Range; quote: string; mode: "actions" | "ask"; x: number; y: number }>(null);
   const [draft, setDraft] = useState("");
@@ -157,6 +158,8 @@ export function Hero({ children }: { children: ReactNode }) {
     }
     const boxes = target ? toLines(textRects(target), fs) : [];
     const lines = boxes.map((b) => ({ x0: b.left - s.left, x1: b.right - s.left, y: b.bottom - s.top - fs * 0.07 }));
+    // The same wash as the demo phrase: over the ascenders, clear of the next line.
+    const washes = boxes.map((b) => ({ x: b.left - s.left - fs * 0.07, y: b.top - s.top - fs * 0.05, w: b.right - b.left + fs * 0.14, h: b.bottom - b.top + fs * 0.03 }));
     const wide = window.innerWidth >= 1024;
     const noteTop = wide && boxes[0] ? Math.max(0, boxes[0].top - c.top + fs * 0.1) : 0;
     const anchor = noteEl?.querySelector("[data-anchor]")?.getBoundingClientRect();
@@ -176,7 +179,7 @@ export function Hero({ children }: { children: ReactNode }) {
       wide && last && n && anchor
         ? { x0, y0: last.y, x1: c.left - s.left + 1, y1: c.top - s.top + noteTop + (anchor.top - n.top) + anchor.height / 2, gap: x0 > last.x1 + 1 }
         : null;
-    setGeo({ noteTop, ruleX: c.left - s.left - 40, lines, width: Math.max(2.5, fs * 0.032), leader: leader && leader.x1 - leader.x0 > 40 ? leader : null });
+    setGeo({ noteTop, ruleX: c.left - s.left - 40, lines, washes, width: Math.max(2.5, fs * 0.032), leader: leader && leader.x1 - leader.x0 > 40 ? leader : null });
   }, [live]);
 
   useLayoutEffect(() => {
@@ -270,16 +273,6 @@ export function Hero({ children }: { children: ReactNode }) {
     else reg.delete("hero-pending");
   }, [lens]);
 
-  // Wash the live passage with the CSS Custom Highlight API, no DOM surgery.
-  useEffect(() => {
-    const reg = (globalThis as { CSS?: { highlights?: Map<string, unknown> } }).CSS?.highlights;
-    const H = (globalThis as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
-    if (!reg || !H) return;
-    if (live) reg.set("hero-gloss", new H(live));
-    else reg.delete("hero-gloss");
-    return () => void reg.delete("hero-gloss");
-  }, [live]);
-
   const ask = (action: Action, question?: string) => {
     if (!lens) return;
     timers.current.forEach(clearTimeout);
@@ -318,7 +311,13 @@ export function Hero({ children }: { children: ReactNode }) {
   const leaderDelay = lineDelay(geo.lines.length - 1) + 380;
 
   return (
-    <section ref={sectionRef} className="relative mx-auto grid w-full max-w-[1320px] items-start gap-x-20 gap-y-8 px-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_296px]">
+    <section ref={sectionRef} className="relative isolate mx-auto grid w-full max-w-[1320px] items-start gap-x-20 gap-y-8 px-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_296px]">
+      {/* The pen's wash behind words the reader picked; the demo phrase carries its own. */}
+      {live &&
+        geo.washes.map((w, i) => (
+          <span key={`${stroke}:${i}`} aria-hidden className="hero-wash" style={{ left: w.x, top: w.y, width: w.w, height: w.h, animationDelay: `${i * 90}ms` }} />
+        ))}
+
       {/* The red margin rule of a notebook page. */}
       <span aria-hidden className="margin-rule pointer-events-none absolute -bottom-[60vh] -top-[60vh] hidden w-px lg:block" style={{ left: geo.ruleX }} />
 
@@ -386,7 +385,7 @@ export function Hero({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={play}
-                  title="Play the example again"
+                  data-tip="Play the example again"
                   aria-label="Play the example again"
                   className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
                 >

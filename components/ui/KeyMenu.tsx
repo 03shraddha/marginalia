@@ -28,6 +28,7 @@ export function KeyMenu() {
   return (
     <Popover
       label="Together API key"
+      tip={key ? "Using your Together key" : "Add your Together key"}
       width={320}
       triggerClass={barBtn}
       trigger={

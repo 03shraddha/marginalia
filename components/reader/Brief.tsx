@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, RotateCcw, ScrollText } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, ChevronDown, RotateCcw } from "lucide-react";
 import { fetchBrief } from "@/lib/ask";
+import type { DocIndex } from "@/lib/doc";
 import { MODELS } from "@/lib/models";
 import { useStore } from "@/lib/store";
 import { Answer } from "./Answer";
@@ -19,28 +20,28 @@ export function Brief() {
   const setUI = useStore((s) => s.setUI);
   const hydrated = useStore((s) => s.hydrated);
 
-  if (!hydrated) return <div className="mt-6 h-[66px]" />;
+  if (!hydrated) return <div className="mt-6 h-[72px]" />;
 
   if (!brief) {
     return (
       <button
         type="button"
         onClick={() => fetchBrief(ix)}
-        className="group mt-6 flex w-full items-center gap-3.5 rounded-[16px] border border-rule bg-raised/60 py-3 pl-3 pr-4 text-left transition-[border-color,background-color,transform] duration-200 hover:border-rule-strong hover:bg-raised active:scale-[0.995]"
+        className="group mt-6 flex w-full items-center gap-5 rounded-[16px] border border-rule bg-raised/60 py-4 pl-5 pr-4 text-left transition-[border-color,background-color,transform,box-shadow] duration-200 hover:border-rule-strong hover:bg-raised hover:shadow-card active:scale-[0.995]"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-[11px] bg-rubric-wash text-rubric-text transition-transform duration-300 ease-[var(--ease-spring)] group-hover:scale-105">
-          <ScrollText size={18} strokeWidth={1.8} />
-        </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[14.5px] font-medium leading-tight text-ink">Brief me</span>
-          <span className="mt-0.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
+          <span className="flex items-center gap-1.5 font-serif text-[19px] leading-none tracking-[-0.01em] text-ink [font-variation-settings:'opsz'_24]">
+            Brief me
+            <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-rubric-text" aria-hidden />
+          </span>
+          <span className="mt-1.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
         </span>
         <kbd className="hidden sm:inline">B</kbd>
       </button>
     );
   }
 
-  if (brief.status === "loading") return <BriefLoading words={ix.words} />;
+  if (brief.status === "loading") return <BriefLoading ix={ix} />;
 
   if (brief.status === "error") {
     return (
@@ -64,7 +65,6 @@ export function Brief() {
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        <ScrollText size={16} strokeWidth={1.8} className="text-rubric-text" />
         <span className="text-[13.5px] font-medium text-ink">Brief</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
@@ -136,9 +136,39 @@ export function Brief() {
   );
 }
 
+/**
+ * The text in miniature: a few lines, each as long as a stretch of its
+ * paragraphs, so every text has its own shape. While the brief is written,
+ * the pen runs down them.
+ */
+function TextShape({ ix, scanning = false, className = "" }: { ix: DocIndex; scanning?: boolean; className?: string }) {
+  const lines = useMemo(() => {
+    const lens = [...ix.byNumber.values()].map((id) => (ix.texts.get(id) ?? "").split(/\s+/).length);
+    const n = Math.min(6, lens.length);
+    if (!n) return [];
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.floor((i * lens.length) / n);
+      const b = Math.max(a + 1, Math.floor(((i + 1) * lens.length) / n));
+      let sum = 0;
+      for (let j = a; j < b; j++) sum += lens[j];
+      out.push(sum / (b - a));
+    }
+    const max = Math.max(...out, 1);
+    return out.map((v) => 0.38 + 0.62 * Math.sqrt(v / max));
+  }, [ix]);
+  return (
+    <span aria-hidden className={`text-shape ${scanning ? "is-scan" : ""} ${className}`}>
+      {lines.map((w, i) => (
+        <span key={i} style={{ width: `${Math.round(w * 100)}%`, ["--i" as string]: i }} />
+      ))}
+    </span>
+  );
+}
+
 /** The brief takes a few seconds: say what is happening, and sketch the shape that is coming. */
-function BriefLoading({ words }: { words: number }) {
-  const steps = [`Reading all ${words.toLocaleString()} words`, "Weighing the key claims", "Mapping the sections"];
+function BriefLoading({ ix }: { ix: DocIndex }) {
+  const steps = [`Reading all ${ix.words.toLocaleString()} words`, "Weighing the key claims", "Mapping the sections"];
   const [step, setStep] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setStep((i) => Math.min(i + 1, steps.length - 1)), 2600);
@@ -150,7 +180,7 @@ function BriefLoading({ words }: { words: number }) {
         <p key={step} className="text-[12.5px] font-medium text-rubric-text" style={{ animation: "rise 0.4s var(--ease-out) both" }}>
           {steps[step]}
         </p>
-        <div className="loading-bar ml-auto w-24" aria-hidden />
+        <TextShape ix={ix} scanning className="ml-auto" />
       </div>
       <div className="space-y-2.5" aria-hidden>
         <div className="shimmer h-3.5 w-[94%]" />

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
+import { ShelfSheet } from "./ShelfSheet";
 
 export type TrayItem = {
   id: string;
@@ -14,26 +15,47 @@ export type TrayItem = {
   pct: number;
   glosses: number;
   sample: boolean;
+  /** When it was last read, or added. */
+  touched: number;
 };
+
+const SLOT = 248;
+const GAP = 16;
+const PAD = 40;
 
 /**
  * The shelf, as papers at the bottom edge of the desk. Each one shows just
- * its title until you reach for it; then it rises with the rest.
+ * its title until you reach for it; then it rises with the rest. When there
+ * are more than the desk can hold, the most recent stay out and the rest
+ * wait in a pile that opens into the whole shelf, searchable.
  */
 export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; onOpen: (id: string) => void; onRemove: (id: string) => void; onAdd: () => void }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const [slots, setSlots] = useState(5);
+  const [shelf, setShelf] = useState(false);
+
+  // How many papers fit on the desk, counting the add card at the end.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const fit = () => {
+      const narrow = window.matchMedia("(max-width: 1023px)").matches;
+      setSlots(narrow ? 6 : Math.max(3, Math.floor((el.clientWidth - 2 * PAD + GAP) / (SLOT + GAP))));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const overflow = items.length + 1 > slots;
+  const shown = overflow ? items.slice(0, slots - 2) : items;
+  const rest = overflow ? items.slice(slots - 2) : [];
 
   return (
     <div className="tray" aria-label="Your shelf">
-      <div
-        ref={scroller}
-        className="tray-scroll no-scrollbar"
-        onWheel={(e) => {
-          const el = scroller.current;
-          if (el && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
-        }}
-      >
-        {items.map((it, i) => (
+      <div ref={scroller} className="tray-scroll no-scrollbar">
+        {shown.map((it, i) => (
           <div key={it.id} className="tray-slot" style={{ ["--tilt" as string]: `${[-0.6, 0.45, -0.25, 0.55, -0.4][i % 5]}deg` }}>
             <Link
               href={`/read/${it.id}`}
@@ -65,12 +87,39 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
               </div>
             </Link>
             {!it.sample && (
-              <button type="button" aria-label={`Remove ${it.title} from your shelf`} onClick={() => onRemove(it.id)} className="tray-remove">
+              <button type="button" aria-label={`Remove ${it.title} from your shelf`} data-tip="Remove from shelf" onClick={() => onRemove(it.id)} className="tray-remove">
                 <X size={13} />
               </button>
             )}
           </div>
         ))}
+
+        {overflow && (
+          <div className="tray-slot" style={{ ["--tilt" as string]: "-0.35deg" }}>
+            <button type="button" onClick={() => setShelf(true)} className="tray-card tray-pile group" aria-label={`Your whole shelf, ${items.length} texts`}>
+              <p className="flex items-baseline justify-between gap-3 text-[12px] text-ink-3">
+                <span>Your shelf</span>
+                <span className="tabular-nums text-ink-4">{items.length} texts</span>
+              </p>
+              <p className="mt-1.5 font-serif text-[20px] leading-[1.15] tracking-[-0.01em] text-ink">
+                {rest.length} more on the shelf
+              </p>
+              <ul className="mt-3 space-y-1.5" aria-hidden>
+                {rest.slice(0, 3).map((it) => (
+                  <li key={it.id} className="flex items-center gap-2 text-[12.5px] leading-tight text-ink-3">
+                    <span className={`size-1.5 shrink-0 rounded-full ${it.pct > 0 && it.pct < 1 ? "bg-[var(--rubric)]" : "bg-rule-strong"}`} />
+                    <span className="truncate">{tidyTitle(it.title)}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="mt-auto flex items-center justify-between pt-3 text-[12px] text-ink-3">
+                Browse and search
+                <kbd>S</kbd>
+              </span>
+            </button>
+          </div>
+        )}
+
         <div className="tray-slot" style={{ ["--tilt" as string]: "0.3deg" }}>
           <button type="button" onClick={onAdd} className="tray-card tray-add">
             <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink-2">
@@ -80,6 +129,8 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
           </button>
         </div>
       </div>
+
+      <ShelfSheet open={shelf} items={items} onOpenChange={setShelf} onOpen={onOpen} onRemove={onRemove} />
     </div>
   );
 }

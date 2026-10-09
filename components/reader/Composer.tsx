@@ -79,6 +79,8 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           type="submit"
           disabled={!q.trim()}
           aria-label="Ask"
+          data-tip="Ask"
+          data-tip-kbd={"\u21b5"}
           className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-ink text-bg transition-opacity disabled:opacity-25"
         >
           <ArrowUp size={17} strokeWidth={2.3} />

@@ -159,7 +159,7 @@ function HeadBtn({ label, onClick, disabled, children }: { label: string; onClic
     <button
       type="button"
       aria-label={label}
-      title={label}
+      data-tip={label}
       disabled={disabled}
       onClick={onClick}
       className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:pointer-events-none disabled:opacity-35"
@@ -213,7 +213,7 @@ function GlossEntry({ g }: { g: Gloss }) {
 
   return (
     <article className="group relative rounded-[14px] border border-rule bg-bg px-4 pb-4 pt-3.5 transition-colors hover:border-rule-strong">
-      <button type="button" onClick={go} className="block w-full pr-7 text-left" title="Show it in the text">
+      <button type="button" onClick={go} className="block w-full pr-7 text-left">
         <Meta n={n} label={label} at={g.createdAt} />
         {g.anchor && (
           <span className="mt-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-3 font-serif text-[15px] leading-[1.45] text-ink-3 transition-colors group-hover:text-ink-2">
@@ -242,7 +242,7 @@ function GlossEntry({ g }: { g: Gloss }) {
       <button
         type="button"
         aria-label="Delete this question"
-        title="Delete"
+        data-tip="Delete"
         onClick={() => {
           stopGloss(g.id);
           removeGloss(g.articleId, g.id);
@@ -303,7 +303,6 @@ function HighlightEntry({ h }: { h: Highlight }) {
           jumpToBlock(h.anchor.start.b);
         }}
         className="block w-full pr-7 text-left"
-        title="Show it in the text"
       >
         <Meta n={ix.numbers.get(h.anchor.start.b)} label="Highlight" at={h.createdAt} />
         <span className="mt-2.5 block font-serif text-[15.5px] leading-[1.5] text-ink">
@@ -315,7 +314,7 @@ function HighlightEntry({ h }: { h: Highlight }) {
       <button
         type="button"
         aria-label="Remove highlight"
-        title="Remove"
+        data-tip="Remove"
         onClick={() => removeHighlight(ix.article.id, h.id)}
         className="absolute right-2.5 top-2.5 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-opacity hover:bg-sunk hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
       >
