@@ -7,6 +7,7 @@
  * 3. Errors come back as JSON: surface error.message, not the raw body.
  * 4. enable_thinking:false keeps reasoners from spending the budget thinking.
  *    Verified per model on 2026-10-08 with the full sample article (11k tokens).
+ *    A model meant to think a little carries a `reasoning` entry: see thinking().
  */
 
 export const TOGETHER_URL = "https://api.together.xyz/v1/chat/completions";
@@ -18,6 +19,14 @@ export { MODELS, DEFAULT_MODEL, isModelKey, costFor } from "./models";
 export type { ModelKey, StreamEvent, Usage } from "./models";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+/** Thinking off, or a little thinking with room for it in the token budget. */
+function thinking(model: ModelEntry, maxTokens: number) {
+  const r: ModelEntry["reasoning"] = model.reasoning;
+  return r
+    ? { max_tokens: maxTokens + r.headroom, reasoning_effort: r.effort }
+    : { max_tokens: maxTokens, chat_template_kwargs: { enable_thinking: false } };
+}
 
 type Chunk = {
   choices?: { delta?: { content?: string; reasoning_content?: string } }[];
@@ -75,8 +84,7 @@ export async function* streamChat(req: {
         stream: true,
         stream_options: { include_usage: true },
         temperature: req.temperature ?? 0.4,
-        max_tokens: req.maxTokens ?? 900,
-        chat_template_kwargs: { enable_thinking: false },
+        ...thinking(model, req.maxTokens ?? 900),
         messages: req.messages,
       }),
     });
@@ -164,8 +172,7 @@ export async function completeJSON<T>(req: {
       body: JSON.stringify({
         model: model.id,
         temperature: 0.3,
-        max_tokens: req.maxTokens ?? 1400,
-        chat_template_kwargs: { enable_thinking: false },
+        ...thinking(model, req.maxTokens ?? 1400),
         response_format: { type: "json_object" },
         messages: req.messages,
       }),

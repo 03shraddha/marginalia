@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lockup } from "@/components/brand/Gloss";
+import { Account } from "@/components/account/Account";
 import { KeyMenu } from "@/components/ui/KeyMenu";
 import { SettingsMenu } from "@/components/ui/SettingsMenu";
 import { wordCount, type Article } from "@/lib/article";
@@ -10,6 +11,7 @@ import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } fro
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
+import { DailyHighlight } from "./DailyHighlight";
 import { Hero } from "./Hero";
 import { ImportBar, type Busy } from "./ImportBar";
 import { PasteSheet } from "./PasteSheet";
@@ -42,16 +44,16 @@ export function Landing() {
 
   // Leave with a soft fade, so the page turns rather than cuts.
   const go = useCallback(
-    (id: string) => {
+    (id: string, hl?: string) => {
       setLeaving(true);
-      setTimeout(() => router.push(`/read/${id}`), 240);
+      setTimeout(() => router.push(`/read/${id}${hl ? `?hl=${hl}` : ""}`), 240);
     },
     [router]
   );
 
   const finish = useCallback(
-    (a: Article) => {
-      const err = keep(a);
+    async (a: Article) => {
+      const err = await keep(a);
       if (err) {
         setError(err);
         setBusy(null);
@@ -199,6 +201,7 @@ export function Landing() {
         <nav aria-label="Settings" className="flex items-center gap-1">
           <SettingsMenu compact />
           <KeyMenu />
+          <Account />
         </nav>
       </header>
 
@@ -214,6 +217,7 @@ export function Landing() {
             onPickFile={() => fileRef.current?.click()}
             onPasteText={() => setPasteOpen(true)}
           />
+          <DailyHighlight />
         </Hero>
       </main>
 

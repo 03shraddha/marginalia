@@ -6,5 +6,3 @@ export const BRAND = {
   modelsUrl: "https://www.together.ai/models",
 } as const;
 
-/** The model list and prices on the page are dated claims. */
-export const LAST_UPDATED = "8 Oct 2026";

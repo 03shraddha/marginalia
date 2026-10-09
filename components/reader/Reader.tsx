@@ -8,8 +8,9 @@ import { displayArticle, isHeading, readingMinutes, titleClass, type Article } f
 import { ARTICLE_QUESTIONS } from "@/lib/actions";
 import { SAMPLE_QUESTIONS } from "@/lib/samples";
 import { fetchBrief } from "@/lib/ask";
-import { BRAND, LAST_UPDATED } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
 import { indexArticle } from "@/lib/doc";
+import { fetchText } from "@/lib/sync";
 import { loadDoc, useGlosses, useHighlights, useStore, type Anchor } from "@/lib/store";
 import { applySettings } from "@/lib/settings";
 import { GlossWordmark } from "@/components/brand/Gloss";
@@ -18,7 +19,8 @@ import { Brief } from "./Brief";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ReaderContext, useMedia, useReader, type ReaderApi } from "./context";
 import { GlossCard } from "./GlossCard";
-import { Lens } from "./Lens";
+import { Lens, type OpenHighlight } from "./Lens";
+import { ListenBar } from "./Listen";
 import { Margin } from "./Margin";
 import { Notebook } from "./Notebook";
 import { Peek, Shortcuts, Toast } from "./Overlays";
@@ -35,9 +37,10 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
     hydrate();
     applySettings(useStore.getState().settings);
     if (!initial) {
-      const a = loadDoc(id);
-      if (a) setArticle(a);
-      else setMissing(true);
+      // Not on this device: it may be in the reader's account, fetched now that it is opened.
+      void loadDoc(id)
+        .then((a) => a ?? fetchText(id))
+        .then((a) => (a ? setArticle(a) : setMissing(true)));
     }
   }, [hydrate, id, initial]);
 
@@ -47,7 +50,7 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
         <div>
           <GlossWordmark />
           <p className="mt-6 font-serif text-[26px] text-ink">This text is not on this device.</p>
-          <p className="mt-2 text-[14px] text-ink-3">Imported texts live in the browser that imported them.</p>
+          <p className="mt-2 text-[14px] text-ink-3">Imported texts live in the browser that imported them, or in your account when you are signed in.</p>
           <Link href="/" className="mt-6 inline-flex h-10 items-center rounded-full bg-ink px-5 text-[14px] font-medium text-bg">
             Back to the library
           </Link>
@@ -82,7 +85,7 @@ function ReaderInner({ article }: { article: Article }) {
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [pastTitle, setPastTitle] = useState(false);
-  const [openHl, setOpenHl] = useState<{ id: string; anchor: Anchor; at: number } | null>(null);
+  const [openHl, setOpenHl] = useState<OpenHighlight | null>(null);
   const [toast, setToast] = useState<null | { kind: "resume"; n: number } | { kind: "hint" }>(null);
 
   const glosses = useGlosses(articleId);
@@ -154,21 +157,23 @@ function ReaderInner({ article }: { article: Article }) {
       list.push(m);
       map.set(blockId, list);
     };
-    const place = (a: Anchor, kind: Mark["kind"], id: string, color?: string) => {
+    const place = (a: Anchor, kind: Mark["kind"], id: string, color?: string, note?: boolean) => {
       const si = ix.order.get(a.start.b) ?? 0;
       const ei = ix.order.get(a.end.b) ?? si;
       for (let i = si; i <= ei; i++) {
         const b = article.blocks[i];
         const span = spanIn(a, b.id, ix.texts.get(b.id)?.length ?? 0, ix.order);
-        if (span) add(b.id, { from: span[0], to: span[1], kind, id, color });
+        if (span) add(b.id, { from: span[0], to: span[1], kind, id, color, ...(note && b.id === a.end.b ? { note } : {}) });
       }
     };
-    for (const h of highlights) place(h.anchor, "hl", h.id, h.color);
+    for (const h of highlights) place(h.anchor, "hl", h.id, h.color, Boolean(h.note));
     for (const g of glosses) if (g.anchor) place(g.anchor, "gloss", g.id);
     if (pending) place(pending, "pending", "pending");
     return map;
   }, [glosses, highlights, pending, ix, article.blocks]);
 
+  const notes = useMemo(() => highlights.filter((h) => h.note), [highlights]);
+  const openNote = useCallback((h: { id: string; anchor: Anchor }) => setOpenHl({ id: h.id, anchor: h.anchor, at: Date.now(), note: true }), []);
   const atBlocks = useMemo(() => new Set(glosses.filter((g) => !g.anchor && g.at).map((g) => g.at!)), [glosses]);
   // The drop cap goes on the first real paragraph, not a one-line caption or credit.
   const firstPara = useMemo(() => article.blocks.find((b) => b.type === "p" && (ix.texts.get(b.id)?.length ?? 0) >= 180)?.id, [article.blocks, ix]);
@@ -245,6 +250,17 @@ function ReaderInner({ article }: { article: Article }) {
   useEffect(() => {
     if (!hydrated || !articleEl || resumed.current) return;
     resumed.current = true;
+    // Opened from a link to one highlight (the home page's daily one): go there, not to where you left off.
+    const hlId = new URLSearchParams(window.location.search).get("hl");
+    const hl = hlId ? (useStore.getState().highlights[articleId] ?? []).find((h) => h.id === hlId) : undefined;
+    if (hlId) window.history.replaceState(null, "", window.location.pathname);
+    if (hl) {
+      requestAnimationFrame(() => {
+        jumpToBlock(hl.anchor.start.b, { flash: false });
+        setUI({ activeHighlight: hl.id });
+      });
+      return;
+    }
     const p = useStore.getState().progress[articleId];
     const n = p ? ix.numbers.get(p.block) : undefined;
     if (p && n && n > 2 && p.pct < 0.98) {
@@ -260,7 +276,7 @@ function ReaderInner({ article }: { article: Article }) {
           setTimeout(() => setToast((t) => t ?? { kind: "hint" }), 1400);
       } catch {}
     }
-  }, [hydrated, articleEl, articleId, ix]);
+  }, [hydrated, articleEl, articleId, ix, jumpToBlock, setUI]);
 
   useEffect(() => {
     if (!toast) return;
@@ -316,7 +332,7 @@ function ReaderInner({ article }: { article: Article }) {
   /* ---------------- keyboard ---------------- */
 
   useEffect(() => {
-    const paraIds = article.blocks.filter((b) => !isHeading(b)).map((b) => b.id);
+    const paraIds = article.blocks.filter((b) => ix.numbers.has(b.id)).map((b) => b.id);
     const orderedGlosses = () =>
       [...useStore.getState().glosses[articleId] ?? []].sort((a, b) => {
         const pa = ix.order.get(a.anchor?.start.b ?? a.at ?? "") ?? 0;
@@ -423,7 +439,7 @@ function ReaderInner({ article }: { article: Article }) {
     <ReaderContext.Provider value={api}>
       <title>{`${article.title}, glossed`}</title>
       <div className={`${focusMode ? "focus-mode" : ""} ${showNumbers ? "" : "hide-nums"} ${notebookOpen ? "nb-open" : ""}`}>
-        <TopBar currentN={current ? ix.numbers.get(current) ?? null : null} pastTitle={pastTitle} />
+        <TopBar currentN={current ? ix.numbers.get(current) ?? null : null} pastTitle={pastTitle} listenFrom={askAnchor} />
 
         <main className="relative z-[1] px-4 pb-10 pt-[calc(var(--topbar-h)+64px)] sm:px-6">
           <div className="reader-grid">
@@ -435,7 +451,7 @@ function ReaderInner({ article }: { article: Article }) {
             <div className="min-w-0">
               <header className="mb-14">
                 {kicker && (
-                  <p className="rise mb-6 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+                  <p className="focus-hide rise mb-6 flex items-center gap-2 text-[13px] font-medium text-ink-3">
                     <span aria-hidden className="size-1.5 rounded-full bg-[var(--rubric)]" />
                     <span className="truncate">{kicker}</span>
                   </p>
@@ -444,13 +460,13 @@ function ReaderInner({ article }: { article: Article }) {
                   {article.title}
                 </h1>
                 {article.dek && (
-                  <p className="rise mt-5 max-w-[38rem] text-[clamp(1.05rem,1.7vw,1.19rem)] leading-[1.55] text-ink-2 text-pretty" style={{ animationDelay: "90ms" }}>
+                  <p className="focus-hide rise mt-5 max-w-[38rem] text-[clamp(1.05rem,1.7vw,1.19rem)] leading-[1.55] text-ink-2 text-pretty" style={{ animationDelay: "90ms" }}>
                     {article.dek}
                   </p>
                 )}
 
                 {/* Byline: who and when on one line, how long underneath, the original on the right. */}
-                <div className="rise mt-8 flex items-center gap-4 border-t border-rule pt-5" style={{ animationDelay: "140ms" }}>
+                <div className="focus-hide rise mt-8 flex items-center gap-4 border-t border-rule pt-5" style={{ animationDelay: "140ms" }}>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14.5px] leading-snug text-ink">
                       {article.author ? <span className="font-medium">{article.author}</span> : <span className="font-medium">{kicker ?? "Untitled source"}</span>}
@@ -471,7 +487,7 @@ function ReaderInner({ article }: { article: Article }) {
                     </a>
                   )}
                 </div>
-                <div className="rise" style={{ animationDelay: "200ms" }}>
+                <div className="focus-hide rise" style={{ animationDelay: "200ms" }}>
                   <Brief />
                 </div>
               </header>
@@ -495,17 +511,17 @@ function ReaderInner({ article }: { article: Article }) {
                 ))}
               </div>
 
-              <footer className="mt-16 border-t border-rule pt-10 text-[13.5px] leading-relaxed text-ink-3">
+              <footer className="focus-hide mt-16 border-t border-rule pt-10 text-[13.5px] leading-relaxed text-ink-3">
                 <p aria-hidden className="mb-8 text-center font-serif text-[26px] leading-none text-[var(--rubric)]">
                   ❦
                 </p>
                 {article.source && <p>From {article.source}.</p>}
                 <p className="mt-1">
-                  Glosses are written by open models, DeepSeek V4.1 Flash and DeepSeek V4 Pro, served by{" "}
+                  Glosses are powered by DeepSeek V4.1 Flash, served by{" "}
                   <a href={BRAND.togetherUrl} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
                     Together AI
                   </a>
-                  . Model list and prices checked {LAST_UPDATED}. They can be wrong; the paragraph numbers let you check.
+                  .
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button type="button" onClick={() => setUI({ notebookOpen: true })} className="h-9 rounded-full border border-rule px-4 text-[13px] font-medium text-ink-2 hover:border-rule-strong hover:text-ink">
@@ -521,11 +537,21 @@ function ReaderInner({ article }: { article: Article }) {
             </div>
 
             <div className="rg-gutter" aria-hidden />
-            <div className="rg-margin min-w-0">{wide && <Margin glosses={glosses} articleEl={articleEl} gutter={gutter} />}</div>
+            <div className="rg-margin min-w-0">{wide && <Margin glosses={glosses} notes={notes} articleEl={articleEl} gutter={gutter} onOpenNote={openNote} />}</div>
           </div>
         </main>
 
+        {focusMode && (
+          <p
+            role="status"
+            className="focus-hint pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+32px)] left-1/2 z-40 whitespace-nowrap rounded-full bg-lens px-4 py-2 text-[13px] text-lens-fg shadow-pop"
+          >
+            {window.matchMedia("(pointer: coarse)").matches ? "Focus mode. Scroll up for the menu." : "Focus mode. Press F or Esc to leave."}
+          </p>
+        )}
+
         <Lens rootEl={articleEl} openHighlight={openHl} />
+        <ListenBar />
         <Notebook />
         <Peek peek={peek} />
         <Shortcuts />

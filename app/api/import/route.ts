@@ -118,7 +118,20 @@ export async function POST(req: Request) {
     document.head?.appendChild(base);
   } catch {}
 
-  const parsed = new Readability(document as unknown as Document, { charThreshold: 400 }).parse();
+  // Data tables (header cells or a caption) often carry classes like "sticky-header"
+  // that Readability reads as page furniture and strips. Their classes go, so they stay.
+  for (const t of Array.from(document.querySelectorAll("table"))) {
+    const role = t.getAttribute("role");
+    if (role === "presentation" || role === "navigation") continue;
+    if (t.querySelector("th, thead, caption")) t.removeAttribute("class");
+  }
+
+  let parsed: ReturnType<Readability["parse"]> = null;
+  try {
+    parsed = new Readability(document as unknown as Document, { charThreshold: 400 }).parse();
+  } catch {
+    // Some unusual markup trips Readability up; that reads the same as no article found.
+  }
   if (!parsed?.content) {
     return Response.json({ error: "Could not find an article on that page. Try pasting the text instead." }, { status: 422 });
   }
@@ -126,7 +139,7 @@ export async function POST(req: Request) {
   const { document: clean } = parseHTML(`<!doctype html><html><body><div id="r">${parsed.content}</div></body></html>`);
   const root = clean.getElementById("r");
   if (!root) return Response.json({ error: "Could not read that article." }, { status: 422 });
-  let blocks = htmlToBlocks(root as never);
+  let blocks = htmlToBlocks(root as never, target.toString());
   const title = tidyTitle(undash((parsed.title || target.hostname).trim()));
   if (blocks[0] && blocks[0].type !== "p" && blocks[0].runs.map((r) => r.text).join("").trim() === title) blocks = blocks.slice(1);
   if (blocks.filter((b) => b.type === "p").length < 2) {

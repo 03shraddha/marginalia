@@ -3,6 +3,8 @@ import { Atkinson_Hyperlegible_Next, Literata, Newsreader, Schibsted_Grotesk } f
 import { BOOT_SCRIPT } from "@/lib/settings";
 import "./globals.css";
 import { Tooltips } from "@/components/ui/Tooltips";
+import { ClerkProvider } from "@clerk/nextjs";
+import { SyncAgent } from "@/components/account/SyncAgent";
 
 const serif = Newsreader({
   subsets: ["latin", "latin-ext"],
@@ -57,6 +59,22 @@ export const viewport: Viewport = {
   ],
 };
 
+/** Clerk's sign-in and account screens, in the page's own ink and paper, in every theme. */
+const CLERK_APPEARANCE = {
+  variables: {
+    colorPrimary: "var(--ink)",
+    colorBackground: "var(--bg-raised)",
+    colorForeground: "var(--ink)",
+    colorMutedForeground: "var(--ink-3)",
+    colorInput: "var(--bg)",
+    colorInputForeground: "var(--ink)",
+    colorBorder: "var(--rule-strong)",
+    colorNeutral: "var(--ink)",
+    fontFamily: "var(--font-sans)",
+    borderRadius: "12px",
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${book.variable} ${legible.variable}`} suppressHydrationWarning>
@@ -64,7 +82,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
       <body>
-        {children}
+        <ClerkProvider appearance={CLERK_APPEARANCE}>
+          {children}
+          <SyncAgent />
+        </ClerkProvider>
         <Tooltips />
       </body>
     </html>

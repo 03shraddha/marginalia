@@ -134,6 +134,8 @@ export function startGloss(
 ): string {
   const st = useStore.getState();
   const modelKey = opts.modelKey ?? st.settings.model;
+  // The answer is written in the margin, which focus mode hides: step out of it.
+  if (st.focusMode) st.setUI({ focusMode: false });
   const g: Gloss = {
     id: uid(),
     articleId: ix.article.id,
@@ -187,7 +189,7 @@ export async function fetchBrief(ix: DocIndex) {
     });
     const j = (await res.json()) as { mode?: string; brief?: BriefData; usage?: Usage; error?: string };
     if (j.brief) useStore.getState().setBrief(id, { status: "ready", data: j.brief, usage: j.usage, modelKey, at: Date.now() });
-    else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not make a brief.", demo: j.mode === "demo" });
+    else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not write the gloss.", demo: j.mode === "demo" });
   } catch (e) {
     useStore.getState().setBrief(id, { status: "error", error: `Connection lost: ${String(e)}` });
   }

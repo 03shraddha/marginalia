@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, BadgeCheck, BookA, Check, Copy, Ellipsis, Eraser, Feather, Highlighter, Lightbulb, Scale, Waypoints, type LucideIcon } from "lucide-react";
+import { ArrowUp, BadgeCheck, BookA, Check, Copy, Ellipsis, Eraser, Feather, Highlighter, Lightbulb, PenLine, Scale, Waypoints, type LucideIcon } from "lucide-react";
 import { ACTIONS, isShortSelection, type Action } from "@/lib/actions";
 import { MARKERS, type Marker } from "@/lib/settings";
 import { anchorToRange, selectionToAnchor } from "@/lib/anchor";
@@ -12,7 +12,7 @@ import { ModelSwitch } from "./ModelSwitch";
 
 type LensState = {
   anchor: Anchor;
-  mode: "actions" | "ask";
+  mode: "actions" | "ask" | "note";
   highlightId?: string;
   initial?: string;
 };
@@ -36,7 +36,9 @@ const STARTERS = {
  * The selection lens. Select text and it appears; start typing and it becomes
  * a question box; pick an action and the answer is written in the margin.
  */
-export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; openHighlight: { id: string; anchor: Anchor; at: number } | null }) {
+export type OpenHighlight = { id: string; anchor: Anchor; at: number; note?: boolean };
+
+export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; openHighlight: OpenHighlight | null }) {
   const { ix } = useReader();
   const [lens, setLens] = useState<LensState | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number; below: boolean; arrow: number } | null>(null);
@@ -48,12 +50,29 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
   const updateHighlight = useStore((s) => s.updateHighlight);
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const draftRef = useRef("");
+  draftRef.current = draft;
   const dragging = useRef(false);
   const lensRef = useRef<LensState | null>(null);
   lensRef.current = lens;
   const setUI = useStore((s) => s.setUI);
   const addHighlight = useStore((s) => s.addHighlight);
   const removeHighlight = useStore((s) => s.removeHighlight);
+
+  /** Keeps what was written in note mode: on a highlight, or as a new one. An emptied note is removed. */
+  const saveNote = useCallback(() => {
+    const l = lensRef.current;
+    if (!l || l.mode !== "note") return;
+    const note = draftRef.current.trim() || undefined;
+    const st = useStore.getState();
+    const existing = l.highlightId ? st.highlights[ix.article.id]?.find((h) => h.id === l.highlightId) : undefined;
+    if (existing) {
+      if ((existing.note ?? undefined) !== note) st.updateHighlight(ix.article.id, existing.id, { note });
+    } else if (note) {
+      st.addHighlight({ id: uid(), articleId: ix.article.id, anchor: l.anchor, createdAt: Date.now(), color: st.settings.marker, note });
+    }
+  }, [ix]);
 
   const close = useCallback(
     (clearSelection = true) => {
@@ -72,7 +91,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     if (!rootEl) return;
     let t: ReturnType<typeof setTimeout> | null = null;
     const evaluate = () => {
-      if (lensRef.current?.mode === "ask") return;
+      if (lensRef.current?.mode === "ask" || lensRef.current?.mode === "note") return;
       const a = selectionToAnchor(window.getSelection(), rootEl, ix.texts, ix.order);
       if (a) {
         setLens({ anchor: a, mode: "actions" });
@@ -85,7 +104,9 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     const onDown = (e: PointerEvent) => {
       if (boxRef.current?.contains(e.target as Node)) return;
       dragging.current = rootEl.contains(e.target as Node);
-      if (lensRef.current?.mode === "ask" || lensRef.current?.highlightId) close(false);
+      // Clicking away from a note keeps it, the way paper would.
+      if (lensRef.current?.mode === "note") saveNote();
+      if (lensRef.current?.mode === "ask" || lensRef.current?.mode === "note" || lensRef.current?.highlightId) close(false);
     };
     const onUp = () => {
       if (!dragging.current) return;
@@ -107,15 +128,16 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
       document.removeEventListener("selectionchange", onSel);
       if (t) clearTimeout(t);
     };
-  }, [rootEl, ix, close, setUI]);
+  }, [rootEl, ix, close, saveNote, setUI]);
 
   // Clicking an existing highlight opens the lens on it.
   useEffect(() => {
     if (!openHighlight) return;
     window.getSelection()?.removeAllRanges();
-    setLens({ anchor: openHighlight.anchor, mode: "actions", highlightId: openHighlight.id });
+    setLens({ anchor: openHighlight.anchor, mode: openHighlight.note ? "note" : "actions", highlightId: openHighlight.id });
+    if (openHighlight.note) setDraft(useStore.getState().highlights[ix.article.id]?.find((h) => h.id === openHighlight.id)?.note ?? "");
     setUI({ activeHighlight: openHighlight.id });
-  }, [openHighlight, setUI]);
+  }, [openHighlight, setUI, ix]);
 
   // Follow the anchor while the page scrolls.
   // keepX: the box only changed size (colour dots, starters), so it stays put sideways.
@@ -177,13 +199,33 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     [setUI]
   );
 
+  const toNote = useCallback(() => {
+    const l = lensRef.current;
+    if (!l) return;
+    const existing = l.highlightId ? useStore.getState().highlights[ix.article.id]?.find((h) => h.id === l.highlightId) : undefined;
+    setDraft(existing?.note ?? "");
+    setLens({ ...l, mode: "note" });
+    setMenu(false);
+    if (!l.highlightId) setUI({ pending: l.anchor });
+    window.getSelection()?.removeAllRanges();
+  }, [ix, setUI]);
+
   const asking = lens?.mode === "ask";
+  const noting = lens?.mode === "note";
   useLayoutEffect(() => {
-    const el = inputRef.current;
-    if (!asking || !el) return;
+    const el = asking ? inputRef.current : noting ? noteRef.current : null;
+    if (!el) return;
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
-  }, [asking]);
+  }, [asking, noting]);
+
+  // The note box grows with what is written, up to a few lines.
+  useLayoutEffect(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
+  }, [draft, noting]);
 
   // Typing anything while text is selected starts a question.
   useEffect(() => {
@@ -260,17 +302,71 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
   return (
     <div
       ref={boxRef}
-      role={lens.mode === "ask" ? "dialog" : "toolbar"}
-      aria-label={lens.mode === "ask" ? "Ask about the selection" : "Actions for the selection"}
+      role={lens.mode === "actions" ? "toolbar" : "dialog"}
+      aria-label={lens.mode === "ask" ? "Ask about the selection" : lens.mode === "note" ? "A note on the selection" : "Actions for the selection"}
       className="lens fixed z-50"
       data-tip-tone="paper"
       style={{ ...style, ["--origin" as string]: pos?.below ? "top center" : "bottom center" }}
       onMouseDown={(e) => {
-        if ((e.target as HTMLElement).tagName !== "INPUT") e.preventDefault();
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") e.preventDefault();
       }}
     >
       <div className="relative rounded-[14px] bg-lens p-1 text-lens-fg shadow-pop ring-1 ring-black/5">
-        {lens.mode === "actions" ? (
+        {lens.mode === "actions" && existing?.note && (
+          <button
+            type="button"
+            onClick={toNote}
+            className="mb-1 block w-full max-w-[min(420px,calc(100vw-32px))] rounded-[10px] px-3 pb-2 pt-1.5 text-left font-serif text-[14.5px] leading-[1.45] text-lens-fg/90 transition-colors hover:bg-lens-hover"
+          >
+            <span className="line-clamp-3 whitespace-pre-line">{existing.note}</span>
+          </button>
+        )}
+        {lens.mode === "note" ? (
+          <form
+            className="lens-morph w-[min(420px,calc(100vw-24px))]"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveNote();
+              close();
+            }}
+          >
+            <textarea
+              ref={noteRef}
+              value={draft}
+              rows={1}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  close();
+                } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  saveNote();
+                  close();
+                }
+              }}
+              placeholder={existing ? "A note on this highlight" : "A note, in your own words"}
+              aria-label="Your note on the selected passage"
+              className="block max-h-[168px] min-h-8 w-full resize-none bg-transparent px-3 pt-[7px] font-serif text-[15px] leading-[1.45] text-lens-fg outline-none focus-visible:outline-none placeholder:text-lens-mute"
+            />
+            <div className="flex items-center justify-between gap-3 pb-0.5 pl-3 pr-0.5 pt-1">
+              <span className="text-[11.5px] text-lens-mute">
+                {"\u21b5"} to keep <span className="opacity-60">{"\u00b7"}</span> Shift {"\u21b5"} new line
+              </span>
+              <button
+                type="submit"
+                aria-label="Keep note"
+                data-tip="Keep"
+                data-tip-kbd={"\u21b5"}
+                className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-[var(--rubric)] text-white transition-transform active:scale-90"
+              >
+                <Check size={15} strokeWidth={2.4} />
+              </button>
+            </div>
+          </form>
+        ) : lens.mode === "actions" ? (
           <div className="no-scrollbar flex max-w-[calc(100vw-24px)] items-center gap-0.5 overflow-x-auto">
             <button
               type="button"
@@ -296,7 +392,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               aria-label="More actions"
               aria-expanded={menu}
               onClick={() => setMenu((v) => !v)}
-              {...tipProps("More", "Fact-check, related, counterpoint")}
+              {...tipProps("More", existing ? "Fact-check, related, counterpoint" : "Fact-check, counterpoint, a note")}
               className={`lens-btn w-8 justify-center ${menu ? "bg-lens-hover" : ""}`}
             >
               <Ellipsis size={16} />
@@ -320,6 +416,9 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                     />
                   ))}
                 </div>
+                <LensIcon label={existing.note ? "Edit note" : "Add a note"} tip={tipProps(existing.note ? "Edit note" : "Add a note", existing.note ? undefined : "In your own words")} onClick={toNote}>
+                  <PenLine size={15} />
+                </LensIcon>
                 <LensIcon
                   label="Remove highlight"
                   tip={tipProps("Remove highlight")}
@@ -444,6 +543,24 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 </button>
               );
             })}
+            {!existing && (
+              <>
+                <span className="mx-2.5 my-1 block h-px bg-lens-mute/15" aria-hidden />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={toNote}
+                  className="lens-item group flex w-full items-start gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-lens-hover"
+                  style={{ animationDelay: `${more.length * 30}ms` }}
+                >
+                  <PenLine size={16} strokeWidth={1.9} className="mt-[1px] shrink-0 text-lens-mute transition-colors group-hover:text-[var(--rubric)]" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium leading-tight">Note</span>
+                    <span className="mt-0.5 block text-[12px] leading-snug text-lens-mute">Your own words, kept with a highlight</span>
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
 

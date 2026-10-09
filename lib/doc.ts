@@ -1,4 +1,4 @@
-import { blockText, isHeading, numberBlocks, wordCount, type Article } from "./article";
+import { blockText, modelText, numberBlocks, wordCount, type Article } from "./article";
 import type { DocPayload } from "./prompts";
 
 /** Everything the reader derives once from an article. */
@@ -29,8 +29,8 @@ const BUDGET = 400_000;
 
 export function docPayload(ix: DocIndex, focusBlock?: string): DocPayload {
   const paras = ix.article.blocks
-    .filter((b) => !isHeading(b))
-    .map((b) => ({ n: ix.numbers.get(b.id)!, text: ix.texts.get(b.id) ?? "" }));
+    .filter((b) => ix.numbers.has(b.id))
+    .map((b) => ({ n: ix.numbers.get(b.id)!, text: b.type === "table" ? modelText(b) : ix.texts.get(b.id) ?? "" }));
   const base = { title: ix.article.title, author: ix.article.author, published: ix.article.published };
   const total = paras.reduce((a, p) => a + p.text.length, 0);
   if (total <= BUDGET) return { ...base, paras };

@@ -34,7 +34,13 @@ export type Gloss = {
   createdAt: number;
 };
 
-export type Highlight = { id: string; articleId: string; anchor: Anchor; createdAt: number; color?: Marker };
+/**
+ * Where a highlight stands in the daily review: when it is next due, how many
+ * times it has come round, when it was last seen, and whether it was retired.
+ */
+export type Review = { due: number; step: number; last: number; off?: boolean };
+
+export type Highlight = { id: string; articleId: string; anchor: Anchor; createdAt: number; color?: Marker; note?: string; review?: Review };
 
 export type BriefState =
   | { status: "loading" }
@@ -54,6 +60,16 @@ export type LibraryItem = {
 };
 
 export type Progress = { block: string; pct: number; at: number };
+
+/** A row from the account, as the sync route sends it. `data` is null on a tombstone. */
+export type RemoteRow<T> = { id: string; articleId: string; data: T | null; deleted: boolean };
+export type RemoteChanges = {
+  articles?: RemoteRow<LibraryItem>[];
+  highlights?: RemoteRow<Highlight>[];
+  glosses?: RemoteRow<Gloss>[];
+  briefs?: RemoteRow<BriefState>[];
+  progress?: RemoteRow<Progress>[];
+};
 
 type Persisted = {
   glosses: Record<string, Gloss[]>;
@@ -78,6 +94,8 @@ type UI = {
   briefOpen: boolean;
   /** The passage a question is being typed about, shown while the native selection is gone. */
   pending: Anchor | null;
+  /** The whole shelf, pulled up over the desk: its texts, or every highlight across them. */
+  shelf: null | "texts" | "highlights";
 };
 
 type State = Persisted &
@@ -96,6 +114,7 @@ type State = Persisted &
     setProgress: (articleId: string, p: Progress) => void;
     addToLibrary: (a: Article, words: number) => void;
     removeFromLibrary: (id: string) => void;
+    applyRemote: (c: RemoteChanges) => void;
   };
 
 const KEY = "gloss:v1";
@@ -123,6 +142,7 @@ export const useStore = create<State>((set, get) => ({
   cursor: null,
   briefOpen: true,
   pending: null,
+  shelf: null,
 
   hydrate: () => {
     if (get().hydrated) return;
@@ -155,6 +175,7 @@ export const useStore = create<State>((set, get) => ({
       settings: { ...DEFAULT_SETTINGS, ...settings },
       hydrated: true,
     });
+    void migrateDocs();
   },
 
   setSettings: (s) => {
@@ -221,11 +242,52 @@ export const useStore = create<State>((set, get) => ({
     })),
 
   removeFromLibrary: (id) => {
-    try {
-      localStorage.removeItem(DOC_PREFIX + id);
-    } catch {}
+    void dropDoc(id);
     set((st) => ({ library: st.library.filter((x) => x.id !== id) }));
   },
+
+  // Changes from another device. The server's copy replaces the local one,
+  // except a gloss that is still being written here.
+  applyRemote: (c) =>
+    set((st) => {
+      let library = st.library;
+      for (const r of c.articles ?? []) {
+        library = library.filter((x) => x.id !== r.id);
+        if (r.deleted || !r.data) void dropDoc(r.id);
+        else library = [r.data, ...library];
+      }
+
+      const merge = <T extends { id: string; createdAt: number }>(cur: Record<string, T[]>, rows: RemoteRow<T>[] = [], keep?: (t: T) => boolean) => {
+        if (!rows.length) return cur;
+        const next = { ...cur };
+        for (const r of rows) {
+          const list = next[r.articleId] ?? [];
+          const local = list.find((x) => x.id === r.id);
+          if (local && keep?.(local)) continue;
+          next[r.articleId] = list.filter((x) => x.id !== r.id);
+          if (!r.deleted && r.data) next[r.articleId] = [...next[r.articleId], r.data].sort((a, b) => a.createdAt - b.createdAt);
+        }
+        return next;
+      };
+
+      const byArticle = <T,>(cur: Record<string, T>, rows: RemoteRow<T>[] = []) => {
+        if (!rows.length) return cur;
+        const next = { ...cur };
+        for (const r of rows) {
+          if (r.deleted || !r.data) delete next[r.id];
+          else next[r.id] = r.data;
+        }
+        return next;
+      };
+
+      return {
+        library,
+        highlights: merge(st.highlights, c.highlights),
+        glosses: merge(st.glosses, c.glosses, (g) => g.turns.some((t) => t.streaming)),
+        briefs: byArticle(st.briefs, c.briefs),
+        progress: byArticle(st.progress, c.progress),
+      };
+    }),
 }));
 
 /* Debounced persistence. Streaming updates land many times a second, so the
@@ -252,7 +314,39 @@ if (typeof window !== "undefined") {
   });
 }
 
-export function saveDoc(a: Article) {
+/* Texts live in IndexedDB, which holds far more than localStorage's few
+   megabytes. Older builds kept them in localStorage; they move over on first read. */
+
+const DB_NAME = "gloss";
+const DOCS = "docs";
+let dbp: Promise<IDBDatabase> | null = null;
+
+function idb(): Promise<IDBDatabase> {
+  dbp ??= new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DOCS);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  dbp.catch(() => (dbp = null));
+  return dbp;
+}
+
+async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const req = fn(db.transaction(DOCS, mode).objectStore(DOCS));
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function saveDoc(a: Article): Promise<boolean> {
+  try {
+    await tx("readwrite", (s) => s.put(a, a.id));
+    return true;
+  } catch {}
+  // No IndexedDB (some private windows): the old, smaller home still works.
   try {
     localStorage.setItem(DOC_PREFIX + a.id, JSON.stringify(a));
     return true;
@@ -261,13 +355,41 @@ export function saveDoc(a: Article) {
   }
 }
 
-export function loadDoc(id: string): Article | null {
+export async function loadDoc(id: string): Promise<Article | null> {
+  try {
+    const a = await tx<Article | undefined>("readonly", (s) => s.get(id));
+    if (a) return a;
+  } catch {}
+  let legacy: Article | null = null;
   try {
     const raw = localStorage.getItem(DOC_PREFIX + id);
-    return raw ? (JSON.parse(raw) as Article) : null;
-  } catch {
-    return null;
+    legacy = raw ? (JSON.parse(raw) as Article) : null;
+  } catch {}
+  if (legacy) {
+    try {
+      await tx("readwrite", (s) => s.put(legacy, id));
+      localStorage.removeItem(DOC_PREFIX + id);
+    } catch {}
   }
+  return legacy;
+}
+
+/** Moves every text an older build left in localStorage into IndexedDB, freeing room for notes. */
+async function migrateDocs() {
+  let ids: string[] = [];
+  try {
+    ids = Object.keys(localStorage).filter((k) => k.startsWith(DOC_PREFIX)).map((k) => k.slice(DOC_PREFIX.length));
+  } catch {}
+  for (const id of ids) await loadDoc(id);
+}
+
+async function dropDoc(id: string) {
+  try {
+    localStorage.removeItem(DOC_PREFIX + id);
+  } catch {}
+  try {
+    await tx("readwrite", (s) => s.delete(id));
+  } catch {}
 }
 
 const EMPTY: never[] = [];

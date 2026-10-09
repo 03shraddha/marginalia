@@ -32,6 +32,67 @@ const BLOCK_TAGS: Record<string, BlockType> = {
 
 const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "SVG", "IFRAME", "FORM", "BUTTON", "NAV", "FOOTER", "TABLE", "IMG", "PICTURE", "VIDEO", "AUDIO"]);
 
+/** Past this, a table is a page layout or a data dump, not something to read. */
+const MAX_ROWS = 80;
+const MAX_COLS = 12;
+
+function descendants(node: El, tag: string, out: El[] = []): El[] {
+  for (const c of Array.from(node.childNodes)) {
+    if (c.nodeType !== 1 || !c.tagName) continue;
+    if (c.tagName.toUpperCase() === tag) out.push(c);
+    else descendants(c, tag, out);
+  }
+  return out;
+}
+
+const clean = (s: string | null | undefined) => undash((s ?? "").replace(/\s+/g, " ").trim());
+
+/** An image worth showing: a real http(s) picture, not a spacer, tracking pixel or inline blob. */
+function imageOf(img: El, base?: string): { src: string; alt?: string } | null {
+  const attr = (n: string) => img.getAttribute?.(n) ?? null;
+  const srcset = attr("srcset") ?? attr("data-srcset");
+  // The largest candidate in a srcset reads best on a sharp screen.
+  const fromSet = srcset
+    ?.split(",")
+    .map((c) => c.trim().split(/\s+/))
+    .filter((p) => p[0])
+    .sort((a, b) => parseFloat(b[1] ?? "0") - parseFloat(a[1] ?? "0"))[0]?.[0];
+  const src0 = attr("src");
+  const raw = fromSet ?? (src0 && !src0.startsWith("data:") ? src0 : attr("data-src"));
+  if (!raw) return null;
+  let src: string;
+  try {
+    src = new URL(raw, base).toString();
+  } catch {
+    return null;
+  }
+  if (!/^https?:/i.test(src)) return null;
+  const w = Number(attr("width"));
+  const h = Number(attr("height"));
+  if ((w && w < 48) || (h && h < 48)) return null;
+  const alt = clean(attr("alt"));
+  return { src, alt: alt || undefined };
+}
+
+/** Rows of cell text, or null when the table is really layout. */
+function tableOf(table: El): { rows: string[][]; head: boolean } | null {
+  const trs = descendants(table, "TR");
+  const rows: string[][] = [];
+  let head = false;
+  for (const tr of trs.slice(0, MAX_ROWS)) {
+    const cells = Array.from(tr.childNodes).filter((c) => c.nodeType === 1 && /^T[HD]$/i.test(c.tagName ?? ""));
+    if (rows.length === 0) head = cells.length > 0 && cells.every((c) => c.tagName!.toUpperCase() === "TH");
+    const row = cells.slice(0, MAX_COLS).map((c) => clean(c.textContent));
+    if (row.some(Boolean)) rows.push(row);
+  }
+  const cols = Math.max(0, ...rows.map((r) => r.length));
+  if (rows.length < 2 || cols < 2) return null;
+  // Long prose in cells means the table is holding the page together, not data.
+  const cells = rows.flat();
+  if (cells.reduce((a, c) => a + c.length, 0) / cells.length > 220) return null;
+  return { rows: rows.map((r) => [...r, ...Array(cols - r.length).fill("")]), head };
+}
+
 function inlineRuns(node: El, marks: Omit<Run, "text"> = {}, out: Run[] = []): Run[] {
   for (const child of Array.from(node.childNodes)) {
     if (child.nodeType === 3) {
@@ -90,9 +151,16 @@ function tidyRuns(runs: Run[]): Run[] {
   return merged.filter((r) => r.text.length > 0);
 }
 
-export function htmlToBlocks(root: El): Block[] {
+export function htmlToBlocks(root: El, base?: string): Block[] {
   const blocks: Block[] = [];
   let i = 0;
+  const seen = new Set<string>();
+  const figure = (img: El, caption: Run[] = []) => {
+    const im = imageOf(img, base);
+    if (!im || seen.has(im.src)) return;
+    seen.add(im.src);
+    blocks.push({ id: `b${++i}`, type: "figure", runs: caption, src: im.src, ...(im.alt ? { alt: im.alt } : {}) });
+  };
 
   const visit = (node: El) => {
     for (const child of Array.from(node.childNodes)) {
@@ -104,6 +172,28 @@ export function htmlToBlocks(root: El): Block[] {
         continue;
       }
       const tag = child.tagName.toUpperCase();
+      if (tag === "IMG") {
+        figure(child);
+        continue;
+      }
+      if (tag === "FIGURE") {
+        const img = descendants(child, "IMG")[0];
+        if (img) {
+          const cap = descendants(child, "FIGCAPTION")[0];
+          figure(img, cap ? tidyRuns(inlineRuns(cap)) : []);
+          continue;
+        }
+      }
+      if (tag === "PICTURE") {
+        visit(child);
+        continue;
+      }
+      if (tag === "TABLE") {
+        const t = tableOf(child);
+        if (t) blocks.push({ id: `b${++i}`, type: "table", runs: [], rows: t.rows, ...(t.head ? { head: true } : {}) });
+        else visit(child);
+        continue;
+      }
       if (SKIP.has(tag)) continue;
       const type = BLOCK_TAGS[tag];
 
@@ -127,8 +217,9 @@ export function htmlToBlocks(root: El): Block[] {
       if (type) {
         const runs = tidyRuns(inlineRuns(child));
         const text = runs.map((r) => r.text).join("");
-        if (text.trim().length === 0) continue;
-        blocks.push({ id: `b${++i}`, type, runs });
+        if (text.trim().length > 0) blocks.push({ id: `b${++i}`, type, runs });
+        // Images inside a paragraph (often its only content) stand on their own after it.
+        for (const img of descendants(child, "IMG")) figure(img);
         continue;
       }
       visit(child);
@@ -144,6 +235,7 @@ export function htmlToBlocks(root: El): Block[] {
   const isCitation = (t: string) => /^(↑|\^)/.test(t) || /^\d+( \d+)+ /.test(t) || /(Retrieved|Archived from|ISBN|doi:)/.test(t);
   let cleaned = body.filter((b) => {
     const t = textOf(b);
+    if (b.type === "figure" || b.type === "table") return true;
     return t.length > 1 && !/^\[?edit\]?$/i.test(t) && !/^From Wikipedia, the free encyclopedia$/i.test(t) && !(b.type === "li" && isCitation(t));
   });
   // A run of short list items after the last paragraph is a "see also" list.
