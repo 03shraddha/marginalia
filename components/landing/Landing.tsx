@@ -1,0 +1,242 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Lockup } from "@/components/brand/Gloss";
+import { KeyMenu } from "@/components/ui/KeyMenu";
+import { SettingsMenu } from "@/components/ui/SettingsMenu";
+import { wordCount, type Article } from "@/lib/article";
+import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
+import { SAMPLES } from "@/lib/samples";
+import { applySettings } from "@/lib/settings";
+import { useStore } from "@/lib/store";
+import { Hero } from "./Hero";
+import { ImportBar, type Busy } from "./ImportBar";
+import { PasteSheet } from "./PasteSheet";
+import { Tray, type TrayItem } from "./Tray";
+
+/** One screen: a headline that shows what it does, a place to paste, and your shelf. */
+export function Landing() {
+  const router = useRouter();
+  const hydrate = useStore((s) => s.hydrate);
+  const hydrated = useStore((s) => s.hydrated);
+  const library = useStore((s) => s.library);
+  const progress = useStore((s) => s.progress);
+  const glosses = useStore((s) => s.glosses);
+  const removeFromLibrary = useStore((s) => s.removeFromLibrary);
+
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState<Busy>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
+
+  useEffect(() => {
+    hydrate();
+    applySettings(useStore.getState().settings);
+  }, [hydrate]);
+
+  // Leave with a soft fade, so the page turns rather than cuts.
+  const go = useCallback(
+    (id: string) => {
+      setLeaving(true);
+      setTimeout(() => router.push(`/read/${id}`), 240);
+    },
+    [router]
+  );
+
+  const finish = useCallback(
+    (a: Article) => {
+      const err = keep(a);
+      if (err) {
+        setError(err);
+        setBusy(null);
+        return;
+      }
+      go(a.id);
+    },
+    [go]
+  );
+
+  const fromUrl = useCallback(
+    async (raw: string) => {
+      if (!raw.trim()) return;
+      setError(null);
+      let host = raw.trim();
+      try {
+        host = new URL(/^https?:/i.test(host) ? host : `https://${host}`).hostname.replace(/^www\./, "");
+      } catch {}
+      setBusy({ label: `Reading ${host}` });
+      const r = await importFromUrl(raw);
+      if (r.ok) finish(r.article);
+      else {
+        setError(r.error);
+        setBusy(null);
+      }
+    },
+    [finish]
+  );
+
+  const fromFile = useCallback(
+    async (f: File) => {
+      setError(null);
+      setBusy({ label: `Opening ${f.name}`, pct: f.name.toLowerCase().endsWith(".pdf") ? 0 : undefined });
+      const r = await importFromFile(f, (p) => setBusy({ label: `Reading ${f.name}`, pct: p }));
+      if (r.ok) finish(r.article);
+      else {
+        setError(r.error);
+        setBusy(null);
+      }
+    },
+    [finish]
+  );
+
+  const fromText = useCallback(
+    (text: string) => {
+      const r = importFromText(text);
+      setPasteOpen(false);
+      if (r.ok) finish(r.article);
+      else setError(r.error);
+    },
+    [finish]
+  );
+
+  // Paste a link or a page of text anywhere. Drop a file anywhere. Slash to type.
+  useEffect(() => {
+    const inField = (t: EventTarget | null) => (t as HTMLElement | null)?.closest?.("input, textarea, [contenteditable]");
+    const onPaste = (e: ClipboardEvent) => {
+      if (inField(e.target) || busy) return;
+      const t = e.clipboardData?.getData("text") ?? "";
+      if (looksLikeUrl(t)) {
+        e.preventDefault();
+        setUrl(t.trim());
+        fromUrl(t);
+      } else if (t.trim().split(/\s+/).length >= 40) {
+        e.preventDefault();
+        fromText(t);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (inField(e.target) || e.metaKey || e.ctrlKey) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+    const enter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepth.current++;
+      setDragging(true);
+    };
+    const over = (e: DragEvent) => hasFiles(e) && e.preventDefault();
+    const leave = () => {
+      dragDepth.current = Math.max(0, dragDepth.current - 1);
+      if (!dragDepth.current) setDragging(false);
+    };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepth.current = 0;
+      setDragging(false);
+      const f = e.dataTransfer?.files?.[0];
+      if (f) fromFile(f);
+    };
+    document.addEventListener("paste", onPaste);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      document.removeEventListener("paste", onPaste);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, [busy, fromUrl, fromFile, fromText]);
+
+  const items: TrayItem[] = useMemo(() => {
+    const p = (id: string) => (hydrated ? progress[id]?.pct ?? 0 : 0);
+    const g = (id: string) => (hydrated ? (glosses[id] ?? []).length : 0);
+    const mine = library.map((x) => ({
+      id: x.id,
+      title: x.title,
+      byline: x.author || x.source || (x.origin === "paste" ? "Pasted text" : "Imported"),
+      words: x.words,
+      pct: p(x.id),
+      glosses: g(x.id),
+      sample: false,
+    }));
+    const samples = SAMPLES.map((a) => ({
+      id: a.id,
+      title: a.title,
+      byline: [a.author?.split(" ").slice(-1)[0], a.published].filter(Boolean).join(", "),
+      dek: a.dek,
+      words: wordCount(a),
+      pct: p(a.id),
+      glosses: g(a.id),
+      sample: true,
+    }));
+    // What you are in the middle of comes first.
+    return [...mine, ...samples].sort((a, b) => Number(b.pct > 0 && b.pct < 1) - Number(a.pct > 0 && a.pct < 1));
+  }, [library, progress, glosses, hydrated]);
+
+  return (
+    <div className={`landing relative z-[1] flex h-dvh flex-col overflow-hidden transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] max-lg:h-auto max-lg:min-h-dvh max-lg:overflow-visible ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
+      <header className="relative z-20 mx-auto flex h-[var(--topbar-h)] w-full max-w-[1400px] shrink-0 items-center justify-between px-5 sm:px-8">
+        <Lockup />
+        <nav aria-label="Settings" className="flex items-center gap-1">
+          <SettingsMenu compact />
+          <KeyMenu />
+        </nav>
+      </header>
+
+      <main className="relative flex flex-1 items-center pb-[150px] pt-6 max-lg:items-start max-lg:pb-10 max-lg:pt-14">
+        <Hero>
+          <ImportBar
+            ref={inputRef}
+            url={url}
+            setUrl={setUrl}
+            busy={busy}
+            error={error}
+            onSubmit={fromUrl}
+            onPickFile={() => fileRef.current?.click()}
+            onPasteText={() => setPasteOpen(true)}
+          />
+        </Hero>
+      </main>
+
+      <Tray items={items} onOpen={go} onRemove={removeFromLibrary} onAdd={() => fileRef.current?.click()} />
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) fromFile(f);
+          e.target.value = "";
+        }}
+      />
+      <PasteSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onRead={fromText} />
+
+      {dragging && (
+        <div className="pointer-events-none fixed inset-0 z-[90] grid place-items-center bg-bg/80 backdrop-blur-sm" style={{ animation: "fade 0.15s" }}>
+          <div className="rounded-[28px] border-[1.5px] border-dashed border-[var(--rubric)] px-16 py-14 text-center">
+            <p className="font-serif text-[40px] leading-none text-ink">Drop to read</p>
+            <p className="mt-3 text-[14px] text-ink-3">PDF, .txt or .md</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

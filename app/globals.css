@@ -1,0 +1,1604 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Gloss. A critical edition for anything you read.
+   Paper, ink, a yellow highlighter for you and a vermilion pen for the model.
+   ========================================================================== */
+
+/* Light grounds. Each sets its own neutrals; the pen colour is layered on top. */
+:root,
+[data-theme="paper"] {
+  --bg: #f6f3ec;
+  --bg-raised: #fcfaf6;
+  --bg-sunk: #ede8dd;
+  --ink: #1d1b18;
+  --ink-2: #4b463f;
+  --ink-3: #857e72;
+  --ink-4: #aba394;
+  --rule: #e5dfd2;
+  --rule-strong: #d3cab8;
+  --hl: rgb(242 196 56 / 0.46);
+  --hl-strong: rgb(242 196 56 / 0.7);
+  --lens-bg: #1d1b18;
+  --lens-fg: #f3efe6;
+  --lens-mute: #9a9285;
+  --lens-hover: #34312c;
+  --shadow-pop: 0 1px 1px rgb(40 30 20 / 0.04), 0 14px 36px -14px rgb(40 30 20 / 0.3), 0 3px 8px -3px rgb(40 30 20 / 0.1);
+  --shadow-card: 0 1px 1px rgb(40 30 20 / 0.03), 0 10px 26px -16px rgb(40 30 20 / 0.24);
+  --bg-pill: #fffdf9;
+  --grain-opacity: 0.045;
+  --good: #3f7d4e;
+  --rubric: var(--pen-l);
+  --rubric-text: var(--pen-l-text);
+  color-scheme: light;
+}
+
+[data-theme="sepia"] {
+  --bg: #f1e6cf;
+  --bg-raised: #f7eedc;
+  --bg-sunk: #e7d9bb;
+  --ink: #33281b;
+  --ink-2: #5a4a36;
+  --ink-3: #8c785c;
+  --ink-4: #ae9b78;
+  --rule: #e0cfad;
+  --rule-strong: #d1bd96;
+  --hl: rgb(236 186 50 / 0.42);
+  --hl-strong: rgb(236 186 50 / 0.66);
+  --lens-bg: #2e2418;
+  --lens-fg: #f4ead6;
+  --lens-mute: #a8957a;
+  --lens-hover: #463a2a;
+  --bg-pill: #fbf5e8;
+  --grain-opacity: 0.06;
+}
+
+[data-theme="snow"] {
+  --bg: #fdfdfc;
+  --bg-raised: #ffffff;
+  --bg-sunk: #f1f1ef;
+  --ink: #141518;
+  --ink-2: #45474d;
+  --ink-3: #82848a;
+  --ink-4: #abadb3;
+  --rule: #e9e9e6;
+  --rule-strong: #d7d7d3;
+  --hl: rgb(250 210 60 / 0.42);
+  --hl-strong: rgb(250 210 60 / 0.66);
+  --lens-bg: #141518;
+  --lens-fg: #f5f5f4;
+  --lens-mute: #8e9096;
+  --lens-hover: #2c2e33;
+  --bg-pill: #ffffff;
+  --shadow-pop: 0 1px 1px rgb(15 20 30 / 0.04), 0 14px 36px -14px rgb(15 20 30 / 0.22), 0 3px 8px -3px rgb(15 20 30 / 0.08);
+  --shadow-card: 0 1px 1px rgb(15 20 30 / 0.03), 0 10px 26px -16px rgb(15 20 30 / 0.18);
+  --grain-opacity: 0.02;
+}
+
+/* Dark grounds. */
+[data-theme="night"] {
+  --bg: #151412;
+  --bg-raised: #1d1b18;
+  --bg-sunk: #24221e;
+  --ink: #e9e3d6;
+  --ink-2: #b6ae9e;
+  --ink-3: #878073;
+  --ink-4: #5b564d;
+  --rule: #2c2a26;
+  --rule-strong: #3e3a34;
+  --hl: rgb(240 196 70 / 0.2);
+  --hl-strong: rgb(240 196 70 / 0.34);
+  --hl-a: 24%;
+  --hl-a-strong: 38%;
+  --lens-bg: #ece6d9;
+  --lens-fg: #191714;
+  --lens-mute: #7d766a;
+  --lens-hover: #d6cfbf;
+  --bg-pill: #34312b;
+  --shadow-pop: 0 1px 1px rgb(0 0 0 / 0.3), 0 18px 44px -14px rgb(0 0 0 / 0.65), 0 3px 8px -3px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.25), 0 12px 30px -16px rgb(0 0 0 / 0.6);
+  --grain-opacity: 0.035;
+  --good: #79b98a;
+  --rubric: var(--pen-d);
+  --rubric-text: var(--pen-d-text);
+  color-scheme: dark;
+}
+
+[data-theme="ink"] {
+  --bg: #0f1319;
+  --bg-raised: #161b23;
+  --bg-sunk: #1c222c;
+  --ink: #e3e8f0;
+  --ink-2: #abb4c1;
+  --ink-3: #7a8594;
+  --ink-4: #505a69;
+  --rule: #232b36;
+  --rule-strong: #303947;
+  --hl: rgb(240 200 80 / 0.2);
+  --hl-strong: rgb(240 200 80 / 0.34);
+  --hl-a: 24%;
+  --hl-a-strong: 38%;
+  --lens-bg: #e3e8f0;
+  --lens-fg: #10141a;
+  --lens-mute: #6c7685;
+  --lens-hover: #c9d0db;
+  --bg-pill: #2c3441;
+  --shadow-pop: 0 1px 1px rgb(0 0 0 / 0.35), 0 18px 44px -14px rgb(0 0 0 / 0.7), 0 3px 8px -3px rgb(0 0 0 / 0.45);
+  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 30px -16px rgb(0 0 0 / 0.65);
+  --grain-opacity: 0.03;
+  --good: #7fbf95;
+  --rubric: var(--pen-d);
+  --rubric-text: var(--pen-d-text);
+  color-scheme: dark;
+}
+
+/* Pens: the colour the model writes in. One light and one dark tone each. */
+:root,
+[data-pen="vermilion"] {
+  --pen-l: #c1401b;
+  --pen-l-text: #a9361a;
+  --pen-d: #ef7a50;
+  --pen-d-text: #f28b65;
+}
+[data-pen="cobalt"] {
+  --pen-l: #2c58c9;
+  --pen-l-text: #234cb4;
+  --pen-d: #86a8ff;
+  --pen-d-text: #9bb7ff;
+}
+[data-pen="moss"] {
+  --pen-l: #3b7a3d;
+  --pen-l-text: #316934;
+  --pen-d: #8fc68c;
+  --pen-d-text: #a2d29f;
+}
+[data-pen="graphite"] {
+  --pen-l: #4b4a47;
+  --pen-l-text: #3a3936;
+  --pen-d: #cfc9bd;
+  --pen-d-text: #ddd7cb;
+}
+
+:root {
+  --rubric-line: color-mix(in oklab, var(--rubric) 52%, transparent);
+  --rubric-wash: color-mix(in oklab, var(--rubric) 9%, transparent);
+  --rubric-wash-strong: color-mix(in oklab, var(--rubric) 17%, transparent);
+  --selection: color-mix(in oklab, var(--rubric) 18%, transparent);
+  --font-serif: var(--nf-serif), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--nf-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-book: var(--nf-book), "Iowan Old Style", Georgia, serif;
+  --font-legible: var(--nf-legible), ui-sans-serif, system-ui, sans-serif;
+  /* highlighter inks; alpha per ground */
+  --mk-yellow: #f2c438;
+  --mk-green: #7cc66f;
+  --mk-blue: #6aa8f0;
+  --mk-pink: #f084ac;
+  --hl-a: 46%;
+  --hl-a-strong: 70%;
+  --read-size: 20px;
+  --leading: 1.64;
+  --measure-k: 32;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --topbar-h: 60px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-sunk: var(--bg-sunk);
+  --color-pill: var(--bg-pill);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-rubric: var(--rubric);
+  --color-rubric-text: var(--rubric-text);
+  --color-rubric-wash: var(--rubric-wash);
+  --color-hl: var(--hl);
+  --color-lens: var(--lens-bg);
+  --color-lens-fg: var(--lens-fg);
+  --color-lens-mute: var(--lens-mute);
+  --color-lens-hover: var(--lens-hover);
+  --color-good: var(--good);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+/* ---------- base ---------- */
+
+html,
+body {
+  overflow-x: clip;
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-padding-top: calc(var(--topbar-h) + 24px);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  transition: background-color 0.35s var(--ease-out), color 0.35s var(--ease-out);
+}
+
+/* Paper grain: a little tooth so the page does not look like a monitor. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: var(--selection);
+}
+
+:focus-visible {
+  outline: 2px solid var(--rubric);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button {
+  cursor: pointer;
+}
+
+kbd,
+.kbd {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-3);
+  background: var(--bg-raised);
+  font-weight: 500;
+}
+
+}
+
+@layer components {
+/* ---------- reader layout: rail, numbers, text, gutter, margin ---------- */
+
+.reader-grid {
+  --m: min(calc(var(--read-size) * var(--measure-k)), 50rem);
+  display: grid;
+  justify-content: center;
+  grid-template-columns: minmax(0, var(--m));
+}
+
+.reader-grid > .rg-rail,
+.reader-grid > .rg-numgap,
+.reader-grid > .rg-gutter,
+.reader-grid > .rg-margin {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .prose-read .pnum {
+    display: none;
+  }
+}
+
+.hide-nums .prose-read .pnum {
+  visibility: hidden;
+}
+
+@media (min-width: 720px) {
+  .reader-grid {
+    grid-template-columns: 52px minmax(0, var(--m));
+  }
+  .reader-grid > .rg-numgap {
+    display: block;
+  }
+}
+
+@media (min-width: 1080px) {
+  .reader-grid {
+    grid-template-columns: 56px minmax(0, var(--m)) 52px 300px;
+  }
+  .reader-grid > .rg-gutter,
+  .reader-grid > .rg-margin {
+    display: block;
+  }
+}
+
+@media (min-width: 1260px) {
+  .reader-grid {
+    grid-template-columns: 28px 76px minmax(0, var(--m)) 64px 340px;
+  }
+  .reader-grid > .rg-rail {
+    display: block;
+  }
+}
+
+/* ---------- the reading face ---------- */
+
+.prose-read {
+  animation: fade 0.7s 0.22s var(--ease-out) both;
+  font-family: var(--font-serif);
+  font-size: var(--read-size);
+  line-height: var(--leading);
+  font-optical-sizing: auto;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  hanging-punctuation: first;
+  color: var(--ink);
+  font-kerning: normal;
+}
+
+[data-face="sans"] .prose-read {
+  font-family: var(--font-sans);
+  font-size: calc(var(--read-size) * 0.9);
+  letter-spacing: -0.003em;
+}
+
+[data-face="book"] .prose-read {
+  font-family: var(--font-book);
+  font-size: calc(var(--read-size) * 0.94);
+}
+
+[data-face="legible"] .prose-read {
+  font-family: var(--font-legible);
+  font-size: calc(var(--read-size) * 0.88);
+  letter-spacing: 0.004em;
+}
+
+[data-face="sans"] .prose-read .blk[data-type="h2"],
+[data-face="sans"] .prose-read .blk[data-type="h3"],
+[data-face="legible"] .prose-read .blk[data-type="h2"],
+[data-face="legible"] .prose-read .blk[data-type="h3"] {
+  font-family: var(--font-serif);
+}
+
+/* Justified like a printed page, with hyphens so the spacing stays even. */
+[data-align="justify"] .prose-read .blk:not([data-type="h2"]):not([data-type="h3"]) .blk-text {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* Book paragraphs: no gap, the first line indented instead. */
+[data-paras="indented"] .prose-read .blk[data-type="p"]:has(+ .blk[data-type="p"]) {
+  margin-bottom: 0;
+}
+[data-paras="indented"] .prose-read .blk[data-type="p"] + .blk[data-type="p"]:not(.is-first) .blk-text {
+  text-indent: 1.6em;
+}
+
+@media (max-width: 640px) {
+  .prose-read {
+    font-size: calc(var(--read-size) * 0.9);
+    line-height: calc(var(--leading) - 0.05);
+  }
+  [data-face="sans"] .prose-read {
+    font-size: calc(var(--read-size) * 0.84);
+  }
+}
+
+.prose-read .blk {
+  position: relative;
+  margin: 0 0 0.95em;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.prose-read .blk-text {
+  display: block;
+  text-wrap: pretty;
+}
+
+.prose-read .blk[data-type="h2"] {
+  font-size: 1.32em;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 2em 0 0.7em;
+}
+
+.prose-read .blk[data-type="h3"] {
+  font-size: 1.08em;
+  line-height: 1.3;
+  font-weight: 600;
+  margin: 1.6em 0 0.5em;
+}
+
+.prose-read .blk[data-type="quote"] {
+  padding-left: 1.1em;
+  border-left: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.prose-read .blk[data-type="li"] {
+  padding-left: 1.3em;
+  margin-bottom: 0.4em;
+}
+
+.prose-read .blk[data-type="li"]::before {
+  content: "";
+  position: absolute;
+  left: 0.35em;
+  top: 0.78em;
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--ink-3);
+}
+
+.prose-read .blk[data-type="pre"] {
+  font-family: var(--font-sans);
+  font-size: 0.74em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: var(--bg-sunk);
+  padding: 1em 1.2em;
+  border-radius: 8px;
+}
+
+.prose-read .blk[data-type="note"] {
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.prose-read em {
+  font-style: italic;
+}
+
+.prose-read strong {
+  font-weight: 650;
+}
+
+.prose-read code {
+  font-family: var(--font-sans);
+  font-size: 0.82em;
+  background: var(--bg-sunk);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+
+.prose-read a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* A rubricated initial: the coloured capital of a manuscript, two lines deep. */
+.prose-read .blk.is-first .blk-text::first-letter {
+  float: left;
+  font-size: 3.45em;
+  line-height: 0.84;
+  padding: 0.07em 0.05em 0 0;
+  color: var(--rubric);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-variation-settings: "opsz" 72;
+}
+
+@supports (initial-letter: 2) or (-webkit-initial-letter: 2) {
+  .prose-read .blk.is-first .blk-text::first-letter {
+    float: none;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0;
+    -webkit-initial-letter: 2;
+    initial-letter: 2;
+    margin-right: 0.12em;
+  }
+}
+
+/* ---------- paragraph numbers: the shared address system ---------- */
+
+.pnum {
+  position: absolute;
+  left: -3.4rem;
+  top: 0.32em;
+  width: 2.4rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  line-height: 1.3;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink-4);
+  user-select: none;
+  -webkit-user-select: none;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  border-radius: 5px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.pnum .pnum-ask {
+  opacity: 0;
+  transform: translateX(3px);
+  transition: opacity 0.15s, transform 0.2s var(--ease-out);
+  color: var(--rubric);
+}
+
+.blk:hover > .pnum,
+.blk.is-cursor > .pnum {
+  color: var(--rubric-text);
+}
+
+.blk:hover > .pnum .pnum-ask,
+.blk.is-cursor > .pnum .pnum-ask,
+.pnum:focus-visible .pnum-ask {
+  opacity: 1;
+  transform: none;
+}
+
+.pnum:hover {
+  background: var(--rubric-wash);
+}
+
+.pnum-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--rubric);
+  flex: none;
+}
+
+.blk.is-cursor::before {
+  content: "";
+  position: absolute;
+  left: -0.85rem;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: grow-y 0.25s var(--ease-out);
+}
+
+/* Focus mode dims everything but the paragraph you are on. */
+.focus-mode .prose-read .blk {
+  opacity: 0.28;
+}
+.focus-mode .prose-read .blk.is-cursor {
+  opacity: 1;
+}
+
+/* ---------- marks: your highlighter and the model's pen ---------- */
+
+.m-hl {
+  --mk: var(--mk-yellow);
+  background-color: color-mix(in oklab, var(--mk) var(--hl-a), transparent);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.2s;
+}
+
+.m-hl[data-c="green"] {
+  --mk: var(--mk-green);
+}
+.m-hl[data-c="blue"] {
+  --mk: var(--mk-blue);
+}
+.m-hl[data-c="pink"] {
+  --mk: var(--mk-pink);
+}
+
+.m-hl.is-active {
+  background-color: color-mix(in oklab, var(--mk) var(--hl-a-strong), transparent);
+}
+
+/* A new highlight is swept on, left to right, like a real marker. */
+.m-hl.is-new {
+  background-image: linear-gradient(color-mix(in oklab, var(--mk) var(--hl-a), transparent), color-mix(in oklab, var(--mk) var(--hl-a), transparent));
+  background-color: transparent;
+  background-repeat: no-repeat;
+  animation: hl-sweep 0.5s var(--ease-out) both;
+}
+
+@keyframes hl-sweep {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+/* The model's underline is a background line so it can be drawn on. */
+.m-gloss {
+  --ul: var(--rubric-line);
+  background-image: linear-gradient(var(--ul), var(--ul));
+  background-repeat: no-repeat;
+  background-size: 100% 1.5px;
+  background-position: 0 calc(100% - 0.08em);
+  cursor: pointer;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.25s var(--ease-out);
+}
+
+.m-gloss.is-hover {
+  background-color: var(--rubric-wash);
+}
+
+.m-gloss.is-active {
+  --ul: var(--rubric);
+  background-color: var(--rubric-wash);
+}
+
+.m-gloss.is-new {
+  animation: ul-draw 0.7s var(--ease-out) both;
+}
+
+@keyframes ul-draw {
+  from {
+    background-size: 0% 1.5px;
+  }
+}
+
+.m-pending {
+  background: var(--rubric-wash-strong);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.blk.is-flash .blk-text {
+  animation: flash 1.8s var(--ease-out);
+  border-radius: 4px;
+}
+
+@keyframes flash {
+  0%,
+  20% {
+    background: var(--rubric-wash-strong);
+    box-shadow: 0 0 0 6px var(--rubric-wash-strong);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* ---------- glosses in the margin ---------- */
+
+.gloss {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 10px 14px 12px 15px;
+  border-left: 1.5px solid var(--rule-strong);
+  border-radius: 0 10px 10px 0;
+  transition:
+    transform 0.42s var(--ease-out),
+    background-color 0.25s,
+    border-color 0.25s,
+    box-shadow 0.25s,
+    opacity 0.3s;
+  will-change: transform;
+}
+
+.gloss.is-hover {
+  border-left-color: var(--rubric-line);
+}
+
+.gloss.is-collapsed:hover {
+  background: color-mix(in oklab, var(--bg-raised) 60%, transparent);
+}
+
+.gloss.is-active {
+  background: var(--bg-raised);
+  border-left-color: var(--rubric);
+  box-shadow: var(--shadow-card);
+  z-index: 2;
+}
+
+.gloss.is-entering {
+  animation: gloss-in 0.5s var(--ease-out);
+}
+
+@keyframes gloss-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.gloss-body {
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.58;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
+.gloss-body p + p,
+.gloss-body p + ul,
+.gloss-body ul + p,
+.gloss-body p + ol {
+  margin-top: 0.6em;
+}
+
+.gloss-body ul,
+.gloss-body ol {
+  display: grid;
+  gap: 0.45em;
+}
+
+.gloss-body li {
+  position: relative;
+  padding-left: 0.95em;
+}
+
+.gloss-body li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.68em;
+  width: 4px;
+  height: 4px;
+  border-radius: 9px;
+  background: var(--rubric);
+}
+
+.gloss-body strong {
+  font-weight: 600;
+}
+
+.gloss-body em {
+  font-style: italic;
+}
+
+.gloss-body code {
+  font-family: var(--font-sans);
+  font-size: 0.92em;
+  background: var(--bg-sunk);
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+}
+
+.gloss.is-collapsed .gloss-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-2);
+}
+
+/* A paragraph citation inside an answer: click to jump, hover to preview. */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  height: 1.45em;
+  padding: 0 0.42em;
+  margin: 0 0.06em;
+  font-family: var(--font-sans);
+  font-size: 0.76em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 0.08em;
+  line-height: 1;
+  color: var(--rubric-text);
+  background: var(--rubric-wash);
+  border-radius: 5px;
+  border: 0;
+  transition: background-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.cite:hover {
+  background: var(--rubric);
+  color: var(--bg);
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.17em;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: caret-pulse 1.05s ease-in-out infinite;
+}
+
+@keyframes caret-pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Waiting for the first words: three lines of the pen's wash, shimmering. */
+.writing {
+  display: grid;
+  gap: 0.55em;
+  padding: 0.3em 0 0.2em;
+}
+
+.writing > span {
+  display: block;
+  height: 0.6em;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--rubric-wash) 0%, var(--rubric-wash-strong) 45%, var(--rubric-wash) 90%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+.writing > span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.writing > span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes caret {
+  to {
+    visibility: hidden;
+  }
+}
+
+.leader {
+  fill: none;
+  stroke: var(--rubric-line);
+  stroke-width: 1.1;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: draw 0.55s var(--ease-out) forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- popovers and the lens ---------- */
+
+.pop {
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  animation: pop-in 0.18s var(--ease-out);
+  transform-origin: var(--origin, top right);
+}
+
+.lens {
+  animation: lens-in 0.24s var(--ease-spring);
+  transform-origin: var(--origin, bottom center);
+}
+
+/* The lens: one row of plain words, captions on hover, the rest one click away. */
+.lens-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    transform 0.15s var(--ease-out);
+}
+
+.lens-btn:hover {
+  background: var(--lens-hover);
+}
+
+.lens-btn:active {
+  transform: scale(0.95);
+}
+
+.lens-caret {
+  width: 1.5px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: caret-pulse 1.05s ease-in-out infinite;
+}
+
+.lens-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 99px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  transition:
+    transform 0.18s var(--ease-spring),
+    box-shadow 0.15s;
+}
+
+.lens-dot:hover {
+  transform: scale(1.18);
+}
+
+.lens-dot.is-on {
+  box-shadow:
+    0 0 0 2px var(--lens-bg),
+    0 0 0 3.5px var(--lens-fg);
+}
+
+.lens-morph {
+  animation: lens-morph 0.24s var(--ease-out);
+}
+
+@keyframes lens-morph {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+}
+
+.lens-starter {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  color: var(--lens-mute);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  animation: rise 0.35s var(--ease-out) both;
+}
+
+.lens-starter:hover {
+  background: var(--lens-hover);
+  color: var(--lens-fg);
+}
+
+.lens-menu {
+  animation: menu-in 0.2s var(--ease-out);
+  transform-origin: top right;
+}
+
+.lens-item {
+  animation: fade 0.25s var(--ease-out) both;
+}
+
+.lens-tip {
+  animation: tip-in 0.16s var(--ease-out);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+
+@keyframes lens-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(4px);
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.rise {
+  animation: rise 0.7s var(--ease-out) both;
+}
+
+.loading-bar {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--rule);
+}
+
+.loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: var(--rubric);
+  animation: indeterminate 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(270%);
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--bg-sunk) 0%, var(--rule) 50%, var(--bg-sunk) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- landing: the headline that glosses itself ---------- */
+
+.hero-title {
+  font-size: clamp(3.1rem, 7.6vw, 7.6rem);
+  line-height: 0.98;
+  font-weight: 350;
+  letter-spacing: -0.038em;
+  font-variation-settings: "opsz" 72;
+}
+
+.hero-title > span:last-child {
+  color: var(--ink-2);
+}
+
+.demo-mark {
+  position: relative;
+  isolation: isolate;
+  white-space: nowrap;
+}
+
+.demo-mark::before {
+  /* the selection, then the pen's wash */
+  content: "";
+  position: absolute;
+  inset: 0.1em -0.05em 0.04em;
+  z-index: -1;
+  border-radius: 0.06em;
+  background: var(--selection);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition:
+    transform 0.8s cubic-bezier(0.65, 0, 0.35, 1),
+    background-color 0.5s;
+}
+
+.demo-mark.is-sel::before,
+.demo-mark.is-gloss::before {
+  transform: scaleX(1);
+}
+
+.demo-mark.is-gloss::before {
+  background: var(--rubric-wash);
+}
+
+/* A mouse I-beam that drags across the phrase in step with the selection. */
+.demo-ibeam {
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 14px;
+  height: 26px;
+  translate: -50% -20%;
+  color: var(--ink);
+  animation: ibeam-in 0.35s var(--ease-out) both;
+  transition: left 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.demo-ibeam svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.demo-ibeam.is-drag {
+  left: 100%;
+}
+
+@keyframes ibeam-in {
+  from {
+    opacity: 0;
+    transform: translate(-14px, 18px);
+  }
+}
+
+.demo-lens {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.14em);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 248px;
+  padding: 5px 5px 5px 13px;
+  border-radius: 13px;
+  background: var(--lens-bg);
+  color: var(--lens-fg);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  font-variation-settings: normal;
+  animation: lens-in 0.26s var(--ease-spring);
+  transition:
+    opacity 0.24s var(--ease-out),
+    transform 0.3s var(--ease-out);
+}
+
+.demo-lens.is-out {
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+}
+
+.demo-lens::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 10px;
+  height: 10px;
+  translate: -50% 0;
+  rotate: 45deg;
+  border-radius: 2px;
+  background: var(--lens-bg);
+}
+
+.demo-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 15px;
+  margin-left: 1px;
+  vertical-align: -3px;
+  background: var(--rubric);
+  animation: caret 1s steps(2, start) infinite;
+}
+
+.demo-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--rubric);
+  color: #fff;
+  opacity: 0.35;
+  transition:
+    opacity 0.2s,
+    transform 0.2s var(--ease-out);
+}
+
+.demo-send.is-sent {
+  opacity: 1;
+  transform: scale(0.86);
+}
+
+/* The note in the margin. */
+.hero-note {
+  position: relative;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity 0.45s var(--ease-out),
+    transform 0.6s var(--ease-out),
+    margin 0.5s var(--ease-out);
+  border-left: 2px solid var(--rubric);
+  padding: 1px 0 2px 20px;
+}
+
+.hero-note.is-in {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.42s, 0.42s, 0s;
+}
+
+.hero-foot {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
+}
+
+.hero-foot.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.ink-word {
+  display: inline-block;
+  animation: ink-in 0.55s var(--ease-out) both;
+}
+
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(3px);
+  }
+}
+
+/* The pen: one stroke under the words, then out into the margin. */
+.pen-line,
+.pen-leader {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1 2;
+  animation: pen 0.55s var(--ease-out) both;
+}
+
+.pen-line {
+  stroke: var(--rubric);
+}
+
+.pen-leader {
+  stroke: var(--rubric-line);
+  stroke-width: 1.3;
+  animation-duration: 0.7s;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1);
+}
+
+.pen-dot {
+  fill: var(--rubric);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pen-dot 0.45s var(--ease-spring) both;
+}
+
+@keyframes pen {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes pen-dot {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+.margin-rule {
+  background: linear-gradient(to bottom, transparent, var(--rubric-line) 18%, var(--rubric-line) 82%, transparent);
+  opacity: 0.4;
+}
+
+::highlight(hero-pending) {
+  background-color: var(--selection);
+}
+
+::highlight(hero-gloss) {
+  background-color: var(--rubric-wash);
+}
+
+/* ---------- notebook ---------- */
+
+/* The margin steps back while the notebook covers it; on very wide screens both fit. */
+.rg-margin {
+  transition: opacity 0.3s var(--ease-out);
+}
+
+@media (max-width: 1899px) {
+  .nb-open .rg-margin {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.nb-clamp {
+  max-height: calc(1.55em * 5);
+  overflow: hidden;
+}
+
+.nb-clamp.is-over {
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+.import-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rubric), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: sweep 1.1s var(--ease-out) infinite;
+}
+
+@keyframes sweep {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+/* ---------- the shelf: papers at the bottom edge ---------- */
+
+.tray {
+  position: fixed;
+  inset-inline: 0;
+  bottom: -124px;
+  z-index: 10;
+  height: 360px;
+  pointer-events: none;
+}
+
+.tray::before {
+  /* a soft floor, so the cards read as resting on something */
+  content: "";
+  position: absolute;
+  inset: auto 0 124px;
+  height: 130px;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg-sunk) 60%, transparent));
+  pointer-events: none;
+}
+
+.tray::after {
+  /* the bottom edge of the page: papers slide out of a little fog */
+  content: "";
+  position: absolute;
+  inset: auto 0 124px;
+  z-index: 2;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg) 92%, transparent));
+  pointer-events: none;
+}
+
+.tray-scroll {
+  position: relative;
+  height: 100%;
+  display: flex;
+  justify-content: safe center;
+  gap: 16px;
+  padding: 140px 40px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-padding-inline: 40px;
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+}
+
+.tray-slot {
+  position: relative;
+  flex: none;
+  width: 248px;
+  height: 214px;
+  pointer-events: auto;
+  transform: translateY(0) rotate(var(--tilt, 0deg));
+  transition: transform 0.45s var(--ease-out);
+}
+
+.tray-slot:hover,
+.tray-slot:focus-within {
+  transform: translateY(-136px) rotate(0deg);
+}
+
+.tray-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  transition:
+    box-shadow 0.3s,
+    border-color 0.3s;
+}
+
+.tray-slot:hover .tray-card,
+.tray-slot:focus-within .tray-card {
+  box-shadow: var(--shadow-pop);
+  border-color: var(--rule-strong);
+}
+
+.tray-add {
+  align-items: flex-start;
+  border-style: dashed;
+  border-color: var(--rule-strong);
+  background: color-mix(in oklab, var(--bg-raised) 60%, transparent);
+  box-shadow: none;
+}
+
+.tray-ribbon {
+  position: absolute;
+  top: -1px;
+  right: 18px;
+  width: 11px;
+  height: 30px;
+  background: var(--rubric);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+}
+
+.tray-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 99px;
+  color: var(--ink-3);
+  background: var(--bg-sunk);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tray-slot:hover .tray-remove,
+.tray-remove:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 1023px) {
+  .tray {
+    position: relative;
+    bottom: auto;
+    height: auto;
+    pointer-events: auto;
+  }
+  .tray::before,
+  .tray::after {
+    display: none;
+  }
+  .tray-scroll {
+    justify-content: flex-start;
+    padding: 8px 20px 28px;
+    scroll-snap-type: x mandatory;
+    mask-image: none;
+  }
+  .tray-slot {
+    width: 230px;
+    height: 200px;
+    transform: none;
+    scroll-snap-align: start;
+  }
+  .tray-slot:hover,
+  .tray-slot:focus-within {
+    transform: none;
+  }
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+}
+
+/* ---------- a new theme pours in from the swatch you picked ---------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.theme-swap *,
+.theme-swap *::before,
+.theme-swap *::after {
+  transition: none !important;
+}
+
+/* ---------- motion preferences: every animation and transition stands down ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .leader {
+    stroke-dashoffset: 0;
+  }
+  .caret {
+    animation: none !important;
+  }
+  .hero-note,
+  .hero-foot {
+    opacity: 1;
+    transform: none;
+  }
+  .tray-slot {
+    transform: none;
+  }
+}

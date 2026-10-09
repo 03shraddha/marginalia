@@ -1,0 +1,75 @@
+"use client";
+
+import { forwardRef } from "react";
+import { ArrowRight, FileUp, Link2, TextCursorInput } from "lucide-react";
+
+export type Busy = null | { label: string; pct?: number };
+
+type Props = {
+  url: string;
+  setUrl: (v: string) => void;
+  busy: Busy;
+  error: string | null;
+  onSubmit: (url: string) => void;
+  onPickFile: () => void;
+  onPasteText: () => void;
+};
+
+/** The one thing to do on the landing page: give it something to read. */
+export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar({ url, setUrl, busy, error, onSubmit, onPickFile, onPasteText }, ref) {
+  return (
+    <div className="mt-10 max-w-[600px] sm:mt-12">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(url);
+        }}
+        className={`import-bar relative flex items-center gap-2 overflow-hidden rounded-[18px] border bg-raised p-1.5 pl-[18px] shadow-card transition-[border-color,box-shadow] duration-300 focus-within:border-rule-strong focus-within:shadow-pop ${
+          busy ? "border-rule-strong" : "border-rule"
+        }`}
+      >
+        <Link2 size={18} className="shrink-0 text-ink-3" aria-hidden />
+        <input
+          ref={ref}
+          value={busy ? busy.label + (busy.pct !== undefined ? ` ${Math.round(busy.pct * 100)}%` : "") : url}
+          onChange={(e) => setUrl(e.target.value)}
+          disabled={!!busy}
+          placeholder="Paste a link to any article"
+          aria-label="Article link"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
+          className="h-12 min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-ink-3 focus-visible:outline-none disabled:text-ink-2"
+        />
+        <button
+          type="submit"
+          disabled={!url.trim() || !!busy}
+          aria-label="Read"
+          className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[13px] bg-ink px-4 text-[14.5px] font-medium text-bg transition-[opacity,transform] active:scale-[0.97] disabled:opacity-30 sm:px-5"
+        >
+          <span className="hidden sm:inline">Read</span> <ArrowRight size={16} />
+        </button>
+        {busy && <span aria-hidden className="import-progress" style={busy.pct !== undefined ? { ["--p" as string]: busy.pct } : undefined} />}
+      </form>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 pl-1 text-[13.5px] text-ink-3">
+        <button type="button" onClick={onPickFile} disabled={!!busy} className="inline-flex items-center gap-1.5 transition-colors hover:text-ink">
+          <FileUp size={15} /> Open a PDF
+        </button>
+        <button type="button" onClick={onPasteText} disabled={!!busy} className="inline-flex items-center gap-1.5 transition-colors hover:text-ink">
+          <TextCursorInput size={15} /> Paste text
+        </button>
+        <span className="hidden items-center gap-1.5 text-ink-4 sm:inline-flex">
+          or press <kbd>⌘</kbd>
+          <kbd>V</kbd> anywhere
+        </span>
+      </div>
+
+      {error && (
+        <p className="mt-4 max-w-[34rem] pl-1 text-[13.5px] leading-snug text-rubric-text" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+});
