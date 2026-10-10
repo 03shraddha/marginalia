@@ -103,12 +103,29 @@ function segments(block: BlockT, marks: Mark[], activeGloss: string | null, hove
 }
 
 /** A picture from the source page, loaded from where it lives. One that fails to load folds away. */
+/**
+ * Texts imported before the srcset fix (2026-10-09) stored Substack images as
+ * "https://site/p/fl_progressive:steep/https%3A%2F%2F...": the end of a CDN
+ * URL that was cut at its commas. That end is the original image, URL-encoded,
+ * so decoding it recovers a picture that loads. Older copies live in browsers
+ * and in synced accounts, so they are repaired where they are shown.
+ */
+function repairSrc(src: string): string {
+  const m = src.match(/\/[a-z_]+:[^/]*\/(https?%3A%2F%2F[^/?#\s]+)$/i);
+  if (!m) return src;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return src;
+  }
+}
+
 function Picture({ src, alt }: { src: string; alt?: string }) {
   const [state, setState] = useState<"loading" | "ok" | "gone">("loading");
   if (state === "gone") return null;
   return (
     <img
-      src={src}
+      src={repairSrc(src)}
       alt={alt ?? ""}
       loading="lazy"
       decoding="async"
