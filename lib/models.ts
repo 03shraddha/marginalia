@@ -70,6 +70,10 @@ export type Source = { n: number; title: string; url: string; site: string; date
 export type StreamEvent =
   | { type: "meta"; model: string }
   | { type: "searching" }
+  /** The model asked for a tool (web search); the route runs it and asks again. Never sent to the browser. */
+  | { type: "tool"; id: string; name: string; args: string }
+  /** Drop what was written so far: a line before a tool call ("I'll look that up") that the real answer replaces. */
+  | { type: "reset" }
   | { type: "sources"; sources: Source[] }
   | { type: "content"; text: string }
   | { type: "usage"; usage: Usage }

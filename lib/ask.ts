@@ -69,7 +69,7 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
         doc: docPayload(ix, g.anchor?.start.b ?? g.at),
         thread: { action: g.action, quote: g.anchor?.quote, from, to, at, question: g.question },
         history,
-        web: st.settings.web,
+        search: st.settings.search,
       }),
     });
     noteFree(res);
@@ -109,7 +109,11 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
           pending += e.text;
           if (!raf) raf = requestAnimationFrame(flush);
         } else if (e.type === "meta") update((t) => ({ ...t, model: e.model }));
-        else if (e.type === "searching") update((t) => ({ ...t, searching: true }));
+        else if (e.type === "reset") {
+          // A line written before a web search ("Let me look that up") gives way to the answer.
+          pending = "";
+          update((t) => ({ ...t, content: "" }));
+        } else if (e.type === "searching") update((t) => ({ ...t, searching: true }));
         else if (e.type === "sources") update((t) => ({ ...t, searching: false, sources: e.sources }));
         else if (e.type === "usage") update((t) => ({ ...t, usage: e.usage }));
         else if (e.type === "error") {

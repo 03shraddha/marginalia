@@ -15,7 +15,7 @@
 - Free use of the shared key is a dollar budget (`lib/quota.ts`): what answers and briefs actually cost, up to 10¢ a day signed out (by hashed IP) or 20¢ signed in, and $1,000 a day across everyone, kept in Postgres (`free_usage`).
 - Newsreader and Schibsted Grotesk, plus Literata and Atkinson Hyperlegible as optional reading faces; six themes, four pens and four highlighters from CSS variables, applied before first paint.
 - Together AI over raw SSE fetch: DeepSeek V4.1 Flash (Quick, about 0.5s to first token) and Kimi K3 (Deep, at low reasoning effort), allow-listed in `lib/models.ts`.
-- Web search with Exa (`lib/search.ts`, fast mode, about 0.7s): Fact-check always looks things up, and any question can with Web on. Results are cited as [1], [2] beside the text's own [¶n].
+- Web search with Exa (`lib/search.ts`, instant mode, about 0.5s): the model gets a `web_search` tool and decides when to look something up (a named person, organisation, work, or anything newer than the text); Fact-check always searches. On by default, the Web toggle turns it off. Results are cited as [1], [2] beside the text's own [¶n].
 - The whole text goes in the system prompt with `[¶n]` numbers, so follow-ups hit Together's prefix cache and answers cite paragraphs.
 - Anchors are block id plus character offsets, rendered as React marks; margin layout and leader lines in `components/reader/Margin.tsx`.
 - Import: links through `@mozilla/readability` on `linkedom` (with a private-address guard), keeping figures (by their original URL, loaded without a referrer) and data tables (which the model reads too); plus pasted text and `.txt`/`.md`.

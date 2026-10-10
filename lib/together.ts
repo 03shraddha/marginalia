@@ -17,10 +17,14 @@ import { MODELS, costFor, type ModelEntry, type ModelKey, type StreamEvent, type
 export { MODELS, DEFAULT_MODEL, isModelKey, costFor } from "./models";
 export type { ModelKey, StreamEvent, Usage } from "./models";
 
-export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
+export type ChatMessage =
+  | { role: "system" | "user"; content: string }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
+  | { role: "tool"; content: string; tool_call_id: string };
 
 type Chunk = {
-  choices?: { delta?: { content?: string; reasoning_content?: string } }[];
+  choices?: { delta?: { content?: string; reasoning_content?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] } }[];
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -50,6 +54,10 @@ export async function* streamChat(req: {
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
+  /** Tools the model may call; a call ends the stream with a "tool" event instead of an answer. */
+  tools?: readonly unknown[];
+  /** "none" sends the tools (a conversation that already used one needs them) but asks for an answer. */
+  toolChoice?: "auto" | "none";
 }): AsyncGenerator<StreamEvent> {
   const model: ModelEntry = MODELS[req.model];
   const apiKey = req.apiKey?.trim() || process.env.TOGETHER_API_KEY;
@@ -78,6 +86,7 @@ export async function* streamChat(req: {
         max_tokens: req.maxTokens ?? 900,
         chat_template_kwargs: { enable_thinking: false },
         messages: req.messages,
+        ...(req.tools ? { tools: req.tools, tool_choice: req.toolChoice ?? "auto" } : {}),
       }),
     });
   } catch (e) {
@@ -96,11 +105,13 @@ export async function* streamChat(req: {
   let buffer = "";
   let sawContent = false;
   let sawReasoning = false;
+  // A tool call arrives in pieces, by index: its id and name once, its arguments in fragments.
+  const calls: { id: string; name: string; args: string }[] = [];
 
-  const finish = (): StreamEvent =>
-    !sawContent && sawReasoning
-      ? { type: "error", text: `${model.label} answered only in its reasoning. Try the other model.` }
-      : { type: "done" };
+  const finish = (): StreamEvent => {
+    if (calls[0]?.name) return { type: "tool", id: calls[0].id || "call_0", name: calls[0].name, args: calls[0].args };
+    return !sawContent && sawReasoning ? { type: "error", text: `${model.label} answered only in its reasoning. Try again.` } : { type: "done" };
+  };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -125,6 +136,12 @@ export async function* streamChat(req: {
       }
       const delta = chunk.choices?.[0]?.delta;
       if (delta?.reasoning_content) sawReasoning = true;
+      for (const tc of delta?.tool_calls ?? []) {
+        const c = (calls[tc.index] ??= { id: "", name: "", args: "" });
+        if (tc.id) c.id = tc.id;
+        if (tc.function?.name) c.name += tc.function.name;
+        if (tc.function?.arguments) c.args += tc.function.arguments;
+      }
       if (delta?.content) {
         sawContent = true;
         yield { type: "content", text: delta.content };

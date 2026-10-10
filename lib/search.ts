@@ -1,17 +1,33 @@
 /**
- * Web search with Exa, for answers that need the world beyond the text:
- * Fact-check always, and any question asked with Web on. Server-side only.
+ * Web search with Exa, for answers that need the world beyond the text.
+ * Fact-check always searches first; any other question offers the model a
+ * web_search tool (WEB_TOOL) and lets it decide. Server-side only.
  *
- * "fast" search, verified 2026-10-09: about 0.7s, $0.007 a search including
- * the excerpts ("auto" took 2.3s for no better results). Excerpts are Exa's
- * query-relevant highlights rather than whole pages, so the prompt stays small.
+ * "instant" search, verified 2026-10-10: about 0.5s and $0.004 a search with
+ * excerpts, the same top results as "fast" ($0.007) on our queries. Excerpts
+ * are Exa's query-relevant highlights rather than whole pages, so the prompt stays small.
  */
 
 import type { Source } from "./models";
 
 const EXA_URL = "https://api.exa.ai/search";
 /** What a search costs when Exa does not say, charged against a free reader's budget. */
-export const SEARCH_USD = 0.007;
+export const SEARCH_USD = 0.004;
+
+/** The tool the model is offered. Its description is what decides when it searches. */
+export const WEB_TOOL = {
+  type: "function",
+  function: {
+    name: "web_search",
+    description:
+      "Search the web for facts the text does not give: who a named person, organisation or place is, what a named work, event or term refers to, or what has happened since the text was written. Do not search for what the text itself says.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "What to look up, in a few words, e.g. \"Alan G. Chynoweth Bellcore physicist\"" } },
+      required: ["query"],
+    },
+  },
+} as const;
 const RESULTS = 5;
 
 export const searchEnabled = () => Boolean(process.env.EXA_API_KEY);
@@ -29,9 +45,9 @@ export async function webSearch(query: string, signal?: AbortSignal): Promise<We
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000),
       body: JSON.stringify({
         query: query.slice(0, 500),
-        type: "fast",
+        type: "instant",
         numResults: RESULTS,
-        contents: { highlights: { numSentences: 3, highlightsPerUrl: 2 } },
+        contents: { highlights: { maxCharacters: 700 } },
       }),
     });
     if (!res.ok) return null;
