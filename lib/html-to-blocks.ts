@@ -53,7 +53,7 @@ const clean = (s: string | null | undefined) => undash((s ?? "").replace(/\s+/g,
  * separates candidates after a URL's whitespace and descriptor, as the HTML
  * spec parses it. Splitting on every comma cuts those URLs into pieces.
  */
-function parseSrcset(s: string): { url: string; size: number }[] {
+export function parseSrcset(s: string): { url: string; size: number }[] {
   const out: { url: string; size: number }[] = [];
   let i = 0;
   while (i < s.length) {
@@ -175,14 +175,33 @@ function tidyRuns(runs: Run[]): Run[] {
   return merged.filter((r) => r.text.length > 0);
 }
 
+/** Query parameters that only resize or re-encode a picture. */
+const SIZE_PARAMS = /^(w|h|width|height|q|quality|resize|fit|crop|auto|fm|format|dpr|strip|scale)$/i;
+
+/**
+ * One key for every size of a picture: a page often shows a photo resized and
+ * links or repeats it full size (WordPress "?w=2048", "-1024x768.jpg"). Other
+ * parameters stay, since an image proxy names the picture in its query
+ * (Next.js serves every one from "/_next/image?url=...").
+ */
+export function sameImage(src: string): string {
+  try {
+    const u = new URL(src);
+    const rest = [...u.searchParams].filter(([k]) => !SIZE_PARAMS.test(k)).sort(([a], [b]) => a.localeCompare(b));
+    return `${u.host}${u.pathname.replace(/-\d+x\d+(?=\.\w+$)/, "")}?${new URLSearchParams(rest)}`;
+  } catch {
+    return src;
+  }
+}
+
 export function htmlToBlocks(root: El, base?: string): Block[] {
   const blocks: Block[] = [];
   let i = 0;
   const seen = new Set<string>();
   const figure = (img: El, caption: Run[] = []) => {
     const im = imageOf(img, base);
-    if (!im || seen.has(im.src)) return;
-    seen.add(im.src);
+    if (!im || seen.has(sameImage(im.src))) return;
+    seen.add(sameImage(im.src));
     blocks.push({ id: `b${++i}`, type: "figure", runs: caption, src: im.src, ...(im.alt ? { alt: im.alt } : {}) });
   };
 

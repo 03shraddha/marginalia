@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { parseHTML } from "linkedom";
+import { imageStem, leadImage, prepareImages } from "@/lib/images";
 import { Readability } from "@mozilla/readability";
 import { htmlToBlocks } from "@/lib/html-to-blocks";
 import { slugify, tidyTitle, undash, type Article, type Block } from "@/lib/article";
@@ -126,6 +127,19 @@ export async function POST(req: Request) {
     if (t.querySelector("th, thead, caption")) t.removeAttribute("class");
   }
 
+  // Read before Readability, which rewrites the document it is given.
+  let lead: string | null = null;
+  try {
+    lead = leadImage(document as unknown as Document, target.toString());
+  } catch {}
+
+  // Pictures resolved to one real URL each and rewrapped as plain figures, so Readability keeps them.
+  try {
+    prepareImages(document as unknown as Document, target.toString());
+  } catch {
+    // Pictures are a bonus; never lose the article over them.
+  }
+
   let parsed: ReturnType<Readability["parse"]> = null;
   try {
     parsed = new Readability(document as unknown as Document, { charThreshold: 400 }).parse();
@@ -142,6 +156,19 @@ export async function POST(req: Request) {
   let blocks = htmlToBlocks(root as never, target.toString());
   const title = tidyTitle(undash((parsed.title || target.hostname).trim()));
   if (blocks[0] && blocks[0].type !== "p" && blocks[0].runs.map((r) => r.text).join("").trim() === title) blocks = blocks.slice(1);
+  // The lead picture goes first, unless the article already opens with a picture or shows this one.
+  const leadStem = lead ? imageStem(lead) : null;
+  const shownAlready = (src?: string) => {
+    if (!src || !leadStem) return false;
+    try {
+      return decodeURIComponent(src).includes(leadStem);
+    } catch {
+      return src.includes(leadStem);
+    }
+  };
+  if (lead && !blocks.slice(0, 4).some((b) => b.type === "figure") && !blocks.some((b) => b.type === "figure" && shownAlready(b.src))) {
+    blocks = [{ id: "b0", type: "figure", runs: [], src: lead }, ...blocks];
+  }
   if (blocks.filter((b) => b.type === "p").length < 2) {
     return Response.json({ error: "That page has too little text to read here." }, { status: 422 });
   }
