@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, RotateCcw } from "lucide-react";
-import { fetchBrief } from "@/lib/ask";
+import { fetchBrief, openKeyMenu } from "@/lib/ask";
 import type { DocIndex } from "@/lib/doc";
 import { MODELS } from "@/lib/models";
 import { useStore } from "@/lib/store";
@@ -47,11 +47,14 @@ export function Brief() {
     return (
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[16px] border border-rule px-4 py-3.5 text-[13.5px]">
         <p className="text-rubric-text">{brief.error}</p>
-        {!brief.demo && (
-          <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
-            Try again
+        {brief.needKey && (
+          <button type="button" onClick={openKeyMenu} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+            Add your Together key
           </button>
         )}
+        <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+          Try again
+        </button>
       </div>
     );
   }

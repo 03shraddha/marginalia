@@ -73,7 +73,7 @@ export function costFor(key: ModelKey, prompt: number, cached: number, completio
 }
 
 export type StreamEvent =
-  | { type: "meta"; mode: "live" | "demo"; model: string }
+  | { type: "meta"; model: string }
   | { type: "content"; text: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" }

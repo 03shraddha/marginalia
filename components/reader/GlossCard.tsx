@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, Microscope, RotateCcw, Square, Trash2 } from "lucide-react";
 import { ACTIONS } from "@/lib/actions";
-import { followUp, retry, stopGloss } from "@/lib/ask";
+import { followUp, openKeyMenu, retry, stopGloss } from "@/lib/ask";
 import { MODELS } from "@/lib/models";
 import { useStore, type Gloss, type Turn } from "@/lib/store";
 import { undash } from "@/lib/article";
@@ -25,7 +25,6 @@ type Props = {
 };
 
 function Receipt({ t }: { t: Turn }) {
-  if (t.mode === "demo") return <span>Demo output. Add a Together key for real answers.</span>;
   if (!t.usage) return <span>{t.model}</span>;
   const u = t.usage;
   return (
@@ -40,8 +39,27 @@ function Receipt({ t }: { t: Turn }) {
 }
 
 
+/** Free answers are spent: the way to keep going is the reader's own key. */
+function KeyButton() {
+  return (
+    <button
+      type="button"
+      onClick={openKeyMenu}
+      className="mt-2.5 inline-flex h-8 items-center rounded-full bg-ink px-3.5 text-[12.5px] font-medium text-bg transition-transform active:scale-[0.97]"
+    >
+      Add your Together key
+    </button>
+  );
+}
+
 function TurnBody({ t }: { t: Turn }) {
-  if (t.error && !t.content) return <p className="text-[13.5px] text-rubric-text">{t.error}</p>;
+  if (t.error && !t.content)
+    return (
+      <>
+        <p className="text-[13.5px] text-rubric-text">{t.error}</p>
+        {t.needKey && <KeyButton />}
+      </>
+    );
   if (t.streaming && !t.content) return <Writing />;
   return (
     <>

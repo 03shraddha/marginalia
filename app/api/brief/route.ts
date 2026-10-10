@@ -1,7 +1,7 @@
 import { BRIEF_TASK, systemFor, type DocPayload } from "@/lib/prompts";
 import { completeJSON, DEFAULT_MODEL, isModelKey } from "@/lib/together";
 import { undash, type BriefData } from "@/lib/article";
-import { allow, clientId } from "@/lib/ratelimit";
+import { needKey, takeFree } from "@/lib/quota";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,12 +19,13 @@ export async function POST(req: Request) {
   }
 
   const apiKey = body.apiKey?.trim() || undefined;
-  if (!apiKey && !process.env.TOGETHER_API_KEY) {
-    return Response.json({ mode: "demo", error: "Add a Together API key to generate a brief." }, { status: 200 });
-  }
-
-  if (!apiKey && !allow(`brief:${clientId(req)}`, 20, 60 * 60 * 1000)) {
-    return Response.json({ error: "The shared key has made a lot of briefs for you this hour. Add your own Together key to keep going." }, { status: 429 });
+  // A gloss of the whole text costs one of the same free answers.
+  let freeLeft: number | null = null;
+  if (!apiKey) {
+    if (!process.env.TOGETHER_API_KEY) return needKey(null);
+    const free = await takeFree(req);
+    if (!free.ok) return needKey(free);
+    freeLeft = free.left;
   }
 
   const model = isModelKey(body.model) ? body.model : DEFAULT_MODEL;
@@ -56,5 +57,5 @@ export async function POST(req: Request) {
       .sort((a, b) => a.start - b.start)
       .slice(0, 10),
   };
-  return Response.json({ mode: "live", brief, usage: result.usage, model });
+  return Response.json({ brief, usage: result.usage, model }, { headers: freeLeft !== null ? { "X-Free-Left": String(freeLeft) } : undefined });
 }

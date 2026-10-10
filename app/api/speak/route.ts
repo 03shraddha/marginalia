@@ -1,4 +1,4 @@
-import { allow, clientId } from "@/lib/ratelimit";
+import { needKey, takeFree } from "@/lib/quota";
 import { APP_UA } from "@/lib/together";
 import { TTS_MAX_CHARS, TTS_MODEL, TTS_URL, TTS_VOICE } from "@/lib/voice";
 
@@ -23,10 +23,11 @@ export async function POST(req: Request) {
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   const own = body.apiKey?.trim() || headerKey || undefined;
   const apiKey = own || process.env.TOGETHER_API_KEY;
-  if (!apiKey) return Response.json({ error: "Reading aloud needs a Together key. Add yours in the key menu." }, { status: 400 });
-  // About an hour of listening on the shared key per reader, then their own key.
-  if (!own && !allow(`speak:${clientId(req)}`, 60, 60 * 60 * 1000)) {
-    return Response.json({ error: "The shared key has read a lot aloud for you this hour. Add your own Together key to keep listening." }, { status: 429 });
+  if (!apiKey) return needKey(null);
+  // A daily allowance of passages on the shared key, then the reader's own key.
+  if (!own) {
+    const free = await takeFree(req, "speak");
+    if (!free.ok) return needKey(free, "passages read aloud");
   }
 
   let res: Response;

@@ -60,3 +60,12 @@ create index if not exists highlights_user_updated on highlights (user_id, updat
 create index if not exists glosses_user_updated on glosses (user_id, updated_at);
 create index if not exists briefs_user_updated on briefs (user_id, updated_at);
 create index if not exists progress_user_updated on progress (user_id, updated_at);
+
+-- Free use of the shared Together key: one counter per reader per day.
+-- A subject is "answer:user:<clerk id>" or "answer:ip:<hashed address>"; raw addresses are never stored.
+create table if not exists free_usage (
+  subject text not null,
+  day date not null default current_date,
+  count integer not null default 0,
+  primary key (subject, day)
+);

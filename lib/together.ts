@@ -67,7 +67,7 @@ export async function* streamChat(req: {
     return;
   }
 
-  yield { type: "meta", mode: "live", model: model.label };
+  yield { type: "meta", model: model.label };
 
   let res: Response;
   try {
@@ -198,14 +198,4 @@ export async function completeJSON<T>(req: {
   } catch {
     return { ok: false, error: "The model returned something that was not valid JSON. Try again." };
   }
-}
-
-/** Keyless fallback. Always labelled as demo output in the UI. */
-export async function* streamDemo(text: string): AsyncGenerator<StreamEvent> {
-  yield { type: "meta", mode: "demo", model: "Demo" };
-  for (const word of text.split(/(\s+)/)) {
-    await new Promise((r) => setTimeout(r, 14));
-    yield { type: "content", text: word };
-  }
-  yield { type: "done" };
 }

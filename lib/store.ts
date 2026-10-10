@@ -16,7 +16,8 @@ export type Turn = {
   usage?: Usage;
   model?: string;
   modelKey?: ModelKey;
-  mode?: "live" | "demo";
+  /** The reader needs their own key to continue: free answers are spent, or there is no shared key. */
+  needKey?: boolean;
   error?: string;
   streaming?: boolean;
 };
@@ -45,7 +46,7 @@ export type Highlight = { id: string; articleId: string; anchor: Anchor; created
 export type BriefState =
   | { status: "loading" }
   | { status: "ready"; data: BriefData; usage?: Usage; modelKey?: ModelKey; at: number }
-  | { status: "error"; error: string; demo?: boolean };
+  | { status: "error"; error: string; needKey?: boolean };
 
 export type { Settings } from "./settings";
 

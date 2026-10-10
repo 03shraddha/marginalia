@@ -79,11 +79,32 @@ function Words({ text, start = 0, step = 11 }: { text: string; start?: number; s
 }
 
 /**
+ * The landing's top half. A newcomer gets the demonstration in the margin; a
+ * signed-in reader gets the same headline at rest, and their own highlights
+ * where the example note would be.
+ */
+export function Hero({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  if (!aside) return <DemoHero>{children}</DemoHero>;
+  return (
+    <section className="relative isolate mx-auto grid w-full max-w-[1320px] items-start gap-x-20 gap-y-12 px-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <h1 className="hero-title font-serif text-ink">
+          <span className="block">Highlight any line.</span>
+          <span className="block">Ask it anything.</span>
+        </h1>
+        {children}
+      </div>
+      {aside}
+    </section>
+  );
+}
+
+/**
  * The headline glosses itself. On load it plays the whole interaction once:
  * a phrase is selected, a question is typed, and the pen carries the answer
  * into the margin. Then it is real: select any words in the headline and ask.
  */
-export function Hero({ children }: { children: ReactNode }) {
+function DemoHero({ children }: { children: ReactNode }) {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const markRef = useRef<HTMLSpanElement>(null);

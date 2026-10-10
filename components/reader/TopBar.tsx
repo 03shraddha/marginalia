@@ -60,6 +60,16 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
     return () => window.removeEventListener("pointermove", move);
   }, [focusMode]);
 
+  // The key menu lives in this bar: when an answer asks for a key, come back into view.
+  useEffect(() => {
+    const show = () => {
+      setHidden(false);
+      setPeek(true);
+    };
+    window.addEventListener("gloss:key", show);
+    return () => window.removeEventListener("gloss:key", show);
+  }, []);
+
   const tucked = focusMode ? !peek && !scrolledUp && !notebookOpen : hidden && !notebookOpen;
 
   const section = (() => {
