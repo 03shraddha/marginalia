@@ -209,12 +209,21 @@ function ReaderInner({ article }: { article: Article }) {
     const measure = () => {
       raf = 0;
       const line = window.innerHeight * 0.32;
+      // Focus mode keeps the whole screen in full ink and lets a paragraph recede once it is
+      // read: once its last line has scrolled up into the top fifth of the window.
+      const readLine = focusMode ? window.innerHeight * 0.2 : -Infinity;
       const all = blocks();
       let cur: HTMLElement | null = null;
       for (const el of all) {
         const r = el.getBoundingClientRect();
         if (r.top <= line) cur = el;
-        else break;
+        // A data attribute rather than a class, so a re-render of the block leaves it alone.
+        if (r.bottom < readLine) el.dataset.read = "";
+        else delete el.dataset.read;
+        if (r.top > window.innerHeight) {
+          if (focusMode) continue;
+          break;
+        }
       }
       const id = (cur ?? all[0])?.dataset.block ?? null;
       setPastTitle(articleEl.getBoundingClientRect().top < 120);
@@ -244,7 +253,7 @@ function ReaderInner({ article }: { article: Article }) {
       if (raf) cancelAnimationFrame(raf);
       if (saveT) clearTimeout(saveT);
     };
-  }, [articleEl, articleId, setProgress, setUI, ix, article.blocks.length]);
+  }, [articleEl, articleId, setProgress, setUI, ix, article.blocks.length, focusMode]);
 
   // Pick up where you left off, once, after hydration.
   const resumed = useRef(false);

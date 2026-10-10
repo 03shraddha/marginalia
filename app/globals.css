@@ -581,8 +581,9 @@ kbd,
 /*
  * Focus mode: the title and the text, nothing else. The rail, numbers,
  * margin, byline, gloss, composer and footer all go; marks lose their ink;
- * the top bar tucks away until the pointer reaches the top edge. The
- * paragraph you are on stays lit and the rest recede.
+ * the top bar tucks away until the pointer reaches the top edge. What is
+ * on screen stays in full ink; a paragraph recedes once you have read past
+ * it (Reader marks it data-read as its last line nears the top).
  */
 .focus-mode .reader-grid {
   grid-template-columns: minmax(0, var(--m));
@@ -601,11 +602,8 @@ kbd,
   background: none;
   cursor: auto;
 }
-.focus-mode .prose-read .blk {
+.focus-mode .prose-read .blk[data-read] {
   opacity: 0.28;
-}
-.focus-mode .prose-read .blk.is-cursor {
-  opacity: 1;
 }
 .focus-mode .reader-grid {
   animation: fade 0.5s var(--ease-out);
