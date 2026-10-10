@@ -122,6 +122,7 @@ type State = Persisted &
     addToLibrary: (a: Article, words: number) => void;
     removeFromLibrary: (id: string) => void;
     replaceText: (a: Article, words: number) => Promise<boolean>;
+    updateText: (a: Article, words: number) => Promise<boolean>;
     applyRemote: (c: RemoteChanges) => void;
   };
 
@@ -252,6 +253,14 @@ export const useStore = create<State>((set, get) => ({
   removeFromLibrary: (id) => {
     void dropDoc(id);
     set((st) => ({ library: st.library.filter((x) => x.id !== id) }));
+  },
+
+  // Part of a text read again (a page swapped in by lib/upgrade.ts) where no mark is anchored:
+  // the marks stay. The rev bump makes sync send the text again.
+  updateText: async (a, words) => {
+    if (!(await saveDoc(a))) return false;
+    set((st) => ({ library: st.library.map((x) => (x.id === a.id ? { ...x, words, rev: (x.rev ?? 0) + 1 } : x)) }));
+    return true;
   },
 
   // A new reading of the same text. Every mark is anchored to a block id and offset in the old

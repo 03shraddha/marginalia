@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, X } from "lucide-react";
 import { blockEl, selectBlock, spanIn } from "@/lib/anchor";
 import { displayArticle, isHeading, readingMinutes, titleClass, type Article } from "@/lib/article";
@@ -46,15 +46,31 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
     }
   }, [hydrate, id, initial]);
 
-  // The text was read again, more carefully: show the new reading in place.
+  // The text was read again (more carefully, or a page in the background): show the new reading in
+  // place. Scroll anchoring alone did not hold when a page above the reader was swapped, so the
+  // first block on screen that survives the swap is kept exactly where it was.
+  const keep = useRef<{ id: string; top: number } | null>(null);
   useEffect(() => {
     const replaced = (e: Event) => {
       const next = (e as CustomEvent<Article>).detail;
-      if (next?.id === id) setArticle(next);
+      if (next?.id !== id) return;
+      const survives = new Set(next.blocks.map((b) => b.id));
+      const el = Array.from(document.querySelectorAll<HTMLElement>(".prose-read [data-block]")).find(
+        (x) => x.getBoundingClientRect().bottom > 0 && survives.has(x.dataset.block ?? "")
+      );
+      keep.current = el ? { id: el.dataset.block!, top: el.getBoundingClientRect().top } : null;
+      setArticle(next);
     };
     window.addEventListener("gloss:text-replaced", replaced);
     return () => window.removeEventListener("gloss:text-replaced", replaced);
   }, [id]);
+  useLayoutEffect(() => {
+    const k = keep.current;
+    keep.current = null;
+    if (!k) return;
+    const el = document.querySelector<HTMLElement>(`.prose-read [data-block="${CSS.escape(k.id)}"]`);
+    if (el) window.scrollBy({ top: el.getBoundingClientRect().top - k.top, behavior: "instant" });
+  }, [article]);
 
   if (missing)
     return (

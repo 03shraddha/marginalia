@@ -12,6 +12,14 @@ export const maxDuration = 120;
  */
 const MODEL = "Qwen/Qwen3.8-Flash";
 const PRICE = { inPerM: 0.15, outPerM: 0.47 };
+/**
+ * mode "layout": a page whose text layer reads but whose layout came out
+ * badly (columns, tables, maths), read again in the background
+ * (lib/upgrade.ts). Qwen3.5-9B scored 6.9/10 on such pages in
+ * scripts/pdf-eval against 3.9 for the text layer, at about $0.0005 a page.
+ */
+const LAYOUT_MODEL = "Qwen/Qwen3.5-9B";
+const LAYOUT_PRICE = { inPerM: 0.17, outPerM: 0.25 };
 const MAX_IMAGE_CHARS = 3_500_000;
 
 const PROMPT = `Transcribe this document page into clean Markdown, in reading order.
@@ -21,6 +29,9 @@ const PROMPT = `Transcribe this document page into clean Markdown, in reading or
 - Leave out page numbers, running headers and footers.
 - For a picture or chart, write its caption only, if it has one. Never write image links.
 - Write only what is on the page. No commentary, no code fences around the whole.`;
+
+const LAYOUT_PROMPT = `${PROMPT}
+- Maths as LaTeX between $ signs, inline, or $$ on its own line for a displayed equation.`;
 
 /** Reasoning some models print into the answer, and fences some wrap it in. */
 function clean(md: string): string {
@@ -35,7 +46,7 @@ function clean(md: string): string {
 }
 
 export async function POST(req: Request) {
-  let body: { image?: string; apiKey?: string };
+  let body: { image?: string; apiKey?: string; mode?: string };
   try {
     body = await req.json();
   } catch {
@@ -54,6 +65,10 @@ export async function POST(req: Request) {
     if (!free.ok) return needKey(free);
   }
 
+  const layout = body.mode === "layout";
+  const model = layout ? LAYOUT_MODEL : MODEL;
+  const price = layout ? LAYOUT_PRICE : PRICE;
+
   let res: Response;
   try {
     res = await fetch(TOGETHER_URL, {
@@ -61,13 +76,13 @@ export async function POST(req: Request) {
       signal: req.signal,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${own ?? process.env.TOGETHER_API_KEY}`, "User-Agent": APP_UA },
       body: JSON.stringify({
-        model: MODEL,
-        stream: true, // this model only answers as a stream
+        model,
+        stream: true, // Qwen3.8 Flash only answers as a stream
         stream_options: { include_usage: true },
         temperature: 0,
         max_tokens: 4096,
         chat_template_kwargs: { enable_thinking: false },
-        messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: PROMPT }] }],
+        messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: layout ? LAYOUT_PROMPT : PROMPT }] }],
       }),
     });
   } catch {
@@ -107,7 +122,7 @@ export async function POST(req: Request) {
   }
 
   if (free) {
-    const cost = ((usage?.prompt_tokens ?? 1900) * PRICE.inPerM + (usage?.completion_tokens ?? 1000) * PRICE.outPerM) / 1_000_000;
+    const cost = ((usage?.prompt_tokens ?? 1900) * price.inPerM + (usage?.completion_tokens ?? 1000) * price.outPerM) / 1_000_000;
     await chargeFree(free.subject, cost);
   }
   return Response.json({ markdown: clean(text) });

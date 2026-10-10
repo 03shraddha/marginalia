@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Article } from "@/lib/article";
 import { openKeyMenu, readApiKey } from "@/lib/ask";
 import { readCarefully } from "@/lib/careful";
+import { startUpgrade, type UpgradeProgress } from "@/lib/upgrade";
 import { loadPdf, useGlosses, useHighlights } from "@/lib/store";
 
 type State = { kind: "idle" } | { kind: "confirm" } | { kind: "reading" } | { kind: "done" } | { kind: "error"; error: string; needKey?: boolean };
@@ -19,6 +20,13 @@ export function CarefulRead({ article }: { article: Article }) {
   const [hasKey, setHasKey] = useState(false);
   const marks = useHighlights(article.id).length + useGlosses(article.id).length;
   const abort = useRef<AbortController | null>(null);
+  const [upgrading, setUpgrading] = useState<UpgradeProgress | null>(null);
+
+  // Hard pages listed at import are read again in the background, and swap in as they arrive.
+  useEffect(() => {
+    if (!hasPdf) return;
+    return startUpgrade(article.id, setUpgrading);
+  }, [article.id, hasPdf]);
 
   useEffect(() => {
     let live = true;
@@ -53,7 +61,10 @@ export function CarefulRead({ article }: { article: Article }) {
   const link = "font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink";
   return (
     <div className="focus-hide mt-3 text-[13px] leading-snug text-ink-3" aria-live="polite">
-      {state.kind === "idle" && (
+      {state.kind === "idle" && upgrading?.active && (
+        <p className="animate-pulse">{`Improving tables and columns, ${upgrading.done} of ${upgrading.total} ${upgrading.total === 1 ? "page" : "pages"}…`}</p>
+      )}
+      {state.kind === "idle" && !upgrading?.active && (
         <p>
           Columns, tables or maths look jumbled?{" "}
           <button type="button" onClick={start} className={link}>

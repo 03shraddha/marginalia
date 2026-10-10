@@ -24,6 +24,11 @@ const WASM = "/liteparse-2.15.1.wasm";
 /** The complexity reasons that mean the text layer is missing or unusable. Others ("vector-text") are noise for prose. */
 const UNREADABLE = new Set(["scanned", "no-text", "garbled"]);
 const VISION_AT_ONCE = 6;
+/** At most this many hard pages per PDF are read again in the background. */
+const UPGRADE_MAX = 30;
+/** Maths symbols, and the private-use or replacement characters of glyphs the text layer could not map. */
+const MATHS = /[∑∏∫√≤≥≠≈∂∇∈∉⊂±×÷→⇒∞αβγδεζηθλμσφψωΓΔΘΛΣΦΨΩ]/g;
+const BROKEN = /[\ufffd\ue000-\uf8ff]/g;
 /** Long side of a page image sent to the vision model, in pixels. */
 const VISION_PX = 1600;
 
@@ -85,22 +90,38 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
     session.free();
   }
 
-  // Pass 2: pages whose text cannot be read, by a vision model.
+  // Pass 2: pages whose text cannot be read, by a vision model. Pages that can be read but look hard
+  // (columns, tables, maths) are kept from the text layer now and read again in the background.
   let unreadable: number[] = [];
+  let hard: number[] = [];
   try {
-    unreadable = (await parser.isComplex(bytes)).filter((p) => p.needsOcr && p.reasons.some((r) => UNREADABLE.has(r))).map((p) => p.pageNumber);
+    const stats = await parser.isComplex(bytes);
+    unreadable = stats.filter((p) => p.needsOcr && p.reasons.some((r) => UNREADABLE.has(r))).map((p) => p.pageNumber);
+    // layout.isComplex, not needsOcr: "vector-text" fires on ordinary prose.
+    hard = stats.filter((p) => p.layout?.isComplex && !unreadable.includes(p.pageNumber)).map((p) => p.pageNumber);
   } catch {}
+  for (const [p, lbs] of byPage) {
+    if (unreadable.includes(p) || hard.includes(p)) continue;
+    const t = lbs.map((b) => b.text ?? "").join(" ");
+    if ((t.match(MATHS)?.length ?? 0) >= 4 || (t.match(BROKEN)?.length ?? 0) >= 3) hard.push(p);
+  }
+  hard = hard.filter((p) => p <= pages).sort((a, b) => a - b).slice(0, UPGRADE_MAX);
   parser.free();
   const vision = new Map<number, Block[]>();
   if (unreadable.length) await readByVision(lp, bytes, unreadable, vision, onProgress);
 
-  // Assemble in page order: the vision model's reading replaces that page's text layer.
-  const ordered: Block[] = [];
+  // Assemble in page order: the vision model's reading replaces that page's text layer. Every block
+  // keeps its page. Paragraphs are joined across page breaks, but never into or out of a hard page,
+  // so that page can later be swapped for a better reading on its own.
+  const segments: Block[][] = [[]];
   let title = "";
+  const isHard = (p: number) => hard.includes(p);
   for (let p = 1; p <= pages; p++) {
+    if (p > 1 && (isHard(p) || isHard(p - 1))) segments.push([]);
+    const seg = segments[segments.length - 1];
     const fromVision = vision.get(p);
     if (fromVision) {
-      ordered.push(...fromVision);
+      seg.push(...fromVision.map((b) => ({ ...b, page: p })));
       continue;
     }
     for (const lb of byPage.get(p) ?? []) {
@@ -110,10 +131,10 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
         continue;
       }
       const b = toBlock(lb);
-      if (b) ordered.push(b);
+      if (b) seg.push({ ...b, page: p });
     }
   }
-  const stitched = stitchBlocks(ordered);
+  const stitched = segments.flatMap(stitchBlocks);
   // No title from the text layer (a scan, say): the first heading the page reader found.
   if (!title && stitched[0] && (stitched[0].type === "h2" || stitched[0].type === "h3") && text(stitched[0]).length < 200) title = text(stitched.shift()!);
   const blocks = stitched.map((b, i) => ({ ...b, id: `b${i + 1}` }));
@@ -127,7 +148,20 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
     blocks,
     origin: "file",
     addedAt: Date.now(),
+    ...(hard.length ? { upgrade: hard } : {}),
   };
+}
+
+/** Pages of a PDF rendered as JPEG data URLs, the way the vision model reads them. */
+export async function renderPages(bytes: Uint8Array, pageNums: number[]): Promise<{ pageNum: number; image: string }[]> {
+  const lp = await liteparse();
+  const shooter = new lp.LiteParse({ ocrEnabled: false, outputFormat: "json", imageMode: "off", quiet: true, extractScreenshots: true, targetPages: pageNums.join(","), dpi: 120 });
+  try {
+    const shots = (await shooter.parse(bytes)).screenshots;
+    return await Promise.all(shots.map(async (s) => ({ pageNum: s.pageNum, image: await pageImage(new Uint8Array(s.imageBytes)) })));
+  } finally {
+    shooter.free();
+  }
 }
 
 const plain = (md: string) =>

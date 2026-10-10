@@ -17,6 +17,7 @@
  */
 
 import { parseSrcset } from "./html-to-blocks";
+import { texToText } from "./tex";
 
 /** An attribute by name, whatever its case: the parser keeps "srcSet" as written. */
 export function attrOf(el: Element, name: string): string | null {
@@ -56,35 +57,6 @@ function realSrc(img: Element): string | null {
     if (v && !isPlaceholder(v)) return v;
   }
   return null;
-}
-
-/** A small TeX-to-text pass for maths drawn as images: enough to read "Δp = f_D (L/D)", not to typeset. */
-const GREEK: Record<string, string> = {
-  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", zeta: "ζ", eta: "η", theta: "θ", iota: "ι", kappa: "κ",
-  lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", rho: "ρ", sigma: "σ", tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ", chi: "χ", psi: "ψ",
-  omega: "ω", Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
-  cdot: "·", times: "×", pm: "±", leq: "≤", geq: "≥", neq: "≠", approx: "≈", infty: "∞", partial: "∂", nabla: "∇", sum: "∑", int: "∫", to: "→",
-};
-const SUPER: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "-": "⁻", "+": "⁺" };
-
-export function texToText(tex: string): string {
-  let s = tex.replace(/^\{\\displaystyle\s*/, "").replace(/\}\s*$/, "");
-  // Innermost first: powers and indices, so a fraction around them has no braces left inside.
-  s = s
-    .replace(/\^\{?([0-9+-]+)\}?/g, (_, d: string) => [...d].map((c) => SUPER[c] ?? c).join(""))
-    .replace(/([_^])\{([^{}]*)\}/g, "$1$2");
-  for (let k = 0; k < 4; k++) s = s.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1/$2)");
-  s = s
-    .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")
-    .replace(/\\(?:mathrm|text|textrm|operatorname|mathit|mathbf|boldsymbol)\s*\{([^{}]*)\}/g, "$1")
-    .replace(/\\left|\\right/g, "")
-    .replace(/\\[,;:! ]/g, " ")
-    // A command name ends at the next space, which TeX swallows: "\\Delta p" is "Δp".
-    .replace(/\\([A-Za-z]+) ?/g, (_, w: string) => GREEK[w] ?? w)
-    .replace(/[{}]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return s;
 }
 
 export function prepareImages(doc: Document, base: string) {

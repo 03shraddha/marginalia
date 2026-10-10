@@ -1,5 +1,7 @@
 /** The document model. Shared by server (import) and client (reader). */
 
+import { texToText } from "./tex";
+
 export type Run = { text: string; em?: boolean; strong?: boolean; code?: boolean; href?: string };
 
 export type BlockType = "p" | "h2" | "h3" | "quote" | "li" | "pre" | "note" | "figure" | "table";
@@ -9,7 +11,17 @@ export type BlockType = "p" | "h2" | "h3" | "quote" | "li" | "pre" | "note" | "f
  * as their runs. Tables carry their cells; their runs are empty, so nothing in
  * a table can be anchored, but the model still reads it (see modelText).
  */
-export type Block = { id: string; type: BlockType; runs: Run[]; src?: string; alt?: string; rows?: string[][]; head?: boolean };
+export type Block = {
+  id: string;
+  type: BlockType;
+  runs: Run[];
+  src?: string;
+  alt?: string;
+  rows?: string[][];
+  head?: boolean;
+  /** The PDF page it came from, so one page can be read again and swapped in alone. */
+  page?: number;
+};
 
 export type Article = {
   id: string;
@@ -22,6 +34,8 @@ export type Article = {
   blocks: Block[];
   /** Where it came from: the bundled shelf, a link, pasted text, or a file. */
   origin?: "sample" | "url" | "paste" | "file";
+  /** PDF pages that looked hard (columns, tables, maths) and wait to be read again by a vision model (lib/upgrade.ts). */
+  upgrade?: number[];
   addedAt?: number;
 };
 
@@ -148,7 +162,16 @@ export const markdownBlocks = (md: string): Block[] => parseMarkdown(md, { takeT
 function tableOf(chunk: string): Block | null {
   const lines = chunk.split("\n").map((l) => l.trim());
   if (lines.length < 3 || !lines.every((l) => l.startsWith("|")) || !/^\|?\s*:?-{2,}/.test(lines[1])) return null;
-  const cells = (l: string) => l.replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => unescapeMd(c.trim()));
+  // A cell reads as plain text: emphasis marks dropped, maths between $ signs made readable.
+  const cells = (l: string) =>
+    l
+      .replace(/^\||\|$/g, "")
+      .split(/(?<!\\)\|/)
+      .map((c) =>
+        inlineMd(c.trim())
+          .map((r) => r.text)
+          .join("")
+      );
   const rows = [cells(lines[0]), ...lines.slice(2).map(cells)];
   const cols = Math.max(...rows.map((r) => r.length));
   return { id: "", type: "table", runs: [], rows: rows.map((r) => [...r, ...Array(cols - r.length).fill("")]), head: true };
@@ -209,10 +232,22 @@ function parseMarkdown(input: string, opts: { title?: string; takeTitle: boolean
 /** Markdown's backslash escapes, as plain characters. */
 const unescapeMd = (s: string) => s.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, "$1");
 
-/** **strong**, *em* / _em_, `code` and [text](url). Deliberately small. */
+/** Characters that would open emphasis, code or a link, set aside so they read as themselves. */
+const shield = (t: string) => t.replace(/[\\`*_{}\[\]()#+\-.!|~<>$]/g, (c) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
+
+/**
+ * Maths between $ signs (from page readers) as readable text, before anything
+ * else: otherwise "$d_k$ ... $q_i$" opens emphasis at the first underscore.
+ * Inline maths must not start or end with a space, nor be followed by a digit,
+ * so "$5 and $10" stays money.
+ */
+const MATH = /\$\$([\s\S]+?)\$\$|\$(?!\s)([^$\n]+?)(?<!\s)\$(?!\d)/g;
+
+/** **strong**, *em* / _em_, `code`, [text](url) and $maths$. Deliberately small. */
 export function inlineMd(input: string): Run[] {
+  const withMaths = input.replace(MATH, (_, display: string | undefined, inline: string | undefined) => shield(texToText(display ?? inline ?? "")));
   // Escaped characters are set aside first, so \\* never opens emphasis, then restored.
-  const s = input.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, (_, c: string) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
+  const s = withMaths.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, (_, c: string) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
   const runs: Run[] = [];
   const re = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(_([^_]+)_)|(`([^`]+)`)|(\[([^\]]+)\]\((https?:[^)]+)\))/g;
   let last = 0;
