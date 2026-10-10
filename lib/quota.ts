@@ -61,11 +61,14 @@ async function spent(subject: string): Promise<{ mine: number; all: number }> {
   return { mine: memSpent(subject), all: memSpent(ALL) };
 }
 
-/** May this reader use the shared key right now? Spends nothing; `chargeFree` records the cost after. */
-export async function checkFree(req: Request): Promise<FreeState> {
+/**
+ * May this reader use the shared key right now? Spends nothing; `chargeFree` records the cost after.
+ * `burst` is how many requests a minute one reader may start: a PDF's pages arrive in a rush.
+ */
+export async function checkFree(req: Request, burst = 20): Promise<FreeState> {
   const w = await who(req);
   // A burst guard, so a script cannot fire many requests before their costs land.
-  if (!allow(`burst:${w.subject}`, 20, 60_000)) return { ok: false, left: 1, signedIn: w.signedIn, subject: w.subject, reason: "burst" };
+  if (!allow(`burst:${w.subject}`, burst, 60_000)) return { ok: false, left: 1, signedIn: w.signedIn, subject: w.subject, reason: "burst" };
   const s = await spent(w.subject);
   const left = Math.max(0, 1 - s.mine / w.limit);
   if (s.all >= FREE_USD_ALL) return { ok: false, left, signedIn: w.signedIn, subject: w.subject, reason: "everyone" };

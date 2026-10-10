@@ -1,9 +1,10 @@
 "use client";
 
 import { textToArticle, wordCount, type Article } from "./article";
-import { saveDoc, useStore } from "./store";
+import { savePdf, saveDoc, useStore } from "./store";
 
-export type ImportResult = { ok: true; article: Article } | { ok: false; error: string };
+/** `needKey`: the import needs the reader's own Together key (a long PDF, or free use spent). `file`: the original, kept with a PDF. */
+export type ImportResult = { ok: true; article: Article; file?: Blob } | { ok: false; error: string; needKey?: boolean };
 
 export async function importFromUrl(raw: string): Promise<ImportResult> {
   try {
@@ -15,12 +16,17 @@ export async function importFromUrl(raw: string): Promise<ImportResult> {
   }
 }
 
-export async function importFromFile(file: File, onProgress?: (p: number) => void): Promise<ImportResult> {
+export async function importFromFile(file: File, onProgress?: (p: number, label?: string) => void): Promise<ImportResult> {
   const name = file.name.toLowerCase();
   try {
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
-      const { pdfToArticle } = await import("./pdf");
-      return { ok: true, article: await pdfToArticle(file, onProgress) };
+      const { pdfToArticle, PdfError } = await import("./pdf");
+      try {
+        return { ok: true, article: await pdfToArticle(file, onProgress), file };
+      } catch (e) {
+        if (e instanceof PdfError) return { ok: false, error: e.message, needKey: e.needKey };
+        throw e;
+      }
     }
     if (/\.(txt|md|markdown|text)$/.test(name) || file.type.startsWith("text/")) {
       const a = textToArticle(await file.text(), { origin: "file" });
@@ -39,10 +45,12 @@ export function importFromText(text: string): ImportResult {
   return a.blocks.length ? { ok: true, article: a } : { ok: false, error: "There was no readable text in that." };
 }
 
-/** Saves an imported article and puts it on the shelf. */
-export async function keep(a: Article): Promise<string | null> {
+/** Saves an imported article (and a PDF's original file) and puts it on the shelf. */
+export async function keep(a: Article, file?: Blob): Promise<string | null> {
   if (!a.blocks.length) return "There was no readable text in that.";
   if (!(await saveDoc(a))) return "This browser's storage is full. Remove something from your shelf and try again.";
+  // The original is a nicety for reading it again; the text is what matters, so a failure here is quiet.
+  if (file) await savePdf(a.id, file);
   useStore.getState().addToLibrary(a, wordCount(a));
   return null;
 }

@@ -34,6 +34,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorNeedsKey, setErrorNeedsKey] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -56,8 +57,8 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   );
 
   const finish = useCallback(
-    async (a: Article) => {
-      const err = await keep(a);
+    async (a: Article, file?: Blob) => {
+      const err = await keep(a, file);
       if (err) {
         setError(err);
         setBusy(null);
@@ -90,11 +91,14 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   const fromFile = useCallback(
     async (f: File) => {
       setError(null);
+      setErrorNeedsKey(false);
       setBusy({ label: `Opening ${f.name}`, pct: f.name.toLowerCase().endsWith(".pdf") ? 0 : undefined });
-      const r = await importFromFile(f, (p) => setBusy({ label: `Reading ${f.name}`, pct: p }));
-      if (r.ok) finish(r.article);
+      // The PDF reader reports what it is doing: "Reading 12 pages", then any scanned ones.
+      const r = await importFromFile(f, (p, label) => setBusy({ label: label ?? `Reading ${f.name}`, pct: p }));
+      if (r.ok) finish(r.article, r.file);
       else {
         setError(r.error);
+        setErrorNeedsKey(Boolean(r.needKey));
         setBusy(null);
       }
     },
@@ -218,6 +222,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
             setUrl={setUrl}
             busy={busy}
             error={error}
+            errorNeedsKey={errorNeedsKey}
             onSubmit={fromUrl}
             onPickFile={() => fileRef.current?.click()}
             onPasteText={() => setPasteOpen(true)}

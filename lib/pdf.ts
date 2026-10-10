@@ -1,133 +1,255 @@
 "use client";
 
-import { slugify, tidyTitle, undash, type Article, type Block } from "./article";
+import type { LayoutBlock } from "@llamaindex/liteparse-wasm";
+import { inlineMd, markdownBlocks, slugify, tidyTitle, undash, type Article, type Block } from "./article";
+import { readApiKey } from "./ask";
 
 /**
- * PDF to Gloss blocks, in the browser. Best effort for prose: it rebuilds
- * lines from positioned glyph runs, drops running headers and page numbers,
- * joins hyphenated breaks, and splits paragraphs on vertical gaps. Scanned
- * PDFs (images only) have no text layer and are reported as such.
+ * PDF to Gloss blocks, in two passes.
+ *
+ * 1. LiteParse (Rust, compiled to WebAssembly) reads the text layer in the
+ *    browser: reading order across columns, headings, lists and real tables,
+ *    a few milliseconds a page. The file itself never leaves the browser.
+ * 2. Pages with no usable text layer (scans, pictures of text, garbled
+ *    glyphs) are rendered and read by a vision model on the server
+ *    (/api/pdf-page), a few at a time.
+ *
+ * Longer PDFs need the reader's own Together key: every question sends the
+ * whole text, so a book would spend a day's free use in a few questions.
  */
 
-type Line = { text: string; y: number; x: number; size: number; page: number };
+export const PDF_FREE_PAGES = 20;
+export const PDF_MAX_PAGES = 400;
+const WASM = "/liteparse-2.15.1.wasm";
+/** The complexity reasons that mean the text layer is missing or unusable. Others ("vector-text") are noise for prose. */
+const UNREADABLE = new Set(["scanned", "no-text", "garbled"]);
+const VISION_AT_ONCE = 6;
+/** Long side of a page image sent to the vision model, in pixels. */
+const VISION_PX = 1600;
 
-const MAX_PAGES = 400;
-
-export async function pdfToArticle(file: File, onProgress?: (p: number) => void): Promise<Article> {
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const pages = Math.min(doc.numPages, MAX_PAGES);
-
-  const lines: Line[] = [];
-  for (let p = 1; p <= pages; p++) {
-    const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    let cur: Line | null = null;
-    let lastRight = 0;
-    for (const raw of content.items) {
-      if (!("str" in raw)) continue;
-      const it = raw as { str: string; transform: number[]; width: number; height: number; hasEOL?: boolean };
-      const size = Math.hypot(it.transform[2], it.transform[3]) || it.height || 10;
-      const x = it.transform[4];
-      const y = it.transform[5];
-      if (!it.str && !it.hasEOL) continue;
-      if (cur && Math.abs(cur.y - y) < size * 0.45) {
-        const gap = x - lastRight;
-        if (gap > size * 0.12 && !cur.text.endsWith(" ") && !it.str.startsWith(" ")) cur.text += " ";
-        cur.text += it.str;
-        cur.size = Math.max(cur.size, size);
-      } else {
-        if (cur && cur.text.trim()) lines.push(cur);
-        cur = { text: it.str, y, x, size, page: p };
-      }
-      lastRight = x + it.width;
-    }
-    if (cur && cur.text.trim()) lines.push(cur);
-    onProgress?.(p / pages);
+export class PdfError extends Error {
+  constructor(
+    message: string,
+    readonly needKey = false
+  ) {
+    super(message);
   }
+}
 
-  if (lines.length < 5) throw new Error("This PDF has no text layer (it may be a scan), so there is nothing to read here.");
+export type PdfProgress = (pct: number, label?: string) => void;
 
-  // Running heads, feet and page numbers repeat across pages: drop them.
-  const norm = (s: string) => s.trim().toLowerCase().replace(/\d+/g, "#");
-  const freq = new Map<string, Set<number>>();
-  for (const l of lines) {
-    const k = norm(l.text);
-    if (k.length > 80) continue;
-    const set = freq.get(k) ?? new Set<number>();
-    set.add(l.page);
-    freq.set(k, set);
-  }
-  const repeated = (l: Line) => pages >= 3 && (freq.get(norm(l.text))?.size ?? 0) >= Math.max(3, pages * 0.4);
-  const kept = lines.filter((l) => !/^\s*(page\s*)?\d{1,4}\s*(of\s*\d+)?\s*$/i.test(l.text) && !repeated(l));
+type LP = typeof import("@llamaindex/liteparse-wasm");
+let lib: Promise<LP> | null = null;
+function liteparse(): Promise<LP> {
+  lib ??= import("@llamaindex/liteparse-wasm").then(async (m) => {
+    await m.default({ module_or_path: WASM });
+    return m;
+  });
+  lib.catch(() => (lib = null));
+  return lib;
+}
 
-  // Typical body size and line spacing.
-  const sizes = kept.map((l) => Math.round(l.size * 2) / 2).sort((a, b) => a - b);
-  const body = sizes[Math.floor(sizes.length / 2)] || 10;
-  const gaps: number[] = [];
-  for (let i = 1; i < kept.length; i++) {
-    const a = kept[i - 1];
-    const b = kept[i];
-    if (a.page === b.page && Math.abs(a.size - b.size) < 0.6) {
-      const g = a.y - b.y;
-      if (g > 0 && g < body * 3) gaps.push(g);
-    }
-  }
-  gaps.sort((a, b) => a - b);
-  const lineGap = gaps[Math.floor(gaps.length / 2)] || body * 1.25;
+const failed = (e: unknown) =>
+  new PdfError(/password/i.test(String(e)) ? "This PDF is password protected. Remove the password and try again." : "Could not read this PDF.");
 
-  const blocks: Block[] = [];
-  let buf = "";
-  let bufType: Block["type"] = "p";
-  let n = 0;
-  const flush = () => {
-    const text = undash(buf.replace(/\s+/g, " ").trim());
-    if (text.length > 1) blocks.push({ id: `b${++n}`, type: bufType, runs: [{ text }] });
-    buf = "";
-    bufType = "p";
-  };
+export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promise<Article> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const lp = await liteparse();
+  const parser = new lp.LiteParse({ ocrEnabled: false, outputFormat: "json", extractBlocks: true, imageMode: "off", quiet: true, maxPages: PDF_MAX_PAGES });
 
-  for (let i = 0; i < kept.length; i++) {
-    const l = kept[i];
-    const prev = kept[i - 1];
-    const text = l.text.trim();
-    const heading = l.size > body * 1.18 && text.length < 110;
-    const type: Block["type"] = heading ? (l.size > body * 1.5 ? "h2" : "h3") : "p";
-
-    let breakHere = !prev;
-    if (prev) {
-      const samePage = prev.page === l.page;
-      const gap = prev.y - l.y;
-      const endedSentence = /[.!?:"”)]\s*$/.test(prev.text.trim());
-      if (type !== bufType) breakHere = true;
-      else if (samePage && (gap > lineGap * 1.45 || gap < -lineGap)) breakHere = true;
-      else if (samePage && endedSentence && l.x > prev.x + body * 0.9) breakHere = true; // indented first line
-      else if (!samePage && endedSentence && /^[A-Z“"]/.test(text)) breakHere = true;
-    }
-    if (breakHere && buf) flush();
-    bufType = type;
-    if (buf.endsWith("-") && /^[a-z]/.test(text)) buf = buf.slice(0, -1) + text;
-    else buf += (buf ? " " : "") + text;
-  }
-  flush();
-
-  // Title: document metadata, then the first big line.
-  let title = "";
+  let session: Awaited<ReturnType<typeof parser.openBatchSession>>;
   try {
-    const meta = (await doc.getMetadata()) as { info?: { Title?: string; Author?: string } };
-    title = meta.info?.Title?.trim() ?? "";
-    if (/^(untitled|microsoft word|document\d*)/i.test(title) || title.length < 3) title = "";
-  } catch {}
-  if (!title && blocks[0] && blocks[0].type !== "p") title = blocks.shift()!.runs[0].text;
-  if (!title) title = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
+    session = await parser.openBatchSession(bytes, 25);
+  } catch (e) {
+    throw failed(e);
+  }
+  const total = session.totalPages;
+  const pages = Math.min(total, PDF_MAX_PAGES);
+  const label = `${pages} page${pages === 1 ? "" : "s"}`;
+  if (pages > PDF_FREE_PAGES && !readApiKey()) {
+    session.free();
+    throw new PdfError(`This PDF has ${pages} pages. PDFs over ${PDF_FREE_PAGES} pages use your own Together key, since every question sends the whole text.`, true);
+  }
 
+  // Pass 1: the text layer, a batch at a time.
+  onProgress?.(0, `Reading ${label}`);
+  const byPage = new Map<number, LayoutBlock[]>();
+  try {
+    for (let b = await session.nextBatch(); b; b = await session.nextBatch()) {
+      for (const pg of b.result.pages) byPage.set(pg.pageNum, pg.blocks ?? []);
+      onProgress?.(b.endPage / pages, `Reading ${label}`);
+    }
+  } catch (e) {
+    throw failed(e);
+  } finally {
+    session.free();
+  }
+
+  // Pass 2: pages whose text cannot be read, by a vision model.
+  let unreadable: number[] = [];
+  try {
+    unreadable = (await parser.isComplex(bytes)).filter((p) => p.needsOcr && p.reasons.some((r) => UNREADABLE.has(r))).map((p) => p.pageNumber);
+  } catch {}
+  parser.free();
+  const vision = new Map<number, Block[]>();
+  if (unreadable.length) await readByVision(lp, bytes, unreadable, vision, onProgress);
+
+  // Assemble in page order: the vision model's reading replaces that page's text layer.
+  const ordered: Block[] = [];
+  let title = "";
+  for (let p = 1; p <= pages; p++) {
+    const fromVision = vision.get(p);
+    if (fromVision) {
+      ordered.push(...fromVision);
+      continue;
+    }
+    for (const lb of byPage.get(p) ?? []) {
+      // The first top-level heading near the start is the title.
+      if (!title && p <= 2 && lb.kind === "heading" && lb.level === 1 && lb.text && lb.text.length < 200) {
+        title = plain(lb.text);
+        continue;
+      }
+      const b = toBlock(lb);
+      if (b) ordered.push(b);
+    }
+  }
+  const stitched = stitchBlocks(ordered);
+  // No title from the text layer (a scan, say): the first heading the page reader found.
+  if (!title && stitched[0] && (stitched[0].type === "h2" || stitched[0].type === "h3") && text(stitched[0]).length < 200) title = text(stitched.shift()!);
+  const blocks = stitched.map((b, i) => ({ ...b, id: `b${i + 1}` }));
+  if (!blocks.length) throw new PdfError(unreadable.length ? "Could not read the pages of this PDF. Try again in a moment." : "There was no readable text in this PDF.");
+
+  if (!title) title = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
   return {
     id: `${slugify(title)}-${Math.random().toString(36).slice(2, 7)}`,
     title: tidyTitle(undash(title)),
-    source: `${file.name}${doc.numPages > MAX_PAGES ? `, first ${MAX_PAGES} pages` : ""}`,
+    source: `${file.name}${total > PDF_MAX_PAGES ? `, first ${PDF_MAX_PAGES} pages` : ""}`,
     blocks,
     origin: "file",
     addedAt: Date.now(),
   };
+}
+
+const plain = (md: string) =>
+  inlineMd(md)
+    .map((r) => r.text)
+    .join("")
+    .trim();
+
+/** One LiteParse block as a Gloss block, or nothing for rules, pictures and the shards of diagrams. */
+function toBlock(b: LayoutBlock): Block | null {
+  const runs = (t: string) => inlineMd(undash(t.replace(/\s+/g, " ").trim()));
+  switch (b.kind) {
+    case "heading": {
+      const t = (b.text ?? "").trim();
+      // Labels lifted out of a diagram ("##Coefficient") are not headings.
+      if (!t || t.startsWith("#")) return null;
+      if (t.length > 160) return { id: "", type: "p", runs: runs(t) };
+      return { id: "", type: (b.level ?? 2) <= 2 ? "h2" : "h3", runs: runs(t) };
+    }
+    case "paragraph":
+      return b.text?.trim() ? { id: "", type: "p", runs: runs(b.text) } : null;
+    case "list_item":
+      return b.text?.trim() ? { id: "", type: "li", runs: runs(b.text) } : null;
+    case "code":
+    case "grid_fallback": {
+      const t = (b.lines ?? []).join("\n").replace(/\s+$/, "");
+      return t.trim() ? { id: "", type: "pre", runs: [{ text: t, code: true }] } : null;
+    }
+    case "table": {
+      const rows = [...(b.header ? [b.header] : []), ...(b.rows ?? [])].map((r) => r.map((c) => plain(c.text ?? "")));
+      const cells = rows.flat();
+      const cols = Math.max(0, ...rows.map((r) => r.length));
+      // A diagram read as a grid is mostly empty cells; a real table is mostly full.
+      if (rows.length < 2 || cols < 2 || cells.filter(Boolean).length / Math.max(1, cells.length) < 0.6) return null;
+      return { id: "", type: "table", runs: [], rows: rows.map((r) => [...r, ...Array(cols - r.length).fill("")]), head: Boolean(b.header) };
+    }
+    default:
+      return null;
+  }
+}
+
+const text = (b: Block) => b.runs.map((r) => r.text).join("");
+
+/** Short things a page sets between the two halves of a paragraph: footnotes, captions, a figure's labels, a table. */
+const LOOKBACK = 10;
+const interlude = (b: Block) => b.type !== "p" || text(b).length < 260;
+
+/**
+ * Paragraphs broken by a page or column end, or by a footnote, figure or
+ * table set in their middle, are joined again: the last long paragraph
+ * stops without closing punctuation, and this one starts in lowercase or
+ * with a bracket. What sat between them stays, after the joined paragraph.
+ */
+export function stitchBlocks(blocks: Block[]): Block[] {
+  const out: Block[] = [];
+  for (const b of blocks) {
+    if (b.type === "p" && /^[a-z(\[]/.test(text(b).trimStart())) {
+      let at = out.length - 1;
+      while (at >= 0 && out.length - at <= LOOKBACK && interlude(out[at])) at--;
+      const prev = at >= 0 && out.length - at <= LOOKBACK ? out[at] : null;
+      if (prev?.type === "p" && !/[.!?:;"”’)\]]\s*$/.test(text(prev))) {
+        out[at] = { ...prev, runs: [...prev.runs, { text: " " }, ...b.runs] };
+        continue;
+      }
+    }
+    out.push(b);
+  }
+  return out;
+}
+
+/** A rendered page, shrunk and re-encoded as JPEG, so a scan at full resolution is not megabytes on the wire. */
+async function pageImage(png: Uint8Array): Promise<string> {
+  const bmp = await createImageBitmap(new Blob([png as BlobPart], { type: "image/png" }));
+  const k = Math.min(1, VISION_PX / Math.max(bmp.width, bmp.height));
+  const canvas = new OffscreenCanvas(Math.round(bmp.width * k), Math.round(bmp.height * k));
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+async function readByVision(lp: LP, bytes: Uint8Array, pageNums: number[], into: Map<number, Block[]>, onProgress?: PdfProgress) {
+  const apiKey = readApiKey() || undefined;
+  let done = 0;
+  let stop: PdfError | null = null;
+  const label = () => `Reading ${pageNums.length === 1 ? "a scanned page" : `scanned pages, ${done} of ${pageNums.length}`}`;
+  onProgress?.(0, label());
+
+  for (let i = 0; i < pageNums.length && !stop; i += VISION_AT_ONCE) {
+    const group = pageNums.slice(i, i + VISION_AT_ONCE);
+    const shooter = new lp.LiteParse({ ocrEnabled: false, outputFormat: "json", imageMode: "off", quiet: true, extractScreenshots: true, targetPages: group.join(","), dpi: 120 });
+    let shots: { pageNum: number; imageBytes: number[] }[] = [];
+    try {
+      shots = (await shooter.parse(bytes)).screenshots;
+    } catch {}
+    shooter.free();
+
+    await Promise.all(
+      shots.map(async (s) => {
+        try {
+          const res = await fetch("/api/pdf-page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: await pageImage(new Uint8Array(s.imageBytes)), apiKey }),
+          });
+          const j = (await res.json()) as { markdown?: string; error?: string; code?: string };
+          if (j.markdown) into.set(s.pageNum, markdownBlocks(j.markdown));
+          else if (j.code === "need_key") stop = new PdfError(j.error ?? "Add your Together key to read scanned pages.", true);
+        } catch {}
+        done++;
+        onProgress?.(done / pageNums.length, label());
+      })
+    );
+  }
+  // Out of free use with nothing read at all: say so, rather than an empty text.
+  if (stop && !into.size) throw stop;
 }

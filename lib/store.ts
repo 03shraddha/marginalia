@@ -324,12 +324,16 @@ if (typeof window !== "undefined") {
 
 const DB_NAME = "gloss";
 const DOCS = "docs";
+/** The original files of imported PDFs, for reading them again more carefully. Local only; never synced. */
+const FILES = "files";
 let dbp: Promise<IDBDatabase> | null = null;
 
 function idb(): Promise<IDBDatabase> {
   dbp ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(DOCS);
+    const req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = () => {
+      for (const name of [DOCS, FILES]) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name);
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -337,10 +341,10 @@ function idb(): Promise<IDBDatabase> {
   return dbp;
 }
 
-async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>, store = DOCS): Promise<T> {
   const db = await idb();
   return new Promise((resolve, reject) => {
-    const req = fn(db.transaction(DOCS, mode).objectStore(DOCS));
+    const req = fn(db.transaction(store, mode).objectStore(store));
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -388,12 +392,32 @@ async function migrateDocs() {
   for (const id of ids) await loadDoc(id);
 }
 
+/** Keep an imported PDF's original file, by its article id. */
+export async function savePdf(id: string, file: Blob): Promise<boolean> {
+  try {
+    await tx("readwrite", (s) => s.put(file, id), FILES);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The original PDF behind an article, when this browser imported it. */
+export async function loadPdf(id: string): Promise<Blob | null> {
+  try {
+    return (await tx<Blob | undefined>("readonly", (s) => s.get(id), FILES)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function dropDoc(id: string) {
   try {
     localStorage.removeItem(DOC_PREFIX + id);
   } catch {}
   try {
     await tx("readwrite", (s) => s.delete(id));
+    await tx("readwrite", (s) => s.delete(id), FILES);
   } catch {}
 }
 

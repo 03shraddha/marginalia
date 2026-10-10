@@ -131,6 +131,30 @@ export function slugify(s: string): string {
 
 /** Plain text (or light Markdown) into blocks. Used for paste and .txt/.md files. */
 export function textToArticle(input: string, opts: { title?: string; origin: Article["origin"] }): Article {
+  const { title, blocks } = parseMarkdown(input, { title: opts.title, takeTitle: true });
+  return {
+    id: `${slugify(title ?? "pasted")}-${Math.random().toString(36).slice(2, 7)}`,
+    title: title ? tidyTitle(title) : "Untitled",
+    blocks,
+    origin: opts.origin,
+    addedAt: Date.now(),
+  };
+}
+
+/** Markdown into blocks, nothing taken as the title. Used for PDF pages read by a vision model. */
+export const markdownBlocks = (md: string): Block[] => parseMarkdown(md, { takeTitle: false }).blocks;
+
+/** A Markdown table: a row of cells, a |---| rule, then more rows. */
+function tableOf(chunk: string): Block | null {
+  const lines = chunk.split("\n").map((l) => l.trim());
+  if (lines.length < 3 || !lines.every((l) => l.startsWith("|")) || !/^\|?\s*:?-{2,}/.test(lines[1])) return null;
+  const cells = (l: string) => l.replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => unescapeMd(c.trim()));
+  const rows = [cells(lines[0]), ...lines.slice(2).map(cells)];
+  const cols = Math.max(...rows.map((r) => r.length));
+  return { id: "", type: "table", runs: [], rows: rows.map((r) => [...r, ...Array(cols - r.length).fill("")]), head: true };
+}
+
+function parseMarkdown(input: string, opts: { title?: string; takeTitle: boolean }): { title?: string; blocks: Block[] } {
   const text = undash(input.replace(/\r/g, "")).trim();
   const chunks = text.split(/\n\s*\n/).map((c) => c.trim()).filter(Boolean);
   let title = opts.title;
@@ -138,14 +162,22 @@ export function textToArticle(input: string, opts: { title?: string; origin: Art
   let i = 0;
   const id = () => `b${++i}`;
 
-  for (const chunk of chunks) {
-    const h = chunk.match(/^(#{1,3})\s+(.+)$/);
+  for (const raw of chunks) {
+    // Images have nothing behind them here; a figure's caption, if any, stays as text.
+    const chunk = raw.replace(/^!\[[^\]]*\]\([^)]*\)\s*$/gm, "").trim();
+    if (!chunk || /^(-{3,}|\*{3,})$/.test(chunk)) continue;
+    const h = chunk.match(/^(#{1,6})\s+(.+)$/);
     if (h) {
-      if (!title && h[1].length === 1) {
-        title = h[2].trim();
+      if (opts.takeTitle && !title && h[1].length === 1) {
+        title = unescapeMd(h[2].trim());
         continue;
       }
-      blocks.push({ id: id(), type: h[1].length <= 2 ? "h2" : "h3", runs: [{ text: h[2].trim() }] });
+      blocks.push({ id: id(), type: h[1].length <= 2 ? "h2" : "h3", runs: inlineMd(h[2].trim()) });
+      continue;
+    }
+    const table = tableOf(chunk);
+    if (table) {
+      blocks.push({ ...table, id: id() });
       continue;
     }
     if (/^([-*+]|\d+\.)\s+/.test(chunk)) {
@@ -165,24 +197,22 @@ export function textToArticle(input: string, opts: { title?: string; origin: Art
     }
     const joined = chunk.replace(/\s*\n\s*/g, " ");
     // A short first line with no terminal punctuation reads as a title.
-    if (!title && blocks.length === 0 && joined.length < 120 && !/[.!?]$/.test(joined)) {
-      title = joined;
+    if (opts.takeTitle && !title && blocks.length === 0 && joined.length < 120 && !/[.!?]$/.test(joined)) {
+      title = unescapeMd(joined);
       continue;
     }
     blocks.push({ id: id(), type: "p", runs: inlineMd(joined) });
   }
-
-  return {
-    id: `${slugify(title ?? "pasted")}-${Math.random().toString(36).slice(2, 7)}`,
-    title: title ? tidyTitle(title) : "Untitled",
-    blocks,
-    origin: opts.origin,
-    addedAt: Date.now(),
-  };
+  return { title, blocks };
 }
 
+/** Markdown's backslash escapes, as plain characters. */
+const unescapeMd = (s: string) => s.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, "$1");
+
 /** **strong**, *em* / _em_, `code` and [text](url). Deliberately small. */
-export function inlineMd(s: string): Run[] {
+export function inlineMd(input: string): Run[] {
+  // Escaped characters are set aside first, so \\* never opens emphasis, then restored.
+  const s = input.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, (_, c: string) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
   const runs: Run[] = [];
   const re = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(_([^_]+)_)|(`([^`]+)`)|(\[([^\]]+)\]\((https?:[^)]+)\))/g;
   let last = 0;
@@ -197,5 +227,6 @@ export function inlineMd(s: string): Run[] {
     last = m.index + m[0].length;
   }
   if (last < s.length) runs.push({ text: s.slice(last) });
-  return runs.length ? runs : [{ text: s }];
+  const restore = (t: string) => t.replace(/[\ue000-\ue0ff]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xe000));
+  return (runs.length ? runs : [{ text: s }]).map((r) => ({ ...r, text: restore(r.text) }));
 }

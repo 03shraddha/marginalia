@@ -18,7 +18,8 @@
 - Web search with Exa (`lib/search.ts`, fast mode, about 0.7s): Fact-check always looks things up, and any question can with Web on. Results are cited as [1], [2] beside the text's own [¶n].
 - The whole text goes in the system prompt with `[¶n]` numbers, so follow-ups hit Together's prefix cache and answers cite paragraphs.
 - Anchors are block id plus character offsets, rendered as React marks; margin layout and leader lines in `components/reader/Margin.tsx`.
-- Import: links through `@mozilla/readability` on `linkedom` (with a private-address guard), keeping figures (by their original URL, loaded without a referrer) and data tables (which the model reads too); PDFs through `pdfjs-dist` in the browser, plus pasted text and `.txt`/`.md`.
+- Import: links through `@mozilla/readability` on `linkedom` (with a private-address guard), keeping figures (by their original URL, loaded without a referrer) and data tables (which the model reads too); plus pasted text and `.txt`/`.md`.
+- PDFs (`lib/pdf.ts`): LiteParse, Rust compiled to WebAssembly (`public/liteparse-2.15.1.wasm`, copied from `@llamaindex/liteparse-wasm`), reads the text layer in the browser, columns, headings, lists and tables, in milliseconds. Pages with no usable text (scans, garbled glyphs) are rendered and read by Qwen3.8 Flash on Together (`app/api/pdf-page`). Over 20 pages needs the reader's own key, since every question sends the whole text. The original PDF is kept in IndexedDB on that device.
 
 ## Cloning & running
 
@@ -32,7 +33,6 @@
 ## Roadmap
 
 - [ ] ship it as a browser extension that opens the same margin on any page
-- [ ] teach the PDF reader two-column layouts and footnotes
 - [ ] let a gloss compare two passages you pick at once
 - [ ] move the shared-key rate limit from memory to a store like Upstash so it holds across instances
 - Accounts are skipped on purpose for now: the reader should work the second you paste a link.
