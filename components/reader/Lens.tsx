@@ -392,7 +392,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               aria-label="More actions"
               aria-expanded={menu}
               onClick={() => setMenu((v) => !v)}
-              {...tipProps("More", existing ? "Fact-check, related, counterpoint" : "Fact-check, counterpoint, a note")}
+              {...tipProps("More", existing ? "Fact-check, related, copy" : "Fact-check, counterpoint, copy")}
               className={`lens-btn w-8 justify-center ${menu ? "bg-lens-hover" : ""}`}
             >
               <Ellipsis size={16} />
@@ -456,9 +456,12 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 </div>
               </div>
             )}
-            <LensIcon label="Copy quote" tip={tipProps(copied ? "Copied" : "Copy quote", copied ? undefined : "With its source")} onClick={copy}>
-              {copied ? <Check size={15} /> : <Copy size={15} />}
-            </LensIcon>
+            {/* Beside Highlight, outside its hover group, so reaching for it does not open the colours. */}
+            {!existing && (
+              <LensIcon label="Add a note" tip={tipProps("Add a note", "In your own words")} onClick={toNote}>
+                <PenLine size={15} />
+              </LensIcon>
+            )}
           </div>
         ) : (
           <form
@@ -543,24 +546,27 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 </button>
               );
             })}
-            {!existing && (
-              <>
-                <span className="mx-2.5 my-1 block h-px bg-lens-mute/15" aria-hidden />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={toNote}
-                  className="lens-item group flex w-full items-start gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-lens-hover"
-                  style={{ animationDelay: `${more.length * 30}ms` }}
-                >
-                  <PenLine size={16} strokeWidth={1.9} className="mt-[1px] shrink-0 text-lens-mute transition-colors group-hover:text-[var(--rubric)]" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-medium leading-tight">Note</span>
-                    <span className="mt-0.5 block text-[12px] leading-snug text-lens-mute">Your own words, kept with a highlight</span>
-                  </span>
-                </button>
-              </>
-            )}
+            <span className="mx-2.5 my-1 block h-px bg-lens-mute/15" aria-hidden />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                void copy();
+                setTimeout(() => setMenu(false), 700);
+              }}
+              className="lens-item group flex w-full items-start gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-lens-hover"
+              style={{ animationDelay: `${more.length * 30}ms` }}
+            >
+              {copied ? (
+                <Check size={16} strokeWidth={1.9} className="mt-[1px] shrink-0 text-[var(--rubric)]" aria-hidden />
+              ) : (
+                <Copy size={16} strokeWidth={1.9} className="mt-[1px] shrink-0 text-lens-mute transition-colors group-hover:text-[var(--rubric)]" aria-hidden />
+              )}
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium leading-tight">{copied ? "Copied" : "Copy quote"}</span>
+                <span className="mt-0.5 block text-[12px] leading-snug text-lens-mute">With the title and paragraph number</span>
+              </span>
+            </button>
           </div>
         )}
 
