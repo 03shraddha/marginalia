@@ -16,6 +16,7 @@ import { applySettings } from "@/lib/settings";
 import { GlossWordmark } from "@/components/brand/Gloss";
 import { Block, type Mark } from "./Block";
 import { Brief } from "./Brief";
+import { CarefulRead } from "./CarefulRead";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ReaderContext, useMedia, useReader, type ReaderApi } from "./context";
 import { GlossCard } from "./GlossCard";
@@ -44,6 +45,16 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
         .then((a) => (a ? setArticle(a) : setMissing(true)));
     }
   }, [hydrate, id, initial]);
+
+  // The text was read again, more carefully: show the new reading in place.
+  useEffect(() => {
+    const replaced = (e: Event) => {
+      const next = (e as CustomEvent<Article>).detail;
+      if (next?.id === id) setArticle(next);
+    };
+    window.addEventListener("gloss:text-replaced", replaced);
+    return () => window.removeEventListener("gloss:text-replaced", replaced);
+  }, [id]);
 
   if (missing)
     return (
@@ -497,6 +508,7 @@ function ReaderInner({ article }: { article: Article }) {
                     </a>
                   )}
                 </div>
+                <CarefulRead article={article} />
                 <div className="focus-hide rise" style={{ animationDelay: "200ms" }}>
                   <Brief />
                 </div>

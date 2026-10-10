@@ -62,6 +62,8 @@ export type LibraryItem = {
   words: number;
   origin: Article["origin"];
   addedAt: number;
+  /** Bumped when the text itself is replaced (read more carefully), so sync sends it again. */
+  rev?: number;
 };
 
 export type Progress = { block: string; pct: number; at: number };
@@ -119,6 +121,7 @@ type State = Persisted &
     setProgress: (articleId: string, p: Progress) => void;
     addToLibrary: (a: Article, words: number) => void;
     removeFromLibrary: (id: string) => void;
+    replaceText: (a: Article, words: number) => Promise<boolean>;
     applyRemote: (c: RemoteChanges) => void;
   };
 
@@ -249,6 +252,23 @@ export const useStore = create<State>((set, get) => ({
   removeFromLibrary: (id) => {
     void dropDoc(id);
     set((st) => ({ library: st.library.filter((x) => x.id !== id) }));
+  },
+
+  // A new reading of the same text. Every mark is anchored to a block id and offset in the old
+  // text, so highlights, glosses and the whole-text gloss go with it; the caller asks first.
+  replaceText: async (a, words) => {
+    if (!(await saveDoc(a))) return false;
+    set((st) => {
+      const rest = <T,>(m: Record<string, T>) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== a.id)) as Record<string, T>;
+      return {
+        library: st.library.map((x) => (x.id === a.id ? { ...x, words, rev: (x.rev ?? 0) + 1 } : x)),
+        highlights: rest(st.highlights),
+        glosses: rest(st.glosses),
+        briefs: rest(st.briefs),
+        progress: rest(st.progress),
+      };
+    });
+    return true;
   },
 
   // Changes from another device. The server's copy replaces the local one,
@@ -409,6 +429,16 @@ export async function loadPdf(id: string): Promise<Blob | null> {
   } catch {
     return null;
   }
+}
+
+/** Forget this device's copy of a text (not its PDF): it changed elsewhere and is fetched again on open. */
+export async function forgetDoc(id: string) {
+  try {
+    localStorage.removeItem(DOC_PREFIX + id);
+  } catch {}
+  try {
+    await tx("readwrite", (s) => s.delete(id));
+  } catch {}
 }
 
 async function dropDoc(id: string) {

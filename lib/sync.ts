@@ -16,7 +16,7 @@
  * same browser starts fresh and receives what is on this device.
  */
 
-import { loadDoc, saveDoc, useStore, type RemoteChanges } from "./store";
+import { forgetDoc, loadDoc, saveDoc, useStore, type RemoteChanges } from "./store";
 import type { Article } from "./article";
 
 const COLLECTIONS = ["articles", "highlights", "glosses", "briefs", "progress"] as const;
@@ -95,8 +95,9 @@ export function startSync(userId: string) {
       for (const [id, e] of entities[c]) {
         if (seen[id]?.[0] === e.key) continue;
         const row: OutRow = { id, articleId: e.articleId, data: e.data };
-        // A text goes up once, with its first shelf entry. Samples ship with the app.
-        if (c === "articles" && !seen[id] && (e.data as { origin?: string }).origin !== "sample") {
+        // A text goes up with its first shelf entry, and again when it is replaced (its rev changes).
+        // Samples ship with the app.
+        if (c === "articles" && (e.data as { origin?: string }).origin !== "sample") {
           const doc = await loadDoc(id);
           if (doc) row.doc = doc;
         }
@@ -147,6 +148,11 @@ export function startSync(userId: string) {
     if (!res.ok) throw new Error(`pull ${res.status}`);
     const { now, changes } = (await res.json()) as { now: string; changes: RemoteChanges };
 
+    // A text replaced on another device: drop this device's copy so it is fetched fresh on open.
+    for (const r of changes.articles ?? []) {
+      const before = base.seen.articles[r.id];
+      if (!r.deleted && r.data && before && (r.data as { rev?: number }).rev !== undefined && stable(r.data) !== before[0]) void forgetDoc(r.id);
+    }
     useStore.getState().applyRemote(changes);
 
     // Record what was pulled as what the server has, read back through the same snapshot as a push.
