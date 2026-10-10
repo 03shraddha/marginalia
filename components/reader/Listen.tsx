@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { Headphones, LoaderCircle, Pause, Play, Square } from "lucide-react";
 import { blockEl } from "@/lib/anchor";
 import { blockText, type Block } from "@/lib/article";
-import { readApiKey } from "@/lib/ask";
+import { openKeyMenu, readApiKey } from "@/lib/ask";
 import type { DocIndex } from "@/lib/doc";
 import { useStore } from "@/lib/store";
 import { TTS_MAX_CHARS } from "@/lib/voice";
@@ -19,7 +19,7 @@ import { useReader } from "./context";
  */
 
 type Status = "idle" | "loading" | "playing" | "paused" | "error";
-type ListenState = { status: Status; block: string | null; rate: number; error?: string };
+type ListenState = { status: Status; block: string | null; rate: number; error?: string; needKey?: boolean };
 
 const RATES = [1, 1.2, 1.4, 1.7, 2, 0.8];
 const RATE_KEY = "gloss:listen-rate";
@@ -87,12 +87,17 @@ function clip(i: number): Promise<string> {
       body: JSON.stringify({ text: items[i].text, apiKey: readApiKey() || undefined }),
       signal,
     }).then(async (r) => {
-      if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { error?: string }).error ?? "The voice did not answer.");
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string };
+        if (j.code === "need_key") useListen.setState({ needKey: true });
+        throw new Error(j.error ?? "The voice did not answer.");
+      }
       const url = URL.createObjectURL(await r.blob());
       urls.set(i, url);
       return url;
     });
-    p.catch(() => {});
+    // A failed clip is forgotten, so "Try again" fetches it afresh.
+    p.catch(() => clips.get(i) === p && clips.delete(i));
     clips.set(i, p);
   }
   return p;
@@ -137,6 +142,11 @@ async function playAt(i: number, s: number) {
 
 export function startListening(ix: DocIndex, fromBlock: string | null) {
   stopListening();
+  // Reading aloud always uses the reader's own key: say so before anything is fetched.
+  if (!readApiKey()) {
+    useListen.setState({ status: "error", needKey: true, error: "Reading aloud uses your own Together key." });
+    return;
+  }
   const blocks = ix.article.blocks;
   const at = Math.max(0, fromBlock ? blocks.findIndex((b) => b.id === fromBlock) : 0);
   let first = true;
@@ -183,7 +193,7 @@ export function stopListening() {
   release(Infinity);
   clips.clear();
   items = [];
-  useListen.setState({ status: "idle", block: null, error: undefined });
+  useListen.setState({ status: "idle", block: null, error: undefined, needKey: false });
 }
 
 function toggleListening() {
@@ -242,7 +252,7 @@ export function ListenButton({ from }: { from: () => string | null }) {
 /** While the voice is reading: a small bar just above the question box, and the cursor on the paragraph being read. */
 export function ListenBar() {
   const { ix, jumpToBlock } = useReader();
-  const { status, block, rate, error } = useListen();
+  const { status, block, rate, error, needKey } = useListen();
   const on = useStore((s) => s.settings.listen);
   const setUI = useStore((s) => s.setUI);
   const prev = useRef<string | null>(null);
@@ -277,24 +287,40 @@ export function ListenBar() {
       className="fixed bottom-[calc(env(safe-area-inset-bottom)+80px)] left-1/2 sm:bottom-[calc(env(safe-area-inset-bottom)+90px)] z-[46] flex -translate-x-1/2 items-center gap-1 rounded-full bg-lens p-1 text-lens-fg shadow-pop ring-1 ring-black/5"
       style={{ animation: "rise 0.35s var(--ease-out) both" }}
     >
-      <button
-        type="button"
-        onClick={toggleListening}
-        aria-label={status === "playing" ? "Pause" : status === "error" ? "Try again" : "Play"}
-        className="grid size-9 place-items-center rounded-full bg-[var(--rubric)] text-white transition-transform active:scale-90"
-      >
-        {status === "loading" ? (
-          <LoaderCircle size={16} className="animate-spin" />
-        ) : status === "playing" ? (
-          <Pause size={15} fill="currentColor" strokeWidth={0} />
-        ) : (
-          <Play size={15} fill="currentColor" strokeWidth={0} className="translate-x-px" />
-        )}
-      </button>
+      {!needKey && (
+        <button
+          type="button"
+          onClick={toggleListening}
+          aria-label={status === "playing" ? "Pause" : status === "error" ? "Try again" : "Play"}
+          className="grid size-9 place-items-center rounded-full bg-[var(--rubric)] text-white transition-transform active:scale-90"
+        >
+          {status === "loading" ? (
+            <LoaderCircle size={16} className="animate-spin" />
+          ) : status === "playing" ? (
+            <Pause size={15} fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Play size={15} fill="currentColor" strokeWidth={0} className="translate-x-px" />
+          )}
+        </button>
+      )}
       {status === "error" ? (
-        <span className="max-w-[min(360px,60vw)] truncate px-2 text-[13px]" title={error}>
-          {error}
-        </span>
+        <>
+          <span className={`max-w-[min(360px,60vw)] truncate px-2 text-[13px] ${needKey ? "pl-3.5" : ""}`} title={error}>
+            {error}
+          </span>
+          {needKey && (
+            <button
+              type="button"
+              onClick={() => {
+                stopListening();
+                openKeyMenu();
+              }}
+              className="h-9 shrink-0 rounded-full px-3 text-[13px] font-medium underline decoration-lens-mute underline-offset-4 transition-colors hover:bg-lens-hover"
+            >
+              Add key
+            </button>
+          )}
+        </>
       ) : (
         <button
           type="button"
@@ -305,14 +331,16 @@ export function ListenBar() {
           {n ? `Reading ¶${n}` : "Reading"}
         </button>
       )}
-      <button
-        type="button"
-        onClick={cycleRate}
-        aria-label={`Speed ${rate} times. Change speed.`}
-        className="h-9 min-w-[48px] rounded-full px-2.5 text-[13px] font-medium tabular-nums transition-colors hover:bg-lens-hover"
-      >
-        {`${rate}×`}
-      </button>
+      {!needKey && (
+        <button
+          type="button"
+          onClick={cycleRate}
+          aria-label={`Speed ${rate} times. Change speed.`}
+          className="h-9 min-w-[48px] rounded-full px-2.5 text-[13px] font-medium tabular-nums transition-colors hover:bg-lens-hover"
+        >
+          {`${rate}×`}
+        </button>
+      )}
       <button type="button" onClick={stopListening} aria-label="Stop reading aloud" className="grid size-9 place-items-center rounded-full text-lens-fg/80 transition-colors hover:bg-lens-hover hover:text-lens-fg">
         <Square size={13} fill="currentColor" strokeWidth={0} />
       </button>

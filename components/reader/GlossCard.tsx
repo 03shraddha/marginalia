@@ -1,5 +1,6 @@
 "use client";
 
+import { Show, SignInButton } from "@clerk/nextjs";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, Microscope, RotateCcw, Square, Trash2 } from "lucide-react";
 import { ACTIONS } from "@/lib/actions";
@@ -39,16 +40,25 @@ function Receipt({ t }: { t: Turn }) {
 }
 
 
-/** Free answers are spent: the way to keep going is the reader's own key. */
+/** Free answers are spent: the way to keep going is the reader's own key, or, signed out, signing in for more. */
 function KeyButton() {
   return (
-    <button
-      type="button"
-      onClick={openKeyMenu}
-      className="mt-2.5 inline-flex h-8 items-center rounded-full bg-ink px-3.5 text-[12.5px] font-medium text-bg transition-transform active:scale-[0.97]"
-    >
-      Add your Together key
-    </button>
+    <span className="mt-2.5 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={openKeyMenu}
+        className="inline-flex h-8 items-center rounded-full bg-ink px-3.5 text-[12.5px] font-medium text-bg transition-transform active:scale-[0.97]"
+      >
+        Add your Together key
+      </button>
+      <Show when="signed-out">
+        <SignInButton mode="modal">
+          <button type="button" className="inline-flex h-8 items-center rounded-full border border-rule px-3.5 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-rule-strong hover:text-ink">
+            Sign in
+          </button>
+        </SignInButton>
+      </Show>
+    </span>
   );
 }
 

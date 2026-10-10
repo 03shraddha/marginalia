@@ -1,4 +1,4 @@
-import { needKey, takeFree } from "@/lib/quota";
+import { needKey } from "@/lib/quota";
 import { APP_UA } from "@/lib/together";
 import { TTS_MAX_CHARS, TTS_MODEL, TTS_URL, TTS_VOICE } from "@/lib/voice";
 
@@ -21,14 +21,9 @@ export async function POST(req: Request) {
   if (text.length > TTS_MAX_CHARS + 200) return Response.json({ error: "That passage is too long to read in one go." }, { status: 413 });
 
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-  const own = body.apiKey?.trim() || headerKey || undefined;
-  const apiKey = own || process.env.TOGETHER_API_KEY;
-  if (!apiKey) return needKey(null);
-  // A daily allowance of passages on the shared key, then the reader's own key.
-  if (!own) {
-    const free = await takeFree(req, "speak");
-    if (!free.ok) return needKey(free, "passages read aloud");
-  }
+  // Reading aloud is never on the shared key: a minute of voice costs more than a day of free answers.
+  const apiKey = body.apiKey?.trim() || headerKey || undefined;
+  if (!apiKey) return needKey(null, "Reading aloud uses your own Together API key. Add it to listen.");
 
   let res: Response;
   try {

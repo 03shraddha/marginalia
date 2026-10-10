@@ -69,3 +69,7 @@ create table if not exists free_usage (
   count integer not null default 0,
   primary key (subject, day)
 );
+
+-- What that free use cost, in dollars: the allowance is a budget, not a count.
+-- "free:all" is everyone's total, for the daily ceiling.
+alter table free_usage add column if not exists usd double precision not null default 0;

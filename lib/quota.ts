@@ -1,11 +1,13 @@
 /**
- * The free allowance on the shared Together key. Readers get a few answers a
- * day without a key (more when signed in); after that they bring their own.
- * Readers with their own key are never counted.
+ * The free allowance on the shared Together key, in dollars: what a reader's
+ * answers and briefs actually cost Together, up to a small amount a day
+ * (more when signed in). After that they bring their own key, which is never
+ * counted. A ceiling across everyone keeps a rush of visitors bounded.
+ * Reading aloud is never free: it uses the reader's own key.
  *
- * Counted per day in Postgres, so the limit holds across serverless
- * instances. Signed-out readers are counted by a hash of their address.
- * Without a database (local dev), it falls back to a per-instance counter.
+ * Spent per day in Postgres, so the limit holds across serverless instances.
+ * Signed-out readers are counted by a hash of their address. Without a
+ * database (local dev), it falls back to a per-instance tally.
  */
 
 import { createHash } from "node:crypto";
@@ -13,64 +15,102 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "./db";
 import { allow, clientId } from "./ratelimit";
 
-/** Per day, on the shared key. */
-export const FREE = {
-  answer: { anon: 10, user: 30 },
-  speak: { anon: 20, user: 60 },
-} as const;
-export type FreeKind = keyof typeof FREE;
+/** Dollars a day on the shared key: per reader, and across all readers. */
+export const FREE_USD = { anon: 0.1, user: 0.2 } as const;
+export const FREE_USD_ALL = 1000;
+const ALL = "free:all";
 
-export type FreeState = { ok: boolean; left: number; limit: number; signedIn: boolean };
+/** `left` is the share of today's allowance still unspent, from 0 to 1. */
+export type FreeState = { ok: boolean; left: number; signedIn: boolean; subject: string; reason?: "reader" | "everyone" | "burst" };
 
-async function who(req: Request, kind: FreeKind) {
+async function who(req: Request) {
   let userId: string | null = null;
   try {
     userId = (await auth()).userId;
   } catch {}
-  if (userId) return { subject: `${kind}:user:${userId}`, limit: FREE[kind].user, signedIn: true };
+  if (userId) return { subject: `free:user:${userId}`, limit: FREE_USD.user, signedIn: true };
   const ip = createHash("sha256").update(`gloss:${clientId(req)}`).digest("hex").slice(0, 32);
-  return { subject: `${kind}:ip:${ip}`, limit: FREE[kind].anon, signedIn: false };
+  return { subject: `free:ip:${ip}`, limit: FREE_USD.anon, signedIn: false };
 }
 
-/** Use one free request. `ok` is false once today's allowance is spent. */
-export async function takeFree(req: Request, kind: FreeKind = "answer"): Promise<FreeState> {
-  const w = await who(req, kind);
+/* Without a database: a per-instance tally, keyed by day. */
+const memory = new Map<string, number>();
+const today = () => new Date().toISOString().slice(0, 10);
+const memSpent = (subject: string) => memory.get(`${today()}:${subject}`) ?? 0;
+function memAdd(subject: string, usd: number) {
+  const k = `${today()}:${subject}`;
+  memory.set(k, (memory.get(k) ?? 0) + usd);
+  if (memory.size > 20_000) for (const key of memory.keys()) if (!key.startsWith(today())) memory.delete(key);
+}
+
+/** The usd column, added once per instance to the table that counted requests before. */
+let ready: Promise<unknown> | null = null;
+const ensure = () => (ready ??= db().query("alter table free_usage add column if not exists usd double precision not null default 0").catch(() => (ready = null)));
+
+async function spent(subject: string): Promise<{ mine: number; all: number }> {
   if (process.env.DATABASE_URL) {
     try {
-      // Counts only while under the limit, in one statement, so parallel requests cannot overshoot.
-      const rows = await db().query(
-        `insert into free_usage (subject, day, count) values ($1, current_date, 1)
-         on conflict (subject, day) do update set count = free_usage.count + 1 where free_usage.count < $2
-         returning count`,
-        [w.subject, w.limit]
-      );
-      const used = rows.length ? Number(rows[0].count) : w.limit;
-      return { ok: rows.length > 0, left: Math.max(0, w.limit - used), limit: w.limit, signedIn: w.signedIn };
+      await ensure();
+      const rows = await db().query("select subject, usd from free_usage where day = current_date and subject in ($1, $2)", [subject, ALL]);
+      const get = (s: string) => Number(rows.find((r) => r.subject === s)?.usd ?? 0);
+      return { mine: get(subject), all: get(ALL) };
     } catch {
-      // The database is unreachable: fall through to the per-instance counter rather than block everyone.
+      // The database is unreachable: fall through to the per-instance tally rather than block everyone.
     }
   }
-  const ok = allow(w.subject, w.limit, 86_400_000);
-  return { ok, left: ok ? 1 : 0, limit: w.limit, signedIn: w.signedIn };
+  return { mine: memSpent(subject), all: memSpent(ALL) };
+}
+
+/** May this reader use the shared key right now? Spends nothing; `chargeFree` records the cost after. */
+export async function checkFree(req: Request): Promise<FreeState> {
+  const w = await who(req);
+  // A burst guard, so a script cannot fire many requests before their costs land.
+  if (!allow(`burst:${w.subject}`, 20, 60_000)) return { ok: false, left: 1, signedIn: w.signedIn, subject: w.subject, reason: "burst" };
+  const s = await spent(w.subject);
+  const left = Math.max(0, 1 - s.mine / w.limit);
+  if (s.all >= FREE_USD_ALL) return { ok: false, left, signedIn: w.signedIn, subject: w.subject, reason: "everyone" };
+  return { ok: left > 0, left, signedIn: w.signedIn, subject: w.subject, reason: left > 0 ? undefined : "reader" };
+}
+
+/** A cost when the model never reported one (a stream cut short): the whole prompt, at the fresh rate. */
+export const estimateUsd = (promptChars: number, inPerM: number) => ((promptChars / 4) * inPerM) / 1_000_000;
+
+/** Record what a request on the shared key cost, against the reader and against everyone. */
+export async function chargeFree(subject: string, usd: number) {
+  if (!(usd > 0)) return;
+  if (process.env.DATABASE_URL) {
+    try {
+      await ensure();
+      await db().query(
+        `insert into free_usage (subject, day, count, usd) values ($1, current_date, 1, $3), ($2, current_date, 1, $3)
+         on conflict (subject, day) do update set count = free_usage.count + 1, usd = free_usage.usd + excluded.usd`,
+        [subject, ALL, usd]
+      );
+      return;
+    } catch {}
+  }
+  memAdd(subject, usd);
+  memAdd(ALL, usd);
 }
 
 /** Today's allowance without using any of it, for the key menu. */
-export async function peekFree(req: Request, kind: FreeKind = "answer"): Promise<Omit<FreeState, "ok">> {
-  const w = await who(req, kind);
-  let used = 0;
-  if (process.env.DATABASE_URL) {
-    try {
-      const rows = await db().query("select count from free_usage where subject = $1 and day = current_date", [w.subject]);
-      used = rows.length ? Number(rows[0].count) : 0;
-    } catch {}
-  }
-  return { left: Math.max(0, w.limit - used), limit: w.limit, signedIn: w.signedIn };
+export async function peekFree(req: Request): Promise<{ left: number; signedIn: boolean }> {
+  const w = await who(req);
+  const s = await spent(w.subject);
+  return { left: s.all >= FREE_USD_ALL ? 0 : Math.max(0, 1 - s.mine / w.limit), signedIn: w.signedIn };
 }
 
 /** The JSON a route answers with when a reader needs their own key. */
-export function needKey(state: FreeState | null, what = "answers"): Response {
-  const error = !state
-    ? "Add your Together API key to start. It stays in this browser."
-    : `You've used today's ${state.limit} free ${what}. Add your Together API key to keep going${state.signedIn ? "" : `, or sign in for ${FREE.answer.user} a day`}.`;
-  return Response.json({ error, code: "need_key" }, { status: state ? 429 : 401, headers: { "X-Free-Left": "0" } });
+export function needKey(state: FreeState | null, message?: string): Response {
+  if (state?.reason === "burst") return Response.json({ error: "That's a lot at once. Wait a moment, then try again." }, { status: 429 });
+  const error =
+    message ??
+    (!state
+      ? "Add your Together API key to start. It stays in this browser."
+      : state.reason === "everyone"
+        ? "Free answers are resting for today. Add your Together API key to keep going."
+        : state.signedIn
+          ? "That's today's free reading. Add your Together API key to keep going, or come back tomorrow."
+          : "That's today's free reading. Sign in for more, or add your Together API key to keep going.");
+  return Response.json({ error, code: "need_key", signIn: Boolean(state && !state.signedIn && state.reason === "reader") }, { status: state ? 429 : 401, headers: { "X-Free-Left": "0" } });
 }

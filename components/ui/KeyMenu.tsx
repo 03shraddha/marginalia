@@ -8,10 +8,10 @@ import { Popover, barBtn } from "./Popover";
 
 const STORAGE_KEY = "together:api-key";
 
-/** Today's free answers on the shared key, as the server counts them. */
-type Free = { left: number; limit: number; signedIn: boolean; signedInLimit: number };
+/** Today's free use of the shared key, as the share still unspent (0 to 1). */
+type Free = { left: number; signedIn: boolean };
 
-/** Bring your own Together key. Stored in this browser only. A few answers a day are free without one. */
+/** Bring your own Together key. Stored in this browser only. A little reading a day is free without one. */
 export function KeyMenu() {
   const [key, setKey] = useState("");
   const [house, setHouse] = useState<boolean | null>(null);
@@ -35,7 +35,7 @@ export function KeyMenu() {
   }, []);
 
   const spent = house === false || free?.left === 0;
-  const status = key ? "Your key" : spent ? "Add a key" : free && free.left <= 3 ? `${free.left} free left` : null;
+  const status = key ? "Your key" : spent ? "Add a key" : free && free.left <= 0.25 ? "Low on free use" : null;
 
   return (
     <Popover
@@ -88,11 +88,22 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
       <p className="text-[13.5px] font-medium text-ink">Your Together API key</p>
       <p className="mt-1 text-[12.5px] leading-snug text-ink-3">
         {current
-          ? "Answers use your key, with no daily limit."
+          ? "Answers and reading aloud use your key, with no daily limit."
           : house && free
-            ? `${free.left} of ${free.limit} free answers left today${free.signedIn ? "" : `; sign in for ${free.signedInLimit} a day`}. After that, answers need your own key.`
+            ? `Free use resets each day${free.signedIn ? "" : ", and signing in doubles it"}. After that, answers need your key. Reading aloud always does.`
             : "Add your key to start asking."}
       </p>
+      {!current && house && free && (
+        <div className="mt-3">
+          <div className="flex items-baseline justify-between text-[11.5px] text-ink-3">
+            <span>Free today</span>
+            <span className="tabular-nums">{free.left > 0 ? `${Math.max(1, Math.round(free.left * 100))}% left` : "Used up"}</span>
+          </div>
+          <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-rule" aria-hidden>
+            <span className="block h-full rounded-full bg-[var(--rubric)] transition-[width] duration-500" style={{ width: `${Math.round(free.left * 100)}%` }} />
+          </span>
+        </div>
+      )}
       <input
         autoFocus
         type="password"

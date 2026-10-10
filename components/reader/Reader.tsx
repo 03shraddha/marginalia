@@ -21,6 +21,7 @@ import { ReaderContext, useMedia, useReader, type ReaderApi } from "./context";
 import { GlossCard } from "./GlossCard";
 import { Lens, type OpenHighlight } from "./Lens";
 import { ListenBar } from "./Listen";
+import { SignInNudge } from "@/components/account/SignInNudge";
 import { Margin } from "./Margin";
 import { Notebook } from "./Notebook";
 import { Peek, Shortcuts, Toast } from "./Overlays";
@@ -552,6 +553,7 @@ function ReaderInner({ article }: { article: Article }) {
 
         <Lens rootEl={articleEl} openHighlight={openHl} />
         <ListenBar />
+        <SignInNudge />
         <Notebook />
         <Peek peek={peek} />
         <Shortcuts />

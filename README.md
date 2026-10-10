@@ -11,7 +11,8 @@
 - Next.js 16 (App Router, Turbopack), React 19, Tailwind v4, Zustand. Local-first: texts live in IndexedDB, and glosses, highlights and settings in localStorage, all in the browser and all working signed out.
 - Optional accounts with Clerk. Signed in, your shelf, texts, highlights, notes, glosses and reading progress sync to Postgres on Neon (`lib/sync.ts`, `app/api/sync`); a text is fetched onto another device when it is opened there.
 - Your own notes on any highlight, in the margin beside the model's (`Lens.tsx`, `Margin.tsx`). A daily review on the home page brings back five of your highlights, spaced like flashcards (`lib/review.ts`); the shelf searches every highlight and note, and exports them all as Markdown files ready for Obsidian (`lib/export.ts`, `lib/zip.ts`).
-- Read aloud, off by default (Aa, then Listen): Cartesia Sonic 3 on Together, a passage at a time, fetched just ahead of the voice (`app/api/speak`, `components/reader/Listen.tsx`).
+- Read aloud, off by default (Aa, then Listen): Cartesia Sonic 3 on Together, a passage at a time, fetched just ahead of the voice (`app/api/speak`, `components/reader/Listen.tsx`). It always uses the reader's own key.
+- Free use of the shared key is a dollar budget (`lib/quota.ts`): what answers and briefs actually cost, up to 10¢ a day signed out (by hashed IP) or 20¢ signed in, and $1,000 a day across everyone, kept in Postgres (`free_usage`).
 - Newsreader and Schibsted Grotesk, plus Literata and Atkinson Hyperlegible as optional reading faces; six themes, four pens and four highlighters from CSS variables, applied before first paint.
 - Together AI over raw SSE fetch: DeepSeek V4.1 Flash (Quick, about 0.5s to first token) and Kimi K3 (Deep, at low reasoning effort), allow-listed in `lib/models.ts`.
 - The whole text goes in the system prompt with `[¶n]` numbers, so follow-ups hit Together's prefix cache and answers cite paragraphs.
@@ -37,6 +38,6 @@
 
 ## Security
 
-`TOGETHER_API_KEY` stays server side. A key a reader pastes lives in their browser's localStorage and is sent only with their own requests. Requests on the shared key are rate limited per IP (answers and read-aloud separately: Sonic 3 costs $65 per million characters, so the shared key reads at most 60 passages an hour to each reader); link import refuses private, loopback and link-local addresses on every redirect hop.
+`TOGETHER_API_KEY` stays server side. A key a reader pastes lives in their browser's localStorage and is sent only with their own requests. Free use of the shared key is capped per reader per day in dollars, and in total, as above; reading aloud ($65 per million characters on Sonic 3) never uses it; link import refuses private, loopback and link-local addresses on every redirect hop.
 
 Samples, all public domain via Project Gutenberg: Huxley, "On a Piece of Chalk" (1868); Schopenhauer, "On Thinking for Oneself" (trans. T. Bailey Saunders); Thoreau, "Reading" from Walden (1854). Rebuild them with `scripts/build-samples.mjs`; dashes are normalized to plain punctuation.

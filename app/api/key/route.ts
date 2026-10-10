@@ -1,4 +1,4 @@
-import { FREE, peekFree } from "@/lib/quota";
+import { peekFree } from "@/lib/quota";
 import { APP_UA } from "@/lib/together";
 
 export const runtime = "nodejs";
@@ -25,5 +25,5 @@ export async function POST(req: Request) {
 /** Whether there is a shared key, and how much of today's free allowance is left on it. */
 export async function GET(req: Request) {
   const house = Boolean(process.env.TOGETHER_API_KEY);
-  return Response.json({ house, free: house ? { ...(await peekFree(req)), signedInLimit: FREE.answer.user } : null });
+  return Response.json({ house, free: house ? await peekFree(req) : null });
 }

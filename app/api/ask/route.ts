@@ -1,7 +1,8 @@
 import { buildMessages, isLengthKey, type DocPayload, type ThreadPayload } from "@/lib/prompts";
 import { DEFAULT_MODEL, isModelKey, streamChat, type StreamEvent } from "@/lib/together";
 import { ACTIONS } from "@/lib/actions";
-import { needKey, takeFree } from "@/lib/quota";
+import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
+import { MODELS } from "@/lib/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -40,13 +41,12 @@ export async function POST(req: Request) {
   const model = isModelKey(body.model) ? body.model : DEFAULT_MODEL;
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   const apiKey = body.apiKey?.trim() || headerKey || undefined;
-  // No key of their own: a few free answers a day on the shared key, then they bring one.
-  let freeLeft: number | null = null;
+  // No key of their own: a few cents of answers a day on the shared key, then they bring one.
+  let free: Awaited<ReturnType<typeof checkFree>> | null = null;
   if (!apiKey) {
     if (!process.env.TOGETHER_API_KEY) return needKey(null);
-    const free = await takeFree(req);
+    free = await checkFree(req);
     if (!free.ok) return needKey(free);
-    freeLeft = free.left;
   }
 
   const encoder = new TextEncoder();
@@ -61,19 +61,24 @@ export async function POST(req: Request) {
         maxTokens: body.length === "long" ? 1400 : 900,
         signal: req.signal,
       });
+      let cost: number | null = null;
       try {
-        for await (const event of source) controller.enqueue(send(event));
+        for await (const event of source) {
+          if (event.type === "usage") cost = event.usage.costUsd;
+          controller.enqueue(send(event));
+        }
       } catch (e) {
         if (!req.signal.aborted) controller.enqueue(send({ type: "error", text: `Stream failed: ${String(e)}` }));
       } finally {
         controller.close();
+        if (free) await chargeFree(free.subject, cost ?? estimateUsd(docChars, MODELS[model].inPerM));
       }
     },
   });
 
   return new Response(stream, {
     headers: {
-      ...(freeLeft !== null ? { "X-Free-Left": String(freeLeft) } : {}),
+      ...(free ? { "X-Free-Left": free.left.toFixed(3) } : {}),
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
