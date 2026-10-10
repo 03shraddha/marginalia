@@ -242,7 +242,7 @@ async function readByVision(lp: LP, bytes: Uint8Array, pageNums: number[], into:
             body: JSON.stringify({ image: await pageImage(new Uint8Array(s.imageBytes)), apiKey }),
           });
           const j = (await res.json()) as { markdown?: string; error?: string; code?: string };
-          if (j.markdown) into.set(s.pageNum, markdownBlocks(j.markdown));
+          if (j.markdown) into.set(s.pageNum, markdownBlocks(htmlTablesToMarkdown(j.markdown)));
           else if (j.code === "need_key") stop = new PdfError(j.error ?? "Add your Together key to read scanned pages.", true);
         } catch {}
         done++;
@@ -252,4 +252,26 @@ async function readByVision(lp: LP, bytes: Uint8Array, pageNums: number[], into:
   }
   // Out of free use with nothing read at all: say so, rather than an empty text.
   if (stop && !into.size) throw stop;
+}
+
+/**
+ * Page readers (LlamaParse always, a vision model sometimes) write tables as
+ * HTML inside their Markdown; the block parser reads pipe tables. Each <table> becomes one, a merged cell repeated across the
+ * columns it spans so the columns stay aligned.
+ */
+export function htmlTablesToMarkdown(md: string): string {
+  return md.replace(/<table[\s\S]*?<\/table>/gi, (html) => {
+    const table = new DOMParser().parseFromString(html, "text/html").querySelector("table");
+    if (!table) return html;
+    const rows = Array.from(table.querySelectorAll("tr")).map((tr) =>
+      Array.from(tr.querySelectorAll("th, td")).flatMap((cell) => {
+        const text = (cell.textContent ?? "").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
+        return Array<string>(Math.max(1, Number(cell.getAttribute("colspan")) || 1)).fill(text);
+      })
+    );
+    const width = Math.max(0, ...rows.map((r) => r.length));
+    if (!width) return "";
+    const line = (r: string[]) => `| ${[...r, ...Array<string>(width - r.length).fill("")].join(" | ")} |`;
+    return `\n\n${[line(rows[0]), line(Array<string>(width).fill("---")), ...rows.slice(1).map(line)].join("\n")}\n\n`;
+  });
 }

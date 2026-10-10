@@ -8,7 +8,7 @@
 
 import { markdownBlocks, wordCount, type Article } from "./article";
 import { readApiKey } from "./ask";
-import { stitchBlocks } from "./pdf";
+import { htmlTablesToMarkdown, stitchBlocks } from "./pdf";
 import { loadDoc, loadPdf, useStore } from "./store";
 
 export type CarefulResult = { ok: true; article: Article } | { ok: false; error: string; needKey?: boolean };
@@ -50,26 +50,4 @@ export async function readCarefully(shown: Article, signal?: AbortSignal): Promi
   if (!(await useStore.getState().replaceText(next, wordCount(next)))) return { ok: false, error: "This browser's storage is full. The text is unchanged." };
   window.dispatchEvent(new CustomEvent("gloss:text-replaced", { detail: next }));
   return { ok: true, article: next };
-}
-
-/**
- * LlamaParse writes tables as HTML inside its Markdown; the block parser reads
- * pipe tables. Each <table> becomes one, a merged cell repeated across the
- * columns it spans so the columns stay aligned.
- */
-function htmlTablesToMarkdown(md: string): string {
-  return md.replace(/<table[\s\S]*?<\/table>/gi, (html) => {
-    const table = new DOMParser().parseFromString(html, "text/html").querySelector("table");
-    if (!table) return html;
-    const rows = Array.from(table.querySelectorAll("tr")).map((tr) =>
-      Array.from(tr.querySelectorAll("th, td")).flatMap((cell) => {
-        const text = (cell.textContent ?? "").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
-        return Array<string>(Math.max(1, Number(cell.getAttribute("colspan")) || 1)).fill(text);
-      })
-    );
-    const width = Math.max(0, ...rows.map((r) => r.length));
-    if (!width) return "";
-    const line = (r: string[]) => `| ${[...r, ...Array<string>(width - r.length).fill("")].join(" | ")} |`;
-    return `\n\n${[line(rows[0]), line(Array<string>(width).fill("---")), ...rows.slice(1).map(line)].join("\n")}\n\n`;
-  });
 }
