@@ -66,7 +66,15 @@ async function spent(subject: string): Promise<{ mine: number; all: number }> {
  * `burst` is how many requests a minute one reader may start: a PDF's pages arrive in a rush.
  */
 export async function checkFree(req: Request, burst = 20): Promise<FreeState> {
-  const w = await who(req);
+  return check(await who(req), burst);
+}
+
+/** The same check for a signed-in reader known only by id: an agent saving to their library. */
+export async function checkFreeUser(userId: string, burst = 60): Promise<FreeState> {
+  return check({ subject: `free:user:${userId}`, limit: FREE_USD.user, signedIn: true }, burst);
+}
+
+async function check(w: { subject: string; limit: number; signedIn: boolean }, burst: number): Promise<FreeState> {
   // A burst guard, so a script cannot fire many requests before their costs land.
   if (!allow(`burst:${w.subject}`, burst, 60_000)) return { ok: false, left: 1, signedIn: w.signedIn, subject: w.subject, reason: "burst" };
   const s = await spent(w.subject);

@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
-import { ArrowRight, FileUp, Link2, TextCursorInput } from "lucide-react";
+import { ArrowRight, BookmarkPlus, FileUp, Link2, TextCursorInput } from "lucide-react";
 import { openKeyMenu } from "@/lib/ask";
 
 export type Busy = null | { label: string; pct?: number };
@@ -14,12 +14,14 @@ type Props = {
   /** The error is fixed by the reader's own Together key: offer the key menu. */
   errorNeedsKey?: boolean;
   onSubmit: (url: string) => void;
+  /** Keep it in the library for later, instead of reading it now. */
+  onSave: (url: string) => void;
   onPickFile: () => void;
   onPasteText: () => void;
 };
 
 /** The one thing to do on the landing page: give it something to read. */
-export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar({ url, setUrl, busy, error, errorNeedsKey, onSubmit, onPickFile, onPasteText }, ref) {
+export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar({ url, setUrl, busy, error, errorNeedsKey, onSubmit, onSave, onPickFile, onPasteText }, ref) {
   return (
     <div className="mt-10 w-full max-w-[600px] text-left sm:mt-12">
       <form
@@ -44,6 +46,19 @@ export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar(
           spellCheck={false}
           className="h-12 min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-ink-3 focus-visible:outline-none disabled:text-ink-2"
         />
+        {url.trim() && !busy && (
+          <button
+            type="button"
+            onClick={() => onSave(url)}
+            aria-label="Save to your library"
+            data-tip="Save for later"
+            data-tip-hint="Into your library, sorted by topic"
+            className="grid size-12 shrink-0 place-items-center rounded-[13px] text-ink-2 transition-[background-color,color,transform] hover:bg-sunk hover:text-ink active:scale-[0.95]"
+            style={{ animation: "fade 0.2s both" }}
+          >
+            <BookmarkPlus size={18} />
+          </button>
+        )}
         <button
           type="submit"
           disabled={!url.trim() || !!busy}

@@ -7,11 +7,23 @@ import { Check, Download, Search, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
 import { exportAll } from "@/lib/export";
 import { useStore, type Highlight } from "@/lib/store";
-import type { TrayItem } from "./Tray";
+/** One text in the sheet: a shelf entry or a sample, with how far it has been read. */
+export type ShelfItem = {
+  id: string;
+  title: string;
+  byline: string;
+  dek?: string;
+  words: number;
+  pct: number;
+  glosses: number;
+  sample: boolean;
+  /** When it was last read, or added. */
+  touched: number;
+};
 
 type Filter = "all" | "reading" | "unread" | "done";
 
-const FILTERS: { key: Filter; label: string; test: (it: TrayItem) => boolean }[] = [
+const FILTERS: { key: Filter; label: string; test: (it: ShelfItem) => boolean }[] = [
   { key: "all", label: "All", test: () => true },
   { key: "reading", label: "Reading", test: (it) => it.pct > 0 && it.pct < 1 },
   { key: "unread", label: "Not started", test: (it) => it.pct === 0 },
@@ -47,7 +59,7 @@ export function ShelfSheet({
   onOpen,
   onRemove,
 }: {
-  items: TrayItem[];
+  items: ShelfItem[];
   onOpen: (id: string, hl?: string) => void;
   onRemove: (id: string) => void;
 }) {
@@ -136,7 +148,7 @@ export function ShelfSheet({
 
   if (!open) return null;
 
-  // Portalled: the desk's tray is its own stacking layer and ignores the pointer.
+  // Portalled, so it sits over everything on the page.
   return createPortal(
     <div className="fixed inset-0 z-[80]" role="presentation">
       <div className="absolute inset-0 bg-ink/20 backdrop-blur-[2px]" style={{ animation: "fade 0.25s both" }} onClick={() => onOpenChange(false)} />
@@ -144,7 +156,12 @@ export function ShelfSheet({
         <div className="mx-auto flex h-full w-full max-w-[1040px] flex-col px-5 sm:px-10">
           <header className="flex flex-wrap items-center gap-x-6 gap-y-4 pb-5 pt-7">
             <div className="min-w-0 flex-1">
-              <h2 className="font-serif text-[30px] leading-none tracking-[-0.015em] text-ink">Your shelf</h2>
+              <h2 className="flex items-baseline gap-3 font-serif text-[30px] leading-none tracking-[-0.015em] text-ink">
+                Your shelf
+                <Link href="/library" className="font-sans text-[13px] tracking-normal text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
+                  Open the library
+                </Link>
+              </h2>
               <p className="mt-2 text-[13px] text-ink-3">
                 {view === "highlights"
                   ? `${allHighlights.length} highlight${allHighlights.length === 1 ? "" : "s"} across your texts`
