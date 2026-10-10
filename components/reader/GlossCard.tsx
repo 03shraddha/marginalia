@@ -8,7 +8,7 @@ import { followUp, openKeyMenu, retry, stopGloss } from "@/lib/ask";
 import { MODELS } from "@/lib/models";
 import { useStore, type Gloss, type Turn } from "@/lib/store";
 import { undash } from "@/lib/article";
-import { Answer, keyLine, unmark } from "./Answer";
+import { Answer, keyLine, Sources, unmark } from "./Answer";
 import { Writing } from "./Writing";
 import { fmtCost, fmtTokens, useReader } from "./context";
 
@@ -70,11 +70,18 @@ function TurnBody({ t }: { t: Turn }) {
         {t.needKey && <KeyButton />}
       </>
     );
-  if (t.streaming && !t.content) return <Writing />;
+  if (t.streaming && !t.content)
+    return (
+      <>
+        {t.searching && <p className="mb-2 text-[12.5px] text-ink-3">Searching the web</p>}
+        <Writing />
+      </>
+    );
   return (
     <>
-      <Answer text={t.content} streaming={t.streaming} />
+      <Answer text={t.content} streaming={t.streaming} sources={t.sources} />
       {t.error && <p className="mt-2 text-[12.5px] text-rubric-text">{t.error}</p>}
+      {!t.streaming && t.sources?.length ? <Sources sources={t.sources} /> : null}
     </>
   );
 }

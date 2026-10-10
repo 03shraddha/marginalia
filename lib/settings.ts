@@ -30,6 +30,8 @@ export type Settings = {
   marker: Marker;
   length: "short" | "normal" | "long";
   model: ModelKey;
+  /** Look things up on the web for questions. Fact-check always does. */
+  web: boolean;
   numbers: boolean;
   rail: boolean;
   /** Read aloud. Off by default: when on, a listen button joins the reader's top bar. */
@@ -48,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   marker: "yellow",
   length: "normal",
   model: "flash",
+  web: false,
   numbers: false,
   rail: true,
   listen: false,

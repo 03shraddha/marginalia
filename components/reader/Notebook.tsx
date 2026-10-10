@@ -10,7 +10,7 @@ import { stopGloss } from "@/lib/ask";
 import { useGlosses, useHighlights, useStore, type Gloss, type Highlight, type Turn } from "@/lib/store";
 import { ACTIONS } from "@/lib/actions";
 import { notesMarkdown, pairsOf } from "@/lib/export";
-import { Answer } from "./Answer";
+import { Answer, Sources } from "./Answer";
 import { Writing } from "./Writing";
 import { useReader } from "./context";
 
@@ -264,7 +264,8 @@ function AnswerBody({ t }: { t?: Turn }) {
   if (t.error && !t.content) return <p className="text-[13.5px] text-rubric-text">{t.error}</p>;
   return (
     <Clamp watch={t.content}>
-      <Answer text={t.content} streaming={t.streaming} />
+      <Answer text={t.content} streaming={t.streaming} sources={t.sources} />
+      {!t.streaming && t.sources?.length ? <Sources sources={t.sources} /> : null}
     </Clamp>
   );
 }

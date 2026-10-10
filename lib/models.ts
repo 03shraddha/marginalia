@@ -72,8 +72,13 @@ export function costFor(key: ModelKey, prompt: number, cached: number, completio
   return (fresh * m.inPerM + cached * m.cachedPerM + completion * m.outPerM) / 1_000_000;
 }
 
+/** A web result an answer can cite as [n]. */
+export type Source = { n: number; title: string; url: string; site: string; date?: string };
+
 export type StreamEvent =
   | { type: "meta"; model: string }
+  | { type: "searching" }
+  | { type: "sources"; sources: Source[] }
   | { type: "content"; text: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" }

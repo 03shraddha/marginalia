@@ -2,11 +2,13 @@
 
 import { Fragment, memo, type ReactNode } from "react";
 import { undash } from "@/lib/article";
+import type { Source } from "@/lib/models";
 import { useReader } from "./context";
 
 /**
  * A deliberately small Markdown subset for glosses: paragraphs, lists, bold,
- * italic, code, paragraph citations ([¶12], [¶3-5], ¶7) as live chips, and
+ * italic, code, paragraph citations ([¶12], [¶3-5], ¶7) as live chips, web
+ * citations ([1], [2, 3]) as links when the answer came with sources, and
  * the ==key answer==, which the model marks once so a skimmer can stop there.
  * Small enough to re-parse on every streamed token without a dependency.
  */
@@ -26,6 +28,7 @@ export function keyLine(s: string): string {
     .replace(/==/g, "")
     .replace(/(^|\b(?:and|or|to|in|with)\s|,\s)\[\s*¶\s?([\d\s-]+)\]/g, "$1¶$2")
     .replace(/\s?\[\s*¶[^\]]{0,60}\]/g, "")
+    .replace(/\s?\[\d{1,2}(?:\s*,\s*\d{1,2})*\]/g, "")
     .replace(/[*`]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -64,7 +67,16 @@ function parseBlocks(text: string): Part[] {
   return parts;
 }
 
-const TOKEN = /(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(`[^`]+`)|(\[\s*¶[^\]]{0,60}\])|(¶\s?\d+(?:\s?-\s?\d+)?)/g;
+const TOKEN = /(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(`[^`]+`)|(\[\s*¶[^\]]{0,60}\])|(¶\s?\d+(?:\s?-\s?\d+)?)|(\[\d{1,2}(?:\s*,\s*\d{1,2})*\])/g;
+
+/** A web citation: a small numbered link to the source, its title on hover. */
+function WebCite({ s }: { s: Source }) {
+  return (
+    <a className="cite cite-web" href={s.url} target="_blank" rel="noopener noreferrer" data-tip={s.title} data-tip-hint={s.site} onClick={(e) => e.stopPropagation()}>
+      {s.n}
+    </a>
+  );
+}
 
 function Cite({ n, label }: { n: number; label: string }) {
   const { jumpTo, peek, ix } = useReader();
@@ -103,27 +115,27 @@ function citesFrom(raw: string): ReactNode[] {
 }
 
 /** Splits out the ==key answer==; an unclosed mark runs to the end while it streams in. */
-function inline(text: string, plain = false): ReactNode[] {
-  if (!text.includes("==")) return tokens(text, plain);
+function inline(text: string, plain = false, sources?: Source[]): ReactNode[] {
+  if (!text.includes("==")) return tokens(text, plain, sources);
   const out: ReactNode[] = [];
   const re = /==([^=]*?)(?:==|$)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    if (m.index > last) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last, m.index), plain)}</Fragment>);
+    if (m.index > last) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last, m.index), plain, sources)}</Fragment>);
     if (m[1].trim())
       out.push(
         <mark key={`k${m.index}`} className="key">
-          {tokens(m[1], plain)}
+          {tokens(m[1], plain, sources)}
         </mark>
       );
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last), plain)}</Fragment>);
+  if (last < text.length) out.push(<Fragment key={`t${last}`}>{tokens(text.slice(last), plain, sources)}</Fragment>);
   return out;
 }
 
-function tokens(text: string, plain = false): ReactNode[] {
+function tokens(text: string, plain = false, sources?: Source[]): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
@@ -135,7 +147,12 @@ function tokens(text: string, plain = false): ReactNode[] {
     if (m[1]) out.push(<strong key={k}>{tok.slice(2, -2)}</strong>);
     else if (m[2]) out.push(<em key={k}>{tok.slice(1, -1)}</em>);
     else if (m[3]) out.push(<code key={k}>{tok.slice(1, -1)}</code>);
-    else if (!plain) out.push(<Fragment key={k}>{citesFrom(tok)}</Fragment>);
+    else if (m[6]) {
+      // Only numbers that match a result become links; anything else stays as written.
+      const found = (tok.match(/\d+/g) ?? []).map((d) => sources?.find((x) => x.n === Number(d)));
+      if (found.length && found.every(Boolean)) out.push(<Fragment key={k}>{found.map((x) => <WebCite key={x!.n} s={x!} />)}</Fragment>);
+      else out.push(tok);
+    } else if (!plain) out.push(<Fragment key={k}>{citesFrom(tok)}</Fragment>);
     last = m.index + tok.length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -143,7 +160,7 @@ function tokens(text: string, plain = false): ReactNode[] {
 }
 
 /** `plain` drops paragraph citations, for answers that live outside a reader. */
-function AnswerImpl({ text, streaming, plain = false }: { text: string; streaming?: boolean; plain?: boolean }) {
+function AnswerImpl({ text, streaming, plain = false, sources }: { text: string; streaming?: boolean; plain?: boolean; sources?: Source[] }) {
   const parts = parseBlocks(undash(plain ? text.replace(/\s?\[\s*¶[^\]]{0,60}\]/g, "") : text));
   const caret = streaming ? <span className="caret" aria-hidden /> : null;
   if (!parts.length) return streaming ? <p>{caret}</p> : null;
@@ -154,7 +171,7 @@ function AnswerImpl({ text, streaming, plain = false }: { text: string; streamin
         if (p.kind === "p")
           return (
             <p key={i}>
-              {inline(p.lines[0], plain)}
+              {inline(p.lines[0], plain, sources)}
               {isLast && caret}
             </p>
           );
@@ -163,7 +180,7 @@ function AnswerImpl({ text, streaming, plain = false }: { text: string; streamin
           <L key={i}>
             {p.lines.map((l, j) => (
               <li key={j}>
-                {inline(l, plain)}
+                {inline(l, plain, sources)}
                 {isLast && j === p.lines.length - 1 && caret}
               </li>
             ))}
@@ -175,3 +192,26 @@ function AnswerImpl({ text, streaming, plain = false }: { text: string; streamin
 }
 
 export const Answer = memo(AnswerImpl);
+
+/** The web results under an answer that used them, numbered as the answer cites them. */
+export function Sources({ sources }: { sources: Source[] }) {
+  return (
+    <ol className="sources mt-3 space-y-1 border-t border-rule pt-2.5" aria-label="Web sources">
+      {sources.map((s) => (
+        <li key={s.n}>
+          <a
+            href={s.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="group flex items-baseline gap-2 text-[12.5px] leading-snug text-ink-3 transition-colors hover:text-ink"
+          >
+            <span className="w-3 shrink-0 text-right tabular-nums text-ink-4">{s.n}</span>
+            <span className="min-w-0 truncate">{s.title}</span>
+            {s.title !== s.site && <span className="shrink-0 text-ink-4">{s.site}</span>}
+          </a>
+        </li>
+      ))}
+    </ol>
+  );
+}

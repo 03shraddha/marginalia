@@ -8,7 +8,7 @@ import { anchorToRange, selectionToAnchor } from "@/lib/anchor";
 import { startGloss } from "@/lib/ask";
 import { uid, useStore, type Anchor } from "@/lib/store";
 import { useReader } from "./context";
-import { ModelSwitch } from "./ModelSwitch";
+import { ModelSwitch, WebSwitch } from "./ModelSwitch";
 
 type LensState = {
   anchor: Anchor;
@@ -485,6 +485,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 aria-label="Your question about the selected passage"
                 className="h-8 min-w-0 flex-1 bg-transparent text-[14px] text-lens-fg outline-none focus-visible:outline-none placeholder:text-lens-mute"
               />
+              <WebSwitch tone="lens" />
               <ModelSwitch tone="lens" />
               <button
                 type="submit"

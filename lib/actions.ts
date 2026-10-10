@@ -7,7 +7,7 @@ export const ACTIONS: Record<Action, { label: string; hint: string }> = {
   explain: { label: "Explain", hint: "What it means here, and why it is here" },
   define: { label: "Define", hint: "The word, as this author uses it" },
   simplify: { label: "Simplify", hint: "The same idea in plain words" },
-  check: { label: "Fact-check", hint: "Does it still hold up today?" },
+  check: { label: "Fact-check", hint: "Does it still hold up? Searches the web" },
   connect: { label: "Related", hint: "Where else the text takes this up" },
   counter: { label: "Counterpoint", hint: "The strongest objection to it" },
 };

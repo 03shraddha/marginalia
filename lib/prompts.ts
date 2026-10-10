@@ -95,15 +95,27 @@ export function buildMessages(
   doc: DocPayload,
   thread: ThreadPayload,
   history: { role: "user" | "assistant"; content: string }[] = [],
-  length: LengthKey = "normal"
+  length: LengthKey = "normal",
+  web?: string
 ): ChatMessage[] {
-  // The length note comes after the document, so the cached prefix is unchanged.
+  // The length note and any web results come after the document, so the cached prefix is unchanged.
   return [
     { role: "system", content: systemFor(doc) },
     { role: "system", content: LENGTHS[length] },
+    ...(web ? [{ role: "system" as const, content: web }] : []),
     { role: "user", content: firstTurn(thread) },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
+}
+
+/** Web results as the model sees them: numbered, dated, with the excerpts Exa found relevant. */
+export function webBlock(sources: { n: number; title: string; site: string; date?: string }[], excerpts: string[], today = new Date().toISOString().slice(0, 10)): string {
+  const list = sources.map((s, i) => `[${s.n}] ${s.title} (${s.site}${s.date ? `, ${s.date}` : ""})\n${excerpts[i]}`).join("\n\n");
+  return `WEB RESULTS, searched ${today} for this question:
+
+${list}
+
+How to use them: they are outside the text, so say so. Cite a web result inline as [1] or [2], next to the claim it supports, and keep [¶n] for what the text itself says. Only cite what a result actually states. Prefer recent, primary sources; if the results disagree or do not settle the question, say that plainly.`;
 }
 
 export const BRIEF_TASK = `Read the whole text and return JSON only, with this shape:

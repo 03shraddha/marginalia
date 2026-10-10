@@ -80,6 +80,8 @@ export function notesMarkdown(meta: NotesMeta, glosses: Gloss[], highlights: Hig
     for (const p of pairsOf(g)) {
       lines.push(`**${p.q}**`, "");
       if (p.a?.content) lines.push(undash(p.a.content), "");
+      // Web citations as Markdown footnotes, so [1] in the answer still leads somewhere.
+      if (p.a?.content && p.a.sources?.length) lines.push(...p.a.sources.map((x) => `[${x.n}]: ${x.url} "${x.title.replace(/"/g, "'")}"`), "");
     }
   }
   return lines.join("\n").trim() + "\n";

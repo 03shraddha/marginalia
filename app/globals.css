@@ -880,6 +880,28 @@ kbd,
   cursor: default;
 }
 
+/* The sources under an answer are links, not the answer's own bulleted list. */
+.gloss-body ol.sources {
+  display: block;
+}
+.gloss-body ol.sources li {
+  min-width: 0;
+  padding-left: 0;
+}
+.gloss-body ol.sources li::before {
+  content: none;
+}
+
+/* A web citation reads as a footnote number, apart from the text's own ¶ chips. */
+.cite-web {
+  min-width: 1.4em;
+  justify-content: center;
+  padding: 0 0.3em;
+  text-decoration: none;
+  vertical-align: 0.3em;
+  font-size: 0.66em;
+}
+
 /* The key answer: the model marks the words a skimmer needs, and the rest steps back. */
 mark.key {
   color: var(--ink);

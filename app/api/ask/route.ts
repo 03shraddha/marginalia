@@ -1,8 +1,10 @@
-import { buildMessages, isLengthKey, type DocPayload, type ThreadPayload } from "@/lib/prompts";
+import { buildMessages, isLengthKey, webBlock, type DocPayload, type ThreadPayload } from "@/lib/prompts";
 import { DEFAULT_MODEL, isModelKey, streamChat, type StreamEvent } from "@/lib/together";
 import { ACTIONS } from "@/lib/actions";
 import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
 import { MODELS } from "@/lib/models";
+import { allow, clientId } from "@/lib/ratelimit";
+import { searchEnabled, searchQuery, webSearch } from "@/lib/search";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -17,6 +19,8 @@ type Body = {
   doc?: DocPayload;
   thread?: ThreadPayload;
   history?: { role: "user" | "assistant"; content: string }[];
+  /** Search the web for this question. Fact-check always does. */
+  web?: boolean;
 };
 
 export async function POST(req: Request) {
@@ -49,13 +53,30 @@ export async function POST(req: Request) {
     if (!free.ok) return needKey(free);
   }
 
+  // Fact-check always looks things up; other questions when the reader turns Web on. Free readers
+  // pay for the search from their daily budget; readers with their own key get a generous daily cap.
+  const wantsWeb = searchEnabled() && (thread.action === "check" || body.web === true);
+  const webOk = wantsWeb && (free !== null || allow(`search:${clientId(req)}`, 150, 86_400_000));
+  const latest = [...history].reverse().find((m) => m.role === "user")?.content;
+
   const encoder = new TextEncoder();
   const send = (e: StreamEvent) => encoder.encode(`data: ${JSON.stringify(e)}\n\n`);
 
   const stream = new ReadableStream({
     async start(controller) {
+      let web: string | undefined;
+      let searchUsd = 0;
+      if (webOk) {
+        controller.enqueue(send({ type: "searching" }));
+        const found = await webSearch(searchQuery(thread, latest), req.signal);
+        if (found) {
+          web = webBlock(found.sources, found.excerpts);
+          searchUsd = found.usd;
+          controller.enqueue(send({ type: "sources", sources: found.sources }));
+        }
+      }
       const source = streamChat({
-        messages: buildMessages(doc, thread, history, isLengthKey(body.length) ? body.length : "normal"),
+        messages: buildMessages(doc, thread, history, isLengthKey(body.length) ? body.length : "normal", web),
         model,
         apiKey,
         maxTokens: body.length === "long" ? 1400 : 900,
@@ -71,7 +92,7 @@ export async function POST(req: Request) {
         if (!req.signal.aborted) controller.enqueue(send({ type: "error", text: `Stream failed: ${String(e)}` }));
       } finally {
         controller.close();
-        if (free) await chargeFree(free.subject, cost ?? estimateUsd(docChars, MODELS[model].inPerM));
+        if (free) await chargeFree(free.subject, (cost ?? estimateUsd(docChars, MODELS[model].inPerM)) + searchUsd);
       }
     },
   });
