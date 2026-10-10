@@ -11,7 +11,8 @@ export const maxDuration = 300;
  * free reader gets wrong. It runs on Gloss's LlamaParse key, but only for
  * readers who have added their own Together key; they get a daily page cap.
  */
-const TIER: Tier = "cost_effective";
+// Agentic scored 8.1/10 against cost_effective's 6.9 in scripts/pdf-eval, at $0.0125 a page against $0.0037.
+const TIER: Tier = "agentic";
 /** Vercel refuses request bodies over 4.5MB. */
 const MAX_BYTES = 4_300_000;
 const MAX_PAGES = 60;
