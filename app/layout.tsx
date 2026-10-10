@@ -42,7 +42,8 @@ const legible = Atkinson_Hyperlegible_Next({
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3100");
 const DESCRIPTION = "Highlight any line and ask it anything. An open model writes the answer in the margin, beside the words, citing the paragraphs it used.";
-const OG = { url: "/og.png", width: 1200, height: 630, alt: "Gloss: highlight any line, ask it anything. Powered by Together AI." };
+// The version busts the caches of X, Slack and LinkedIn, which keep a card image by its URL.
+const OG = { url: "/og.png?v=2", width: 1200, height: 630, alt: "Gloss: highlight any line, ask it anything. Powered by Together AI." };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
