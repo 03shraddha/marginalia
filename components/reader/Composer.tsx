@@ -5,7 +5,7 @@ import { ArrowUp } from "lucide-react";
 import { ARTICLE_QUESTIONS } from "@/lib/actions";
 import { startGloss } from "@/lib/ask";
 import { useReader } from "./context";
-import { ModelSwitch, WebSwitch } from "./ModelSwitch";
+import { WebSwitch } from "./WebSwitch";
 
 export type ComposerHandle = { focus: () => void };
 
@@ -75,7 +75,6 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
         />
         {!focused && !q && <kbd className="hidden sm:inline">/</kbd>}
         <WebSwitch />
-        <ModelSwitch />
         <button
           type="submit"
           disabled={!q.trim()}

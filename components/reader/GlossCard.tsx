@@ -2,7 +2,7 @@
 
 import { Show, SignInButton } from "@clerk/nextjs";
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, Microscope, RotateCcw, Square, Trash2 } from "lucide-react";
+import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, RotateCcw, Square, Trash2 } from "lucide-react";
 import { ACTIONS } from "@/lib/actions";
 import { followUp, openKeyMenu, retry, stopGloss } from "@/lib/ask";
 import { MODELS } from "@/lib/models";
@@ -258,11 +258,6 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               </IconBtn>
             ) : (
               <>
-                {last.modelKey !== "pro" && (
-                  <IconBtn label="Ask Deep instead" onClick={() => retry(ix, gloss.id, "pro")}>
-                    <Microscope size={14} />
-                  </IconBtn>
-                )}
                 <IconBtn label="Try again" onClick={() => retry(ix, gloss.id)}>
                   <RotateCcw size={14} />
                 </IconBtn>

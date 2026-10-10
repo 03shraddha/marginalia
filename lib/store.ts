@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { Action } from "./actions";
 import type { Article, BriefData } from "./article";
-import type { ModelKey, Source, Usage } from "./models";
+import { modelOf, type ModelKey, type Source, type Usage } from "./models";
 import { DEFAULT_SETTINGS, SETTINGS_KEY, type Marker, type Settings } from "./settings";
 
 /** A point in the text: block id and a character offset into its plain text. */
@@ -177,7 +177,7 @@ export const useStore = create<State>((set, get) => ({
       briefs,
       progress: data.progress ?? {},
       library: data.library ?? [],
-      settings: { ...DEFAULT_SETTINGS, ...settings },
+      settings: { ...DEFAULT_SETTINGS, ...settings, model: modelOf(settings.model) },
       hydrated: true,
     });
     void migrateDocs();

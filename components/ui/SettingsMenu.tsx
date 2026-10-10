@@ -358,25 +358,6 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
           {!compact && tab === "answers" && (
             <div className="space-y-4">
               <div>
-                <p className="mb-2 text-[12.5px] text-ink-3">Who answers</p>
-                <div className="space-y-1.5">
-                  {(Object.keys(MODELS) as ModelKey[]).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => set({ model: k })}
-                      aria-pressed={settings.model === k}
-                      className={`block w-full rounded-[12px] border px-3 py-2.5 text-left transition-colors ${settings.model === k ? "border-ink bg-bg" : "border-rule hover:border-rule-strong"}`}
-                    >
-                      <span className="text-[13px] font-medium text-ink">
-                        {MODELS[k].short} <span className="font-normal text-ink-3">{MODELS[k].label}</span>
-                      </span>
-                      <span className="mt-0.5 block text-[12px] leading-snug text-ink-3">{MODELS[k].blurb}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
                 <p className="mb-2 text-[12.5px] text-ink-3">Answer length</p>
                 <Seg
                   label="Answer length"

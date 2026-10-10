@@ -11,8 +11,6 @@ export type ModelEntry = {
   inPerM: number;
   cachedPerM: number;
   outPerM: number;
-  /** A model that thinks: sent as reasoning_effort, with room added to max_tokens so the thinking can't eat the answer. */
-  reasoning?: { effort: "low"; headroom: number };
 };
 
 /**
@@ -25,9 +23,10 @@ export type ModelEntry = {
  * GLM-5.3 ignores every thinking-off flag (default effort: a 60s summary).
  * Also left out: Qwen3.8 (prints its reasoning into content with thinking off).
  *
- * Deep is Kimi K3 at reasoning_effort low: it thinks 4 to 70 tokens, then
- * answers in 0.5 to 3s warm (one cold start took ~2 minutes). About $0.007 to
- * $0.03 an answer; the $2.70/M input is most of it on long texts.
+ * Flash won on quality as well as speed and cost, so it answers everything:
+ * there was a "Deep" choice (V4 Pro, then Kimi K3) and it was dropped
+ * 2026-10-09. Older answers and settings may still name "pro"; anything that
+ * looks a model up goes through modelOf(), which falls back to Flash.
  */
 export const MODELS = {
   flash: {
@@ -39,16 +38,6 @@ export const MODELS = {
     cachedPerM: 0.006,
     outPerM: 1.2,
   },
-  pro: {
-    id: "moonshotai/Kimi-K3",
-    label: "Kimi K3",
-    short: "Deep",
-    blurb: "Slower, more careful. For arguments, critique and synthesis.",
-    inPerM: 2.7,
-    cachedPerM: 0.27,
-    outPerM: 13.5,
-    reasoning: { effort: "low", headroom: 1024 },
-  },
 } as const satisfies Record<string, ModelEntry>;
 
 export type ModelKey = keyof typeof MODELS;
@@ -57,6 +46,9 @@ export const DEFAULT_MODEL: ModelKey = "flash";
 export function isModelKey(v: unknown): v is ModelKey {
   return typeof v === "string" && v in MODELS;
 }
+
+/** A model key that is still on the list: a saved "pro" from before Deep was dropped becomes Flash. */
+export const modelOf = (v: unknown): ModelKey => (isModelKey(v) ? v : DEFAULT_MODEL);
 
 export type Usage = {
   promptTokens: number;

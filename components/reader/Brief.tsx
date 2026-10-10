@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, RotateCcw } from "lucide-react";
 import { fetchBrief, openKeyMenu } from "@/lib/ask";
 import type { DocIndex } from "@/lib/doc";
-import { MODELS } from "@/lib/models";
+import { MODELS, modelOf } from "@/lib/models";
 import { useStore } from "@/lib/store";
 import { Answer } from "./Answer";
 import { fmtCost, useReader } from "./context";
@@ -136,7 +136,7 @@ export function Brief() {
 
           <div className="mt-5 flex items-center gap-3 text-[11.5px] tabular-nums text-ink-4">
             <span>
-              {modelKey ? MODELS[modelKey].label : ""}
+              {modelKey ? MODELS[modelOf(modelKey)].label : ""}
               {usage ? ` / ${usage.promptTokens.toLocaleString()} in, ${usage.completionTokens} out / ${fmtCost(usage.costUsd)}` : ""}
             </span>
             <button type="button" onClick={() => fetchBrief(ix)} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-sunk hover:text-ink">

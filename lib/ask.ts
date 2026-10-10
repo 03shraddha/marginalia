@@ -5,7 +5,7 @@ import type { BriefData } from "./article";
 import { docPayload, type DocIndex } from "./doc";
 import { uid, useStore, type Anchor, type Gloss, type Turn } from "./store";
 import type { ModelKey, StreamEvent, Usage } from "./models";
-import { MODELS } from "./models";
+import { MODELS, modelOf } from "./models";
 
 const KEY_STORAGE = "together:api-key";
 
@@ -134,7 +134,7 @@ export function startGloss(
   opts: { anchor?: Anchor; at?: string; action: Action; question?: string; modelKey?: ModelKey }
 ): string {
   const st = useStore.getState();
-  const modelKey = opts.modelKey ?? st.settings.model;
+  const modelKey = modelOf(opts.modelKey ?? st.settings.model);
   // The answer is written in the margin, which focus mode hides: step out of it.
   if (st.focusMode) st.setUI({ focusMode: false });
   const g: Gloss = {
@@ -154,7 +154,7 @@ export function startGloss(
 
 export function followUp(ix: DocIndex, glossId: string, question: string, modelKey?: ModelKey) {
   const st = useStore.getState();
-  const mk = modelKey ?? st.settings.model;
+  const mk = modelOf(modelKey ?? st.settings.model);
   st.updateGloss(ix.article.id, glossId, (g) => ({
     ...g,
     turns: [
@@ -169,7 +169,7 @@ export function followUp(ix: DocIndex, glossId: string, question: string, modelK
 /** Re-runs the latest answer, optionally on a different model. */
 export function retry(ix: DocIndex, glossId: string, modelKey?: ModelKey) {
   const st = useStore.getState();
-  const mk = modelKey ?? st.settings.model;
+  const mk = modelOf(modelKey ?? st.settings.model);
   st.updateGloss(ix.article.id, glossId, (g) =>
     lastAssistant(g, () => ({ role: "assistant", content: "", streaming: true, modelKey: mk, model: MODELS[mk].label }))
   );
@@ -179,7 +179,7 @@ export function retry(ix: DocIndex, glossId: string, modelKey?: ModelKey) {
 export async function fetchBrief(ix: DocIndex) {
   const st = useStore.getState();
   const id = ix.article.id;
-  const modelKey = st.settings.model;
+  const modelKey = modelOf(st.settings.model);
   st.setBrief(id, { status: "loading" });
   try {
     const apiKey = readApiKey();
@@ -243,7 +243,7 @@ export async function streamAsk(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal,
-      body: JSON.stringify({ ...body, apiKey: apiKey || undefined, model: useStore.getState().settings.model }),
+      body: JSON.stringify({ ...body, apiKey: apiKey || undefined, model: modelOf(useStore.getState().settings.model) }),
     });
     noteFree(res);
     if (!res.ok || !res.body) {
