@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   marker: "yellow",
   length: "normal",
   model: "flash",
-  numbers: true,
+  numbers: false,
   rail: true,
   listen: false,
 };

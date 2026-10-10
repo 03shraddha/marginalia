@@ -47,16 +47,40 @@ function descendants(node: El, tag: string, out: El[] = []): El[] {
 
 const clean = (s: string | null | undefined) => undash((s ?? "").replace(/\s+/g, " ").trim());
 
+/**
+ * The candidates in a srcset. URLs may contain commas (Substack's image CDN
+ * puts its options in the path: ",w_1456,c_limit,..."), so a comma only
+ * separates candidates after a URL's whitespace and descriptor, as the HTML
+ * spec parses it. Splitting on every comma cuts those URLs into pieces.
+ */
+function parseSrcset(s: string): { url: string; size: number }[] {
+  const out: { url: string; size: number }[] = [];
+  let i = 0;
+  while (i < s.length) {
+    while (i < s.length && /[\s,]/.test(s[i])) i++;
+    let j = i;
+    while (j < s.length && !/\s/.test(s[j])) j++;
+    let url = s.slice(i, j);
+    i = j;
+    if (!url) break;
+    let descriptor = "";
+    if (url.endsWith(",")) url = url.replace(/,+$/, "");
+    else {
+      const k = s.indexOf(",", i);
+      descriptor = s.slice(i, k < 0 ? s.length : k).trim();
+      i = k < 0 ? s.length : k + 1;
+    }
+    out.push({ url, size: parseFloat(descriptor) || 0 });
+  }
+  return out;
+}
+
 /** An image worth showing: a real http(s) picture, not a spacer, tracking pixel or inline blob. */
 function imageOf(img: El, base?: string): { src: string; alt?: string } | null {
   const attr = (n: string) => img.getAttribute?.(n) ?? null;
   const srcset = attr("srcset") ?? attr("data-srcset");
   // The largest candidate in a srcset reads best on a sharp screen.
-  const fromSet = srcset
-    ?.split(",")
-    .map((c) => c.trim().split(/\s+/))
-    .filter((p) => p[0])
-    .sort((a, b) => parseFloat(b[1] ?? "0") - parseFloat(a[1] ?? "0"))[0]?.[0];
+  const fromSet = srcset ? parseSrcset(srcset).sort((a, b) => b.size - a.size)[0]?.url : undefined;
   const src0 = attr("src");
   const raw = fromSet ?? (src0 && !src0.startsWith("data:") ? src0 : attr("data-src"));
   if (!raw) return null;
