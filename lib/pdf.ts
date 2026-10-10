@@ -103,7 +103,16 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
   for (const [p, lbs] of byPage) {
     if (unreadable.includes(p) || hard.includes(p)) continue;
     const t = lbs.map((b) => b.text ?? "").join(" ");
-    if ((t.match(MATHS)?.length ?? 0) >= 4 || (t.match(BROKEN)?.length ?? 0) >= 3) hard.push(p);
+    const words = t.split(/\s+/).filter(Boolean).length;
+    if (
+      (t.match(MATHS)?.length ?? 0) >= 4 ||
+      (t.match(BROKEN)?.length ?? 0) >= 3 ||
+      // A table, a grid or a figure the text layer could only approximate.
+      lbs.some((b) => b.kind === "table" || b.kind === "grid_fallback" || b.kind === "figure") ||
+      // Little text in many pieces: a slide or a form.
+      (words < 250 && lbs.length >= 6)
+    )
+      hard.push(p);
   }
   hard = hard.filter((p) => p <= pages).sort((a, b) => a - b).slice(0, UPGRADE_MAX);
   parser.free();

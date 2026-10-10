@@ -5,15 +5,20 @@
 // imported text back from IndexedDB and writes it as Markdown to out/<page>/gloss-today.md, with the time taken.
 // Needs the app running (npm run dev) and Google Chrome; TOGETHER_API_KEY is set as the reader's key, so
 // scanned pages do not draw on the free allowance.
-//   node scripts/pdf-eval/app-import.mjs [outdir] [baseUrl]
+//   node scripts/pdf-eval/app-import.mjs [outdir] [baseUrl] [--wait]
+// --wait stays on the reader until the background page upgrades (lib/upgrade.ts) finish, and writes that
+// reading as gloss-hybrid.md instead: what a reader has half a minute after opening a PDF.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const OUT = resolve(process.argv[2] ?? new URL("./out", import.meta.url).pathname);
-const BASE = process.argv[3] ?? "http://localhost:3100";
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const WAIT = process.argv.includes("--wait");
+const OUT = resolve(args[0] ?? new URL("./out", import.meta.url).pathname);
+const BASE = args[1] ?? "http://localhost:3100";
+const NAME = WAIT ? "gloss-hybrid" : "gloss-today";
 const KEY = process.env.TOGETHER_API_KEY ?? "";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -90,13 +95,13 @@ for (const id of pages) {
   const seconds = (Date.now() - t0) / 1000;
   if (!path.startsWith("/read/")) {
     const shown = await evaluate(`document.querySelector('[role=alert]')?.textContent ?? ''`);
-    writeFileSync(join(OUT, id, "gloss-today.md"), "");
+    writeFileSync(join(OUT, id, `${NAME}.md`), "");
     timing[id] = { seconds, error: shown || "import did not finish" };
     console.log(`${id.padEnd(20)} FAILED ${shown}`);
     continue;
   }
   const articleId = decodeURIComponent(path.slice("/read/".length));
-  const article = await evaluate(`new Promise((resolve) => {
+  const read = () => evaluate(`new Promise((resolve) => {
     const req = indexedDB.open("gloss", 2);
     req.onsuccess = () => {
       const get = req.result.transaction("docs", "readonly").objectStore("docs").get(${JSON.stringify(articleId)});
@@ -105,10 +110,14 @@ for (const id of pages) {
     };
     req.onerror = () => resolve(null);
   })`);
-  writeFileSync(join(OUT, id, "gloss-today.md"), article ? toMarkdown(article) : "");
-  timing[id] = { seconds, blocks: article?.blocks?.length ?? 0 };
-  console.log(`${id.padEnd(20)} ${seconds.toFixed(1)}s  ${article?.blocks?.length ?? 0} blocks`);
+  let article = await read();
+  const flagged = article?.upgrade ?? [];
+  if (WAIT && flagged.length) for (let i = 0; i < 120 && article?.upgrade?.length; i++) await sleep(1000), (article = await read());
+  const upgraded = (article?.blocks ?? []).some((b) => String(b.id).startsWith("u"));
+  writeFileSync(join(OUT, id, `${NAME}.md`), article ? toMarkdown(article) : "");
+  timing[id] = { seconds: WAIT ? (Date.now() - t0) / 1000 : seconds, blocks: article?.blocks?.length ?? 0, flagged: flagged.length > 0, upgraded };
+  console.log(`${id.padEnd(20)} ${timing[id].seconds.toFixed(1)}s  ${article?.blocks?.length ?? 0} blocks${flagged.length ? (upgraded ? "  upgraded" : "  flagged, kept") : ""}`);
 }
-writeFileSync(join(OUT, "gloss-today.json"), JSON.stringify(timing, null, 2));
+writeFileSync(join(OUT, `${NAME}.json`), JSON.stringify(timing, null, 2));
 ws.close();
 chrome.kill();
