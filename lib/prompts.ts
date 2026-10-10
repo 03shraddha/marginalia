@@ -58,7 +58,7 @@ const TASKS: Record<Exclude<Action, "ask">, string> = {
   explain:
     "Explain what this passage means and what work it is doing at this point in the text. If it names a person, organisation, place or work, say who or what it is. If it uses archaic phrasing or a metaphor, unpack it; if it does not, do not mention it. 2 to 4 sentences.",
   define:
-    "Define this as it is used here, in one or two sentences. Only if it is archaic, technical or used in an unusual sense, say so and give the plain modern equivalent; otherwise say nothing about how common it is.",
+    "Define this as it is used here, in one or two sentences. Only if it is archaic, technical or used in an unusual sense, say so and give the plain modern equivalent. Never remark that a word is standard, common or not archaic.",
   simplify:
     "Rewrite this in plain, modern English that keeps the full meaning. Then add one short line on the point it makes.",
   check:
