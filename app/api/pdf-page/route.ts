@@ -31,7 +31,8 @@ const PROMPT = `Transcribe this document page into clean Markdown, in reading or
 - Write only what is on the page. No commentary, no code fences around the whole.`;
 
 const LAYOUT_PROMPT = `${PROMPT}
-- Maths as LaTeX between $ signs, inline, or $$ on its own line for a displayed equation.`;
+- Maths as LaTeX between $ signs, inline, or $$ on its own line for a displayed equation.
+- Keep equation numbers such as (3) beside their equation.`;
 
 /** Reasoning some models print into the answer, and fences some wrap it in. */
 function clean(md: string): string {

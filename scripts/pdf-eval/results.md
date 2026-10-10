@@ -45,3 +45,37 @@ four 2.4 / 6.5 / 6.9 / 8.1, the same order.
 - **Qwen3.5-9B:** weakest on forms (w4-p3) and slides; its one invented line came from our prompt asking it
   to describe figures.
 - **Text layer:** no structure at all; columns interleaved, maths as Unicode soup, nothing on scans.
+
+## Round 3: background page upgrades (lib/upgrade.ts)
+
+The app now reads hard pages again with Qwen3.5-9B in the background and swaps them in.
+`app-import.mjs --wait` captures that reading; judged blind against the plain import and LlamaParse agentic.
+11 of the 13 born-digital pages were flagged and 10 upgraded (the scans are read by a vision model at import).
+
+| | Mean, 15 pages | Mean, the 10 upgraded pages |
+|---|---|---|
+| Gloss, LiteParse only | 4.3 | 3.8 |
+| **Gloss with background upgrades** | **6.6** | **7.1** |
+| LlamaParse agentic ("Read it more carefully") | 8.7 | 8.6 |
+
+| Page | LiteParse only | With upgrades | LlamaParse agentic | Upgraded |
+|---|---|---|---|---|
+| resnet-p1 | 5 | **9** | 4 | yes |
+| resnet-p6 | 2 | **7** | 9 | yes |
+| attention-p3 | 6 | **6** | 8 |  |
+| attention-p8 | 4 | **8** | 10 | yes |
+| vae-p3 | 2 | **7** | 9 | yes |
+| vae-p4 | 2 | **6** | 9 | yes |
+| w4-p1 | 3 | **6** | 9 | yes |
+| w4-p3 | 5 | **5** | 9 |  |
+| slides-p3 | 6 | **7** | 9 | yes |
+| slides-p5 | 6 | **7** | 9 | yes |
+| fomc-p1 | 3 | **7** | 8 | yes |
+| fomc-p5 | 5 | **7** | 10 | yes |
+| tex1996-p1 | 3 | **3** | 9 |  |
+| scan-fomc-p2 | 8 | **8** | 9 |  |
+| scan-attention-p4 | 5 | **6** | 9 |  |
+
+Fixed after this round, from the judges' notes: leftover TeX ("simeq", "tilde", "frac" around a root, "\%"),
+lost equation numbers (now asked for), and a heading repeating the title. Still open: nested lists flatten to one
+level, and pages the detector misses (a figure page, a form worksheet, dropped ligatures on old TeX).

@@ -230,10 +230,10 @@ function parseMarkdown(input: string, opts: { title?: string; takeTitle: boolean
 }
 
 /** Markdown's backslash escapes, as plain characters. */
-const unescapeMd = (s: string) => s.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, "$1");
+const unescapeMd = (s: string) => s.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$%&])/g, "$1");
 
 /** Characters that would open emphasis, code or a link, set aside so they read as themselves. */
-const shield = (t: string) => t.replace(/[\\`*_{}\[\]()#+\-.!|~<>$]/g, (c) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
+const shield = (t: string) => t.replace(/[\\`*_{}\[\]()#+\-.!|~<>$%&]/g, (c) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
 
 /**
  * Maths between $ signs (from page readers) as readable text, before anything
@@ -247,7 +247,7 @@ const MATH = /\$\$([\s\S]+?)\$\$|\$(?!\s)([^$\n]+?)(?<!\s)\$(?!\d)/g;
 export function inlineMd(input: string): Run[] {
   const withMaths = input.replace(MATH, (_, display: string | undefined, inline: string | undefined) => shield(texToText(display ?? inline ?? "")));
   // Escaped characters are set aside first, so \\* never opens emphasis, then restored.
-  const s = withMaths.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$])/g, (_, c: string) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
+  const s = withMaths.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>$%&])/g, (_, c: string) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
   const runs: Run[] = [];
   const re = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(_([^_]+)_)|(`([^`]+)`)|(\[([^\]]+)\]\((https?:[^)]+)\))/g;
   let last = 0;
