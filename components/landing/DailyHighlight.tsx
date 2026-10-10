@@ -13,7 +13,7 @@ import { useStore } from "@/lib/store";
  * Keep one and it returns in a few days, then less and less often; mark it
  * done and it leaves the review. Nothing at all until you have highlights.
  */
-export function DailyHighlight({ compact = false }: { compact?: boolean }) {
+export function DailyHighlight() {
   const hydrated = useStore((s) => s.hydrated);
   const highlights = useStore((s) => s.highlights);
   const library = useStore((s) => s.library);
@@ -44,8 +44,7 @@ export function DailyHighlight({ compact = false }: { compact?: boolean }) {
   return (
     <section
       aria-label="Today's review"
-      // Compact: a card at the top of the signed-in highlights column, which has its own "All" link.
-      className={compact ? "mt-4 rounded-[14px] border border-rule bg-raised/70 px-4 pb-2 pt-3.5" : "mt-8 max-w-[600px] py-1 pl-1 pr-3"}
+      className="py-1"
       style={{ animation: "rise 0.5s 0.35s var(--ease-out) both" }}
     >
       <p className="flex items-baseline justify-between gap-4 text-[12.5px] font-medium text-ink-3">
@@ -89,13 +88,13 @@ export function DailyHighlight({ compact = false }: { compact?: boolean }) {
             >
               Done with it
             </button>
-            {!compact && <span className="ml-auto">{allLink}</span>}
+            <span className="ml-auto">{allLink}</span>
           </div>
         </div>
       ) : (
         <p className="mt-2 flex items-center justify-between gap-4 text-[14px] text-ink-2">
           <span>More of your highlights tomorrow.</span>
-          {!compact && <span className="text-[13px]">{allLink}</span>}
+          <span className="text-[13px]">{allLink}</span>
         </p>
       )}
     </section>

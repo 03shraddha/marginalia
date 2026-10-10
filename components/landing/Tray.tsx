@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
 import { useStore } from "@/lib/store";
@@ -34,6 +34,15 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
   const scroller = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState(5);
   const setUI = useStore((s) => s.setUI);
+  const [tucked, setTucked] = useState(false);
+
+  // Scrolled down the page, the papers slip under the edge; back at the top, they return.
+  useEffect(() => {
+    const on = () => setTucked(window.scrollY > 32);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
 
   // How many papers fit on the desk, counting the add card at the end.
   useLayoutEffect(() => {
@@ -54,7 +63,7 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
   const rest = overflow ? items.slice(slots - 2) : [];
 
   return (
-    <div className="tray" aria-label="Your shelf">
+    <div className={`tray${tucked ? " is-tucked" : ""}`} aria-label="Your shelf">
       <div ref={scroller} className="tray-scroll no-scrollbar">
         {shown.map((it, i) => (
           <div key={it.id} className="tray-slot" style={{ ["--tilt" as string]: `${[-0.6, 0.45, -0.25, 0.55, -0.4][i % 5]}deg` }}>

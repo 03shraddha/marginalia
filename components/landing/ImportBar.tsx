@@ -18,7 +18,7 @@ type Props = {
 /** The one thing to do on the landing page: give it something to read. */
 export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar({ url, setUrl, busy, error, onSubmit, onPickFile, onPasteText }, ref) {
   return (
-    <div className="mt-10 max-w-[600px] sm:mt-12">
+    <div className="mt-10 w-full max-w-[600px] text-left sm:mt-12">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -52,7 +52,7 @@ export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar(
         {busy && <span aria-hidden className="import-progress" style={busy.pct !== undefined ? { ["--p" as string]: busy.pct } : undefined} />}
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 pl-1 text-[13.5px] text-ink-3">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13.5px] text-ink-3">
         <button type="button" onClick={onPickFile} disabled={!!busy} className="inline-flex items-center gap-1.5 transition-colors hover:text-ink">
           <FileUp size={15} /> Open a PDF
         </button>
@@ -66,7 +66,7 @@ export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar(
       </div>
 
       {error && (
-        <p className="mt-4 max-w-[34rem] pl-1 text-[13.5px] leading-snug text-rubric-text" role="alert">
+        <p className="mx-auto mt-4 max-w-[34rem] text-center text-[13.5px] leading-snug text-rubric-text" role="alert">
           {error}
         </p>
       )}

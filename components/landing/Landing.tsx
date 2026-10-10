@@ -12,9 +12,8 @@ import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } fro
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
-import { DailyHighlight } from "./DailyHighlight";
 import { Hero } from "./Hero";
-import { YourHighlights } from "./YourHighlights";
+import { HomeBelow } from "./HomeBelow";
 import { ImportBar, type Busy } from "./ImportBar";
 import { PasteSheet } from "./PasteSheet";
 import { Tray, type TrayItem } from "./Tray";
@@ -200,7 +199,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   }, [library, progress, glosses, hydrated]);
 
   return (
-    <div className={`landing relative z-[1] flex h-dvh flex-col overflow-hidden transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] max-lg:h-auto max-lg:min-h-dvh max-lg:overflow-visible ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
+    <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
       <header className="relative z-20 mx-auto flex h-[var(--topbar-h)] w-full max-w-[1400px] shrink-0 items-center justify-between px-5 sm:px-8">
         <Lockup />
         <nav aria-label="Settings" className="flex items-center gap-1">
@@ -210,8 +209,9 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
         </nav>
       </header>
 
-      <main className="relative flex flex-1 items-center pb-[150px] pt-6 max-lg:items-start max-lg:pb-10 max-lg:pt-14">
-        <Hero aside={signedIn ? <YourHighlights /> : undefined}>
+      {/* One column: the headline and the link bar, then a quiet space that is yours once you have highlights. */}
+      <main className="relative flex-1 pb-[200px] pt-[clamp(40px,9vh,112px)] max-lg:pb-10">
+        <Hero>
           <ImportBar
             ref={inputRef}
             url={url}
@@ -222,8 +222,8 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
             onPickFile={() => fileRef.current?.click()}
             onPasteText={() => setPasteOpen(true)}
           />
-          {!signedIn && <DailyHighlight />}
         </Hero>
+        <HomeBelow signedIn={signedIn} />
       </main>
 
       <Tray items={items} onOpen={go} onRemove={removeFromLibrary} onAdd={() => fileRef.current?.click()} />
