@@ -111,7 +111,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
 
   // A new theme is poured in as a circle that grows out of the swatch you picked.
   const pickTheme = (key: Settings["theme"], e: MouseEvent<HTMLButtonElement>) => {
-    const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } };
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void>; skipTransition: () => void } };
     const quiet = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!doc.startViewTransition || quiet || resolveTheme(key) === resolveTheme(settings.theme)) return set({ theme: key });
     // In percentages of the viewport, so the circle lands on the swatch at any zoom or pixel ratio.
@@ -127,6 +127,17 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
     // A new pick while one is pouring skips the old one; only the newest clears the flag.
     const vt = doc.startViewTransition(() => flushSync(() => set({ theme: key })));
     swap = vt;
+    // While it pours, the browser sends every click to the root element instead of what is
+    // under the pointer, so a quick second pick would be lost. Catch those clicks, end this
+    // pour at once, and hand the click to the element underneath: a new pick pours in fresh.
+    const passThrough = (ev: globalThis.MouseEvent) => {
+      if (ev.target !== root) return;
+      ev.stopPropagation();
+      vt.skipTransition();
+      const { clientX: x, clientY: y } = ev;
+      vt.finished.finally(() => (document.elementFromPoint(x, y) as HTMLElement | null)?.click());
+    };
+    document.addEventListener("click", passThrough, true);
     vt.ready
       .then(() =>
         root.animate(
@@ -136,6 +147,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
       )
       .catch(() => {});
     vt.finished.finally(() => {
+      document.removeEventListener("click", passThrough, true);
       if (swap === vt) {
         swap = null;
         root.classList.remove("theme-swap");
