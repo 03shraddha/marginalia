@@ -40,9 +40,9 @@ export function importFromText(text: string): ImportResult {
 }
 
 /** Saves an imported article and puts it on the shelf. */
-export function keep(a: Article): string | null {
+export async function keep(a: Article): Promise<string | null> {
   if (!a.blocks.length) return "There was no readable text in that.";
-  if (!saveDoc(a)) return "This browser's storage is full. Remove something from your shelf and try again.";
+  if (!(await saveDoc(a))) return "This browser's storage is full. Remove something from your shelf and try again.";
   useStore.getState().addToLibrary(a, wordCount(a));
   return null;
 }

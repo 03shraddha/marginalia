@@ -11,6 +11,7 @@ export function Popover({
   width = 300,
   triggerClass = "",
   tip,
+  openOn,
 }: {
   label: string;
   trigger: ReactNode;
@@ -20,9 +21,19 @@ export function Popover({
   triggerClass?: string;
   /** The trigger's tooltip; defaults to the label. */
   tip?: string;
+  /** A window event that opens the panel from elsewhere on the page. */
+  openOn?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openOn) return;
+    // On the next frame, so the click that sent the event does not count as an outside click.
+    const show = () => requestAnimationFrame(() => setOpen(true));
+    window.addEventListener(openOn, show);
+    return () => window.removeEventListener(openOn, show);
+  }, [openOn]);
 
   useEffect(() => {
     if (!open) return;

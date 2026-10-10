@@ -1,8 +1,9 @@
 "use client";
 
+import { Show, SignInButton } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, RotateCcw } from "lucide-react";
-import { fetchBrief } from "@/lib/ask";
+import { fetchBrief, openKeyMenu } from "@/lib/ask";
 import type { DocIndex } from "@/lib/doc";
 import { MODELS } from "@/lib/models";
 import { useStore } from "@/lib/store";
@@ -31,7 +32,7 @@ export function Brief() {
       >
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 font-serif text-[19px] leading-none tracking-[-0.01em] text-ink [font-variation-settings:'opsz'_24]">
-            Brief me
+            Gloss this text
             <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-rubric-text" aria-hidden />
           </span>
           <span className="mt-1.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
@@ -47,25 +48,37 @@ export function Brief() {
     return (
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[16px] border border-rule px-4 py-3.5 text-[13.5px]">
         <p className="text-rubric-text">{brief.error}</p>
-        {!brief.demo && (
-          <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
-            Try again
-          </button>
+        {brief.needKey && (
+          <>
+            <button type="button" onClick={openKeyMenu} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+              Add your Together key
+            </button>
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button type="button" className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+                  Sign in
+                </button>
+              </SignInButton>
+            </Show>
+          </>
         )}
+        <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+          Try again
+        </button>
       </div>
     );
   }
 
   const { data, usage, modelKey } = brief;
   return (
-    <section aria-label="Brief" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
+    <section aria-label="Gloss" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
       <button
         type="button"
         onClick={() => setUI({ briefOpen: !open })}
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        <span className="text-[13.5px] font-medium text-ink">Brief</span>
+        <span className="text-[13.5px] font-medium text-ink">Gloss</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
         </span>

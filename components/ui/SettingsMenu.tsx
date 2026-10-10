@@ -2,7 +2,7 @@
 
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { AlignJustify, AlignLeft, Focus, Map as MapIcon, Minus, Pilcrow, Plus, RotateCcw } from "lucide-react";
+import { AlignJustify, AlignLeft, Focus, Headphones, Map as MapIcon, Minus, Pilcrow, Plus, RotateCcw } from "lucide-react";
 import { MODELS, type ModelKey } from "@/lib/models";
 import { applySettings, DEFAULT_SETTINGS, FACES, MARKERS, PENS, resolveTheme, THEMES, type Settings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
@@ -222,10 +222,11 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                       <span className="ml-1 text-[12px] text-ink-3">{MARKERS.find((m) => m.key === settings.marker)?.label}</span>
                     </div>
                   </Row>
-                  <div className="grid grid-cols-3 gap-1.5 border-t border-rule pt-3.5">
+                  <div className="grid grid-cols-2 gap-1.5 border-t border-rule pt-3.5">
                     <Chip label="Numbers" icon={<Pilcrow size={14} />} on={settings.numbers} onChange={(v) => set({ numbers: v })} />
                     <Chip label="Map" icon={<MapIcon size={14} />} on={settings.rail} onChange={(v) => set({ rail: v })} />
                     <Chip label="Focus" icon={<Focus size={14} />} on={focusMode} onChange={(v) => setUI({ focusMode: v })} />
+                    <Chip label="Listen" icon={<Headphones size={14} />} on={settings.listen} onChange={(v) => set({ listen: v })} />
                   </div>
                 </>
               )}

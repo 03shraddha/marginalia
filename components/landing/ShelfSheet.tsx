@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search, X } from "lucide-react";
+import { Check, Download, Search, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
+import { exportAll } from "@/lib/export";
+import { useStore, type Highlight } from "@/lib/store";
 import type { TrayItem } from "./Tray";
 
 type Filter = "all" | "reading" | "unread" | "done";
@@ -36,23 +38,27 @@ function Ring({ pct }: { pct: number }) {
 
 /**
  * The whole shelf, pulled up over the desk: every text, newest reading first,
- * found by typing. Arrow keys walk the list; S opens it from the desk.
+ * found by typing. Arrow keys walk the list; S opens it from the desk. The
+ * same sheet turns to every highlight and note across the shelf, and exports
+ * all of them as Markdown.
  */
 export function ShelfSheet({
-  open,
   items,
-  onOpenChange,
   onOpen,
   onRemove,
 }: {
-  open: boolean;
   items: TrayItem[];
-  onOpenChange: (v: boolean) => void;
-  onOpen: (id: string) => void;
+  onOpen: (id: string, hl?: string) => void;
   onRemove: (id: string) => void;
 }) {
+  const view = useStore((s) => s.shelf);
+  const setUI = useStore((s) => s.setUI);
+  const open = view !== null;
+  const onOpenChange = (v: boolean) => setUI({ shelf: v ? "texts" : null });
+  const highlights = useStore((s) => s.highlights);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [exported, setExported] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -68,12 +74,13 @@ export function ShelfSheet({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
+  }, [open, setUI]);
 
   useEffect(() => {
     if (!open) return;
     setQ("");
     setFilter("all");
+    setExported(null);
     // Ready to type with a keyboard; on a phone, no keyboard leaping over the list.
     if (window.matchMedia("(pointer: fine)").matches) requestAnimationFrame(() => inputRef.current?.focus());
     const onKey = (e: KeyboardEvent) => {
@@ -98,7 +105,27 @@ export function ShelfSheet({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onOpenChange]);
+  }, [open, setUI]);
+
+  // Every highlight on a text that is still on the shelf, newest first.
+  const titles = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
+  const allHighlights = useMemo(
+    () =>
+      Object.values(highlights)
+        .flat()
+        .filter((h) => titles.has(h.articleId))
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [highlights, titles]
+  );
+  const shownHighlights = useMemo(() => {
+    const words = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return allHighlights;
+    return allHighlights.filter((h) => {
+      const hay = `${h.anchor.quote} ${h.note ?? ""} ${titles.get(h.articleId)?.title ?? ""}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
+    });
+  }, [allHighlights, q, titles]);
+  const anyNotes = items.some((it) => it.glosses > 0) || allHighlights.length > 0;
 
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, items.filter(f.test).length])) as Record<Filter, number>, [items]);
   const shown = useMemo(() => {
@@ -119,7 +146,9 @@ export function ShelfSheet({
             <div className="min-w-0 flex-1">
               <h2 className="font-serif text-[30px] leading-none tracking-[-0.015em] text-ink">Your shelf</h2>
               <p className="mt-2 text-[13px] text-ink-3">
-                {items.length} texts{counts.reading ? ` · ${counts.reading} in progress` : ""}
+                {view === "highlights"
+                  ? `${allHighlights.length} highlight${allHighlights.length === 1 ? "" : "s"} across your texts`
+                  : `${items.length} texts${counts.reading ? ` · ${counts.reading} in progress` : ""}`}
               </p>
             </div>
             <label className="flex h-10 w-full items-center gap-2 rounded-full border border-rule bg-bg px-3.5 transition-colors focus-within:border-rule-strong sm:w-[300px]">
@@ -128,21 +157,35 @@ export function ShelfSheet({
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Find a title or author"
-                aria-label="Find a title or author"
+                placeholder={view === "highlights" ? "Search highlights and notes" : "Find a title or author"}
+                aria-label={view === "highlights" ? "Search highlights and notes" : "Find a title or author"}
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-4 focus-visible:outline-none"
               />
             </label>
-            <button
-              type="button"
-              aria-label="Close"
-              data-tip="Close"
-              data-tip-kbd="Esc"
-              onClick={() => onOpenChange(false)}
-              className="-mr-2 grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink max-sm:absolute max-sm:right-5 max-sm:top-6"
-            >
-              <X size={17} />
-            </button>
+            <div className="-mr-2 flex items-center max-sm:absolute max-sm:right-5 max-sm:top-6">
+              {anyNotes && (
+                <button
+                  type="button"
+                  aria-label="Export all notes"
+                  data-tip={exported !== null ? `Exported ${exported} text${exported === 1 ? "" : "s"}` : "Export all notes"}
+                  data-tip-hint={exported !== null ? undefined : "Markdown files, ready for Obsidian"}
+                  onClick={async () => setExported(await exportAll())}
+                  className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
+                >
+                  {exported !== null ? <Check size={16} className="text-good" /> : <Download size={16} />}
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Close"
+                data-tip="Close"
+                data-tip-kbd="Esc"
+                onClick={() => onOpenChange(false)}
+                className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
+              >
+                <X size={17} />
+              </button>
+            </div>
           </header>
 
           <div role="radiogroup" aria-label="Show" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto border-b border-rule px-1 pb-3">
@@ -151,18 +194,60 @@ export function ShelfSheet({
                 key={f.key}
                 type="button"
                 role="radio"
-                aria-checked={filter === f.key}
-                onClick={() => setFilter(f.key)}
+                aria-checked={view === "texts" && filter === f.key}
+                onClick={() => {
+                  setFilter(f.key);
+                  setUI({ shelf: "texts" });
+                }}
                 disabled={f.key !== "all" && !counts[f.key]}
                 className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors disabled:opacity-35 ${
-                  filter === f.key ? "bg-ink text-bg" : "text-ink-3 hover:bg-sunk hover:text-ink"
+                  view === "texts" && filter === f.key ? "bg-ink text-bg" : "text-ink-3 hover:bg-sunk hover:text-ink"
                 }`}
               >
                 {f.label}
-                <span className={`tabular-nums ${filter === f.key ? "text-bg/60" : "text-ink-4"}`}>{counts[f.key]}</span>
+                <span className={`tabular-nums ${view === "texts" && filter === f.key ? "text-bg/60" : "text-ink-4"}`}>{counts[f.key]}</span>
               </button>
             ))}
+            {allHighlights.length > 0 && (
+              <>
+                <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 self-center bg-rule" />
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={view === "highlights"}
+                  onClick={() => setUI({ shelf: "highlights" })}
+                  className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors ${
+                    view === "highlights" ? "bg-ink text-bg" : "text-ink-3 hover:bg-sunk hover:text-ink"
+                  }`}
+                >
+                  Highlights
+                  <span className={`tabular-nums ${view === "highlights" ? "text-bg/60" : "text-ink-4"}`}>{allHighlights.length}</span>
+                </button>
+              </>
+            )}
           </div>
+
+          {view === "highlights" ? (
+            <ul ref={listRef} className="scroll-thin -mx-3 flex-1 content-start overflow-y-auto px-3 pb-10 pt-2">
+              {shownHighlights.slice(0, 400).map((h, i) => (
+                <HighlightRow
+                  key={h.id}
+                  h={h}
+                  i={i}
+                  title={titles.get(h.articleId)?.title ?? ""}
+                  onOpen={() => {
+                    onOpenChange(false);
+                    onOpen(h.articleId, h.id);
+                  }}
+                />
+              ))}
+              {!shownHighlights.length && (
+                <li className="py-16 text-center text-[14px] text-ink-3">
+                  {q ? <>No highlight or note matches &ldquo;{q}&rdquo;.</> : "No highlights yet."}
+                </li>
+              )}
+            </ul>
+          ) : (
 
           <ul ref={listRef} className="scroll-thin -mx-3 grid flex-1 content-start gap-x-6 overflow-y-auto px-3 pb-10 pt-2 md:grid-cols-2">
             {shown.map((it, i) => (
@@ -217,9 +302,36 @@ export function ShelfSheet({
               </li>
             )}
           </ul>
+          )}
         </div>
       </section>
     </div>,
     document.body
+  );
+}
+
+/** One highlight on the shelf: the marked words, the reader's note under them, and where they are from. */
+function HighlightRow({ h, i, title, onOpen }: { h: Highlight; i: number; title: string; onOpen: () => void }) {
+  return (
+    <li className="shelf-row" style={{ animationDelay: `${Math.min(i, 14) * 18}ms` }}>
+      <a
+        href={`/read/${h.articleId}`}
+        data-row
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey) return;
+          e.preventDefault();
+          onOpen();
+        }}
+        className="block rounded-[12px] px-3 py-3.5 transition-colors hover:bg-sunk/70 focus-visible:bg-sunk/70 focus-visible:outline-offset-[-2px]"
+      >
+        <span className="line-clamp-4 max-w-[64ch] font-serif text-[17px] leading-[1.5] text-ink">
+          <mark className="m-hl text-inherit" data-c={h.color && h.color !== "yellow" ? h.color : undefined}>
+            {h.anchor.quote}
+          </mark>
+        </span>
+        {h.note && <span className="mt-2 block max-w-[64ch] whitespace-pre-line text-[14px] leading-[1.55] text-ink-2">{h.note}</span>}
+        <span className="mt-2 block truncate text-[12.5px] text-ink-3">{tidyTitle(title)}</span>
+      </a>
+    </li>
   );
 }

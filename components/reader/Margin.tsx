@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { anchorToRange, blockEl } from "@/lib/anchor";
-import { useStore, type Gloss } from "@/lib/store";
+import { MARKERS } from "@/lib/settings";
+import { useStore, type Gloss, type Highlight } from "@/lib/store";
 import { GlossCard } from "./GlossCard";
 
 /** Room between notes; one-line notes in a crowded stretch sit close, like a list. */
@@ -43,10 +44,28 @@ function place(items: Item[], activeId: string | null): Record<string, number> {
   return out;
 }
 
-export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; articleEl: HTMLElement | null; gutter: number }) {
+/**
+ * Glosses and the reader's own notes share the margin and one layout, so
+ * neither ever covers the other.
+ */
+export function Margin({
+  glosses,
+  notes,
+  articleEl,
+  gutter,
+  onOpenNote,
+}: {
+  glosses: Gloss[];
+  notes: Highlight[];
+  articleEl: HTMLElement | null;
+  gutter: number;
+  onOpenNote: (h: Highlight) => void;
+}) {
   const colRef = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLElement>());
-  const active = useStore((s) => s.activeGloss);
+  const activeGloss = useStore((s) => s.activeGloss);
+  const activeHighlight = useStore((s) => s.activeHighlight);
+  const active = activeGloss ?? (activeHighlight && notes.some((h) => h.id === activeHighlight) ? activeHighlight : null);
   const hover = useStore((s) => s.hoverGloss);
   const entering = useStore((s) => s.enteringGloss);
   const setUI = useStore((s) => s.setUI);
@@ -76,12 +95,19 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
       }
       items.push({ id: g.id, desired, anchorY, h: cards.current.get(g.id)?.offsetHeight ?? 64, created: g.createdAt, mini: false });
     }
+    for (const h of notes) {
+      const rects = anchorToRange(h.anchor)?.getClientRects();
+      const r = rects && rects.length ? rects[0] : null;
+      if (!r) continue;
+      items.push({ id: h.id, desired: r.top - base - 6, anchorY: r.top - base + r.height / 2, h: cards.current.get(h.id)?.offsetHeight ?? 48, created: h.createdAt, mini: false });
+    }
     items.sort((a, b) => a.desired - b.desired || a.created - b.created);
     // Crowding is read from where the passages are, not from card sizes, so it never oscillates.
     const mini: Record<string, boolean> = {};
+    const isNote = new Set(notes.map((h) => h.id));
     items.forEach((it, i) => {
       const near = (j: number) => j >= 0 && j < items.length && Math.abs(items[j].desired - it.desired) < CROWD;
-      it.mini = it.id !== active && (near(i - 1) || near(i + 1));
+      it.mini = it.id !== active && !isNote.has(it.id) && (near(i - 1) || near(i + 1));
       mini[it.id] = it.mini;
     });
     const tops = place(items, active);
@@ -102,7 +128,7 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
       const sameMini = Object.keys(mini).length === Object.keys(prev.mini).length && Object.entries(mini).every(([k, v]) => prev.mini[k] === v);
       return same && sameMini ? prev : { tops, anchors, mini, height, hintTop };
     });
-  }, [glosses, active, articleEl]);
+  }, [glosses, notes, active, articleEl]);
 
   const schedule = useCallback(() => {
     cancelAnimationFrame(raf.current);
@@ -127,13 +153,13 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
       window.removeEventListener("resize", schedule);
       cancelAnimationFrame(raf.current);
     };
-  }, [schedule, articleEl, glosses]);
+  }, [schedule, articleEl, glosses, notes]);
 
   const lead = [active, hover && hover !== active ? hover : null].filter((x): x is string => Boolean(x && layout.tops[x] !== undefined));
 
   return (
     <div ref={colRef} className="relative" style={{ minHeight: layout.height + 40 }}>
-      {glosses.length === 0 && <EmptyMargin top={layout.hintTop} />}
+      {glosses.length === 0 && notes.length === 0 && <EmptyMargin top={layout.hintTop} />}
 
       <svg className="pointer-events-none absolute top-0 overflow-visible" style={{ left: -gutter, width: gutter, height: Math.max(1, layout.height) }} aria-hidden>
         {lead.map((id) => {
@@ -168,6 +194,23 @@ export function Margin({ glosses, articleEl, gutter }: { glosses: Gloss[]; artic
           onActivate={() => setUI({ activeGloss: g.id, activeHighlight: null })}
         />
       ))}
+
+      {notes.map((h) => (
+        <button
+          key={h.id}
+          ref={(el) => {
+            if (el) cards.current.set(h.id, el);
+            else cards.current.delete(h.id);
+          }}
+          type="button"
+          onClick={() => onOpenNote(h)}
+          className={`mnote${active === h.id ? " is-active" : ""}`}
+          style={{ transform: `translateY(${Math.round(layout.tops[h.id] ?? 0)}px)`, ["--note-c" as string]: MARKERS.find((m) => m.key === (h.color ?? "yellow"))?.color }}
+          aria-label={`Your note: ${h.note}. Edit note.`}
+        >
+          <span className="line-clamp-4 whitespace-pre-line">{h.note}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -178,10 +221,8 @@ function EmptyMargin({ top }: { top: number }) {
       className="rise absolute inset-x-0 border-l-[1.5px] border-rule-strong py-1 pl-[15px] text-[13px] leading-relaxed text-ink-3"
       style={{ top, animationDelay: "500ms" }}
     >
-      <p className="font-medium text-ink-2">This margin is for notes.</p>
-      <p className="mt-1">
-        Select any passage, then just start typing to ask. Or click a paragraph number. Answers are written here, beside the words they explain.
-      </p>
+      <p className="font-medium text-ink-2">This area is for notes.</p>
+      <p className="mt-1">Select any passage, then just start typing to ask.</p>
     </div>
   );
 }

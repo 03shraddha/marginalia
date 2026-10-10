@@ -1,10 +1,11 @@
 "use client";
 
-import { memo, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { MessageCirclePlus } from "lucide-react";
 import type { Block as BlockT, Run } from "@/lib/article";
 
-export type Mark = { from: number; to: number; kind: "gloss" | "hl" | "pending"; id: string; color?: string };
+/** `note`: a highlight with the reader's note, set only in the block where it ends. */
+export type Mark = { from: number; to: number; kind: "gloss" | "hl" | "pending"; id: string; color?: string; note?: boolean };
 
 type Props = {
   block: BlockT;
@@ -94,12 +95,64 @@ function segments(block: BlockT, marks: Mark[], activeGloss: string | null, hove
         {wrapRun(run, text, "r")}
       </span>
     );
+    // Empty and drawn by CSS, so it adds no characters and offsets stay true.
+    const noted = hls.find((m) => m.note && m.to === b);
+    if (noted) out.push(<span key={`${key}n`} className="note-dot" data-h={noted.id} aria-hidden />);
   }
   return out;
 }
 
+/** A picture from the source page, loaded from where it lives. One that fails to load folds away. */
+function Picture({ src, alt }: { src: string; alt?: string }) {
+  const [state, setState] = useState<"loading" | "ok" | "gone">("loading");
+  if (state === "gone") return null;
+  return (
+    <img
+      src={src}
+      alt={alt ?? ""}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      draggable={false}
+      className={`fig-img${state === "ok" ? " is-loaded" : ""}`}
+      onLoad={(e) => (e.currentTarget.naturalWidth < 48 ? setState("gone") : setState("ok"))}
+      onError={() => setState("gone")}
+    />
+  );
+}
+
+function Table({ rows, head }: { rows: string[][]; head?: boolean }) {
+  const body = head ? rows.slice(1) : rows;
+  return (
+    <div className="tbl scroll-thin" tabIndex={0} role="region" aria-label="Table">
+      <table>
+        {head && (
+          <thead>
+            <tr>
+              {rows[0].map((c, i) => (
+                <th key={i} scope="col">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {body.map((r, i) => (
+            <tr key={i}>
+              {r.map((c, j) => (
+                <td key={j}>{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function BlockImpl({ block, n, first, marks, activeGloss, hoverGloss, activeHighlight, fresh, cursor, hasAt, onAsk }: Props) {
-  const Tag = block.type === "h2" ? "h2" : block.type === "h3" ? "h3" : "div";
+  const Tag = block.type === "h2" ? "h2" : block.type === "h3" ? "h3" : block.type === "figure" ? "figure" : "div";
   const content = segments(block, marks, activeGloss, hoverGloss, activeHighlight, fresh);
   return (
     <Tag
@@ -124,7 +177,14 @@ function BlockImpl({ block, n, first, marks, activeGloss, hoverGloss, activeHigh
           {n}
         </button>
       )}
-      <span className="blk-text">{content}</span>
+      {block.type === "figure" && block.src && <Picture src={block.src} alt={block.alt} />}
+      {block.type === "table" && block.rows ? (
+        <Table rows={block.rows} head={block.head} />
+      ) : block.type === "figure" ? (
+        block.runs.length > 0 && <figcaption className="blk-text">{content}</figcaption>
+      ) : (
+        <span className="blk-text">{content}</span>
+      )}
     </Tag>
   );
 }
@@ -136,7 +196,7 @@ export const Block = memo(BlockImpl, (a, b) => {
   for (let i = 0; i < a.marks.length; i++) {
     const x = a.marks[i];
     const y = b.marks[i];
-    if (x.from !== y.from || x.to !== y.to || x.id !== y.id || x.kind !== y.kind || x.color !== y.color) return false;
+    if (x.from !== y.from || x.to !== y.to || x.id !== y.id || x.kind !== y.kind || x.color !== y.color || x.note !== y.note) return false;
   }
   if (!a.marks.length) return true;
   // Only re-render for active or hover changes that touch this block's marks.

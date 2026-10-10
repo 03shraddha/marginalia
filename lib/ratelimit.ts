@@ -1,7 +1,6 @@
 /**
- * A small in-memory limiter for the shared house key. Visitors who bring
- * their own key are never limited: they pay for their own runs. Per server
- * instance only, which is enough for a demo; swap in Upstash for production.
+ * The request's address, and a small per-instance counter. The daily free
+ * allowance lives in lib/quota.ts and uses this only when there is no database.
  */
 const buckets = new Map<string, { count: number; reset: number }>();
 

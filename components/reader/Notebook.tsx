@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Show, SignInButton } from "@clerk/nextjs";
 import { Check, Copy, Download, Trash2, X } from "lucide-react";
 import { GlossMark } from "@/components/brand/Gloss";
 import { cmp } from "@/lib/anchor";
 import { undash } from "@/lib/article";
 import { stopGloss } from "@/lib/ask";
 import { useGlosses, useHighlights, useStore, type Gloss, type Highlight, type Turn } from "@/lib/store";
-import { ACTION_QUESTIONS, ACTIONS } from "@/lib/actions";
+import { ACTIONS } from "@/lib/actions";
+import { notesMarkdown, pairsOf } from "@/lib/export";
 import { Answer } from "./Answer";
 import { Writing } from "./Writing";
 import { useReader } from "./context";
@@ -51,7 +53,8 @@ export function Notebook() {
 
   const both = glosses.length > 0 && highlights.length > 0;
   const shown = entries.filter((e) => !both || filter === "all" || (filter === "q" ? e.kind === "gloss" : e.kind === "hl"));
-  const markdown = () => toMarkdown(ix.article.title, ix.article.author, ix.article.published, ix.article.sourceUrl, entries, ix.numbers);
+  const markdown = () =>
+    notesMarkdown({ title: ix.article.title, author: ix.article.author, published: ix.article.published, url: ix.article.sourceUrl }, glosses, highlights, ix);
   const summary = [
     glosses.length ? `${glosses.length} question${glosses.length === 1 ? "" : "s"}` : "",
     highlights.length ? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}` : "",
@@ -148,6 +151,17 @@ export function Notebook() {
               </li>
             ))}
           </ol>
+          <Show when="signed-out">
+            <p className="px-1 pb-1 pt-4 text-center text-[12.5px] leading-relaxed text-ink-3">
+              These live in this browser only.{" "}
+              <SignInButton mode="modal">
+                <button type="button" className="font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
+                  Sign in
+                </button>
+              </SignInButton>{" "}
+              to keep them on every device.
+            </p>
+          </Show>
         </div>
       )}
     </aside>
@@ -175,18 +189,6 @@ function ago(t: number) {
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** The first turn answers the gloss itself; after that, user and assistant turns alternate. */
-function pairsOf(g: Gloss): { q: string; a?: Turn }[] {
-  const pairs: { q: string; a?: Turn }[] = [{ q: cap(g.question ?? (g.anchor ? ACTION_QUESTIONS[g.action] : "About the whole text")), a: g.turns[0] }];
-  for (const t of g.turns.slice(1)) {
-    if (t.role === "user") pairs.push({ q: cap(t.content) });
-    else pairs[pairs.length - 1].a = t;
-  }
-  return pairs;
 }
 
 function Meta({ n, label, at }: { n?: number; label?: string; at: number }) {
@@ -304,12 +306,13 @@ function HighlightEntry({ h }: { h: Highlight }) {
         }}
         className="block w-full pr-7 text-left"
       >
-        <Meta n={ix.numbers.get(h.anchor.start.b)} label="Highlight" at={h.createdAt} />
+        <Meta n={ix.numbers.get(h.anchor.start.b)} label={h.note ? "Note" : "Highlight"} at={h.createdAt} />
         <span className="mt-2.5 block font-serif text-[15.5px] leading-[1.5] text-ink">
           <mark className="m-hl text-inherit" data-c={h.color && h.color !== "yellow" ? h.color : undefined}>
             {h.anchor.quote}
           </mark>
         </span>
+        {h.note && <span className="mt-2.5 block whitespace-pre-line text-[14px] leading-[1.55] text-ink-2">{h.note}</span>}
       </button>
       <button
         type="button"
@@ -322,34 +325,4 @@ function HighlightEntry({ h }: { h: Highlight }) {
       </button>
     </article>
   );
-}
-
-function toMarkdown(
-  title: string,
-  author: string | undefined,
-  published: string | undefined,
-  url: string | undefined,
-  entries: Entry[],
-  numbers: Map<string, number>
-): string {
-  const lines: string[] = [`# ${title}`];
-  const by = [author, published].filter(Boolean).join(", ");
-  if (by) lines.push(by);
-  if (url) lines.push(url);
-  lines.push("", `Notes from Gloss, ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`, "");
-  for (const e of entries) {
-    if (e.kind === "hl") {
-      lines.push(`> ${e.h.anchor.quote.replace(/\n+/g, " ")}`, `> (¶${numbers.get(e.h.anchor.start.b)})`, "");
-      continue;
-    }
-    const g = e.g;
-    const n = numbers.get(g.anchor?.start.b ?? g.at ?? "");
-    lines.push(`## ${g.anchor ? ACTIONS[g.action].label : "Question"}${n ? ` (¶${n})` : ""}`);
-    if (g.anchor) lines.push(`> ${g.anchor.quote.replace(/\n+/g, " ")}`, "");
-    for (const p of pairsOf(g)) {
-      lines.push(`**${p.q}**`, "");
-      if (p.a?.content) lines.push(undash(p.a.content), "");
-    }
-  }
-  return lines.join("\n").trim() + "\n";
 }

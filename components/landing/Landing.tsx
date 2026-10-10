@@ -1,8 +1,10 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lockup } from "@/components/brand/Gloss";
+import { Account } from "@/components/account/Account";
 import { KeyMenu } from "@/components/ui/KeyMenu";
 import { SettingsMenu } from "@/components/ui/SettingsMenu";
 import { wordCount, type Article } from "@/lib/article";
@@ -10,14 +12,19 @@ import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } fro
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
+import { DailyHighlight } from "./DailyHighlight";
 import { Hero } from "./Hero";
+import { YourHighlights } from "./YourHighlights";
 import { ImportBar, type Busy } from "./ImportBar";
 import { PasteSheet } from "./PasteSheet";
 import { Tray, type TrayItem } from "./Tray";
 
 /** One screen: a headline that shows what it does, a place to paste, and your shelf. */
-export function Landing() {
+export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boolean }) {
   const router = useRouter();
+  // Known on the server at load, so a signed-in reader never sees the demo flash; then live, for a sign-in from this page.
+  const { isLoaded, isSignedIn } = useAuth();
+  const signedIn = isLoaded ? Boolean(isSignedIn) : signedInAtLoad;
   const hydrate = useStore((s) => s.hydrate);
   const hydrated = useStore((s) => s.hydrated);
   const library = useStore((s) => s.library);
@@ -42,16 +49,16 @@ export function Landing() {
 
   // Leave with a soft fade, so the page turns rather than cuts.
   const go = useCallback(
-    (id: string) => {
+    (id: string, hl?: string) => {
       setLeaving(true);
-      setTimeout(() => router.push(`/read/${id}`), 240);
+      setTimeout(() => router.push(`/read/${id}${hl ? `?hl=${hl}` : ""}`), 240);
     },
     [router]
   );
 
   const finish = useCallback(
-    (a: Article) => {
-      const err = keep(a);
+    async (a: Article) => {
+      const err = await keep(a);
       if (err) {
         setError(err);
         setBusy(null);
@@ -199,11 +206,12 @@ export function Landing() {
         <nav aria-label="Settings" className="flex items-center gap-1">
           <SettingsMenu compact />
           <KeyMenu />
+          <Account />
         </nav>
       </header>
 
       <main className="relative flex flex-1 items-center pb-[150px] pt-6 max-lg:items-start max-lg:pb-10 max-lg:pt-14">
-        <Hero>
+        <Hero aside={signedIn ? <YourHighlights /> : undefined}>
           <ImportBar
             ref={inputRef}
             url={url}
@@ -214,6 +222,7 @@ export function Landing() {
             onPickFile={() => fileRef.current?.click()}
             onPasteText={() => setPasteOpen(true)}
           />
+          {!signedIn && <DailyHighlight />}
         </Hero>
       </main>
 

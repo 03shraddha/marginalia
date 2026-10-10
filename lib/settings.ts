@@ -32,6 +32,8 @@ export type Settings = {
   model: ModelKey;
   numbers: boolean;
   rail: boolean;
+  /** Read aloud. Off by default: when on, a listen button joins the reader's top bar. */
+  listen: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -48,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: "flash",
   numbers: true,
   rail: true,
+  listen: false,
 };
 
 /** Swatch colours for the settings panel. The real palettes live in globals.css. */

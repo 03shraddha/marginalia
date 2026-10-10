@@ -32,7 +32,7 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
   };
 
   return (
-    <div className="pointer-events-none sticky bottom-4 z-30 mt-20 sm:bottom-6">
+    <div className="focus-hide pointer-events-none sticky bottom-4 z-30 mt-20 sm:bottom-6">
       {focused && !q && (
         <div className="pointer-events-auto mb-2 flex flex-wrap justify-center gap-1.5" style={{ animation: "rise 0.3s var(--ease-out) both" }}>
           {suggestions.map((s) => (

@@ -71,12 +71,10 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
         history,
       }),
     });
+    noteFree(res);
     if (!res.ok || !res.body) {
-      let msg = `Request failed (${res.status}).`;
-      try {
-        msg = ((await res.json()) as { error?: string }).error ?? msg;
-      } catch {}
-      update((t) => ({ ...t, streaming: false, error: msg }));
+      const { error, needKey } = await failure(res);
+      update((t) => ({ ...t, streaming: false, error, needKey }));
       return;
     }
     const reader = res.body.getReader();
@@ -109,7 +107,7 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
           // Batch tokens into animation frames so a fast model never janks the page.
           pending += e.text;
           if (!raf) raf = requestAnimationFrame(flush);
-        } else if (e.type === "meta") update((t) => ({ ...t, mode: e.mode, model: e.model }));
+        } else if (e.type === "meta") update((t) => ({ ...t, model: e.model }));
         else if (e.type === "usage") update((t) => ({ ...t, usage: e.usage }));
         else if (e.type === "error") {
           flush();
@@ -134,6 +132,8 @@ export function startGloss(
 ): string {
   const st = useStore.getState();
   const modelKey = opts.modelKey ?? st.settings.model;
+  // The answer is written in the margin, which focus mode hides: step out of it.
+  if (st.focusMode) st.setUI({ focusMode: false });
   const g: Gloss = {
     id: uid(),
     articleId: ix.article.id,
@@ -185,12 +185,34 @@ export async function fetchBrief(ix: DocIndex) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ apiKey: apiKey || undefined, model: modelKey, doc: docPayload(ix) }),
     });
-    const j = (await res.json()) as { mode?: string; brief?: BriefData; usage?: Usage; error?: string };
+    noteFree(res);
+    const j = (await res.json()) as { brief?: BriefData; usage?: Usage; error?: string; code?: string };
     if (j.brief) useStore.getState().setBrief(id, { status: "ready", data: j.brief, usage: j.usage, modelKey, at: Date.now() });
-    else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not make a brief.", demo: j.mode === "demo" });
+    else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not write the gloss.", needKey: j.code === "need_key" });
   } catch (e) {
     useStore.getState().setBrief(id, { status: "error", error: `Connection lost: ${String(e)}` });
   }
+}
+
+/** Tell the key menu how many free answers are left today, when the server says. */
+function noteFree(res: Response) {
+  const left = res.headers.get("X-Free-Left");
+  if (left !== null) window.dispatchEvent(new CustomEvent("gloss:free", { detail: Number(left) }));
+}
+
+/** A failed request's message, and whether the fix is the reader's own key. */
+async function failure(res: Response): Promise<{ error: string; needKey: boolean }> {
+  try {
+    const j = (await res.json()) as { error?: string; code?: string };
+    return { error: j.error ?? `Request failed (${res.status}).`, needKey: j.code === "need_key" };
+  } catch {
+    return { error: `Request failed (${res.status}).`, needKey: false };
+  }
+}
+
+/** Open the key menu in the top bar, from anywhere. */
+export function openKeyMenu() {
+  window.dispatchEvent(new Event("gloss:key"));
 }
 
 export async function validateKey(key: string): Promise<boolean> {
@@ -208,7 +230,7 @@ export async function validateKey(key: string): Promise<boolean> {
  */
 export async function streamAsk(
   body: Record<string, unknown>,
-  on: { text: (full: string) => void; meta?: (mode: "live" | "demo") => void; error?: (msg: string) => void },
+  on: { text: (full: string) => void; error?: (msg: string) => void },
   signal?: AbortSignal
 ) {
   let full = "";
@@ -220,12 +242,9 @@ export async function streamAsk(
       signal,
       body: JSON.stringify({ ...body, apiKey: apiKey || undefined, model: useStore.getState().settings.model }),
     });
+    noteFree(res);
     if (!res.ok || !res.body) {
-      let msg = `Request failed (${res.status}).`;
-      try {
-        msg = ((await res.json()) as { error?: string }).error ?? msg;
-      } catch {}
-      on.error?.(msg);
+      on.error?.((await failure(res)).error);
       return;
     }
     const reader = res.body.getReader();
@@ -243,8 +262,7 @@ export async function streamAsk(
         if (e.type === "content") {
           full += e.text;
           on.text(full);
-        } else if (e.type === "meta") on.meta?.(e.mode);
-        else if (e.type === "error") on.error?.(e.text);
+        } else if (e.type === "error") on.error?.(e.text);
       }
     }
   } catch (e) {

@@ -1,7 +1,8 @@
 import { BRIEF_TASK, systemFor, type DocPayload } from "@/lib/prompts";
 import { completeJSON, DEFAULT_MODEL, isModelKey } from "@/lib/together";
 import { undash, type BriefData } from "@/lib/article";
-import { allow, clientId } from "@/lib/ratelimit";
+import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
+import { MODELS } from "@/lib/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,12 +20,12 @@ export async function POST(req: Request) {
   }
 
   const apiKey = body.apiKey?.trim() || undefined;
-  if (!apiKey && !process.env.TOGETHER_API_KEY) {
-    return Response.json({ mode: "demo", error: "Add a Together API key to generate a brief." }, { status: 200 });
-  }
-
-  if (!apiKey && !allow(`brief:${clientId(req)}`, 20, 60 * 60 * 1000)) {
-    return Response.json({ error: "The shared key has made a lot of briefs for you this hour. Add your own Together key to keep going." }, { status: 429 });
+  // A gloss of the whole text spends from the same free allowance.
+  let free: Awaited<ReturnType<typeof checkFree>> | null = null;
+  if (!apiKey) {
+    if (!process.env.TOGETHER_API_KEY) return needKey(null);
+    free = await checkFree(req);
+    if (!free.ok) return needKey(free);
   }
 
   const model = isModelKey(body.model) ? body.model : DEFAULT_MODEL;
@@ -37,6 +38,10 @@ export async function POST(req: Request) {
       { role: "user", content: BRIEF_TASK },
     ],
   });
+  if (free) {
+    const chars = doc.paras.reduce((a, p) => a + (p.text?.length ?? 0), 0);
+    await chargeFree(free.subject, result.ok ? result.usage.costUsd : estimateUsd(chars, MODELS[model].inPerM));
+  }
   if (!result.ok) return Response.json({ error: result.error }, { status: 502 });
 
   // Keep only well-formed, in-range items so the UI never links to nothing.
@@ -56,5 +61,5 @@ export async function POST(req: Request) {
       .sort((a, b) => a.start - b.start)
       .slice(0, 10),
   };
-  return Response.json({ mode: "live", brief, usage: result.usage, model });
+  return Response.json({ brief, usage: result.usage, model }, { headers: free ? { "X-Free-Left": free.left.toFixed(3) } : undefined });
 }

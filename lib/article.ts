@@ -2,9 +2,14 @@
 
 export type Run = { text: string; em?: boolean; strong?: boolean; code?: boolean; href?: string };
 
-export type BlockType = "p" | "h2" | "h3" | "quote" | "li" | "pre" | "note";
+export type BlockType = "p" | "h2" | "h3" | "quote" | "li" | "pre" | "note" | "figure" | "table";
 
-export type Block = { id: string; type: BlockType; runs: Run[] };
+/**
+ * Figures carry an image by its original URL (never a copy), with the caption
+ * as their runs. Tables carry their cells; their runs are empty, so nothing in
+ * a table can be anchored, but the model still reads it (see modelText).
+ */
+export type Block = { id: string; type: BlockType; runs: Run[]; src?: string; alt?: string; rows?: string[][]; head?: boolean };
 
 export type Article = {
   id: string;
@@ -30,14 +35,20 @@ export const blockText = (b: Block) => b.runs.map((r) => r.text).join("");
 
 export const isHeading = (b: Block) => b.type === "h2" || b.type === "h3";
 
+/** What the model reads for a block: a table as pipe-separated rows, anything else as its text. */
+export function modelText(b: Block): string {
+  if (b.type === "table" && b.rows) return b.rows.map((r) => r.join(" | ")).join("\n");
+  return blockText(b);
+}
+
 /**
  * Paragraph numbers, the shared address system between reader and model.
- * Headings are not numbered; everything else is, in reading order.
+ * Headings and pictures are not numbered; everything else is, in reading order.
  */
 export function numberBlocks(blocks: Block[]): Map<string, number> {
   const map = new Map<string, number>();
   let n = 0;
-  for (const b of blocks) if (!isHeading(b)) map.set(b.id, ++n);
+  for (const b of blocks) if (!isHeading(b) && b.type !== "figure") map.set(b.id, ++n);
   return map;
 }
 

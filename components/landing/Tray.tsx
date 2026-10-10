@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
+import { useStore } from "@/lib/store";
 import { ShelfSheet } from "./ShelfSheet";
 
 export type TrayItem = {
@@ -29,10 +30,10 @@ const PAD = 40;
  * are more than the desk can hold, the most recent stay out and the rest
  * wait in a pile that opens into the whole shelf, searchable.
  */
-export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; onOpen: (id: string) => void; onRemove: (id: string) => void; onAdd: () => void }) {
+export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; onOpen: (id: string, hl?: string) => void; onRemove: (id: string) => void; onAdd: () => void }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState(5);
-  const [shelf, setShelf] = useState(false);
+  const setUI = useStore((s) => s.setUI);
 
   // How many papers fit on the desk, counting the add card at the end.
   useLayoutEffect(() => {
@@ -96,7 +97,7 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
 
         {overflow && (
           <div className="tray-slot" style={{ ["--tilt" as string]: "-0.35deg" }}>
-            <button type="button" onClick={() => setShelf(true)} className="tray-card tray-pile group" aria-label={`Your whole shelf, ${items.length} texts`}>
+            <button type="button" onClick={() => setUI({ shelf: "texts" })} className="tray-card tray-pile group" aria-label={`Your whole shelf, ${items.length} texts`}>
               <p className="flex items-baseline justify-between gap-3 text-[12px] text-ink-3">
                 <span>Your shelf</span>
                 <span className="tabular-nums text-ink-4">{items.length} texts</span>
@@ -130,7 +131,7 @@ export function Tray({ items, onOpen, onRemove, onAdd }: { items: TrayItem[]; on
         </div>
       </div>
 
-      <ShelfSheet open={shelf} items={items} onOpenChange={setShelf} onOpen={onOpen} onRemove={onRemove} />
+      <ShelfSheet items={items} onOpen={onOpen} onRemove={onRemove} />
     </div>
   );
 }

@@ -113,9 +113,3 @@ export const BRIEF_TASK = `Read the whole text and return JSON only, with this s
   "sections": [{ "title": "2 to 5 words", "start": 1 }]
 }
 Rules: 3 to 5 claims, each citing the single paragraph that best supports it. 4 to 8 sections that cover the text in order: "start" is the first paragraph number of each section, ascending, and the first section starts at the first paragraph. Section titles are sentence case and specific to this text. Never use em dashes or en dashes.`;
-
-/** Canned demo answers, shown only when no key is available, always labelled. */
-export function demoAnswer(t: ThreadPayload): string {
-  const where = t.from ? ` about [¶${t.from}]` : "";
-  return `==This is demo output, not a model answer.== With a Together API key, DeepSeek V4.1 Flash would read the whole text and write a real gloss${where} here, citing paragraphs like [¶3] so you can jump straight to them. Add your key from the key button in the top bar.`;
-}

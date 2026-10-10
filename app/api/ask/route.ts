@@ -1,7 +1,8 @@
-import { buildMessages, demoAnswer, isLengthKey, type DocPayload, type ThreadPayload } from "@/lib/prompts";
-import { DEFAULT_MODEL, isModelKey, streamChat, streamDemo, type StreamEvent } from "@/lib/together";
+import { buildMessages, isLengthKey, type DocPayload, type ThreadPayload } from "@/lib/prompts";
+import { DEFAULT_MODEL, isModelKey, streamChat, type StreamEvent } from "@/lib/together";
 import { ACTIONS } from "@/lib/actions";
-import { allow, clientId } from "@/lib/ratelimit";
+import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
+import { MODELS } from "@/lib/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -40,9 +41,12 @@ export async function POST(req: Request) {
   const model = isModelKey(body.model) ? body.model : DEFAULT_MODEL;
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   const apiKey = body.apiKey?.trim() || headerKey || undefined;
-  const haveKey = Boolean(apiKey || process.env.TOGETHER_API_KEY);
-  if (!apiKey && haveKey && !allow(`ask:${clientId(req)}`, 120, 60 * 60 * 1000)) {
-    return Response.json({ error: "The shared key has answered a lot for you this hour. Add your own Together key to keep going." }, { status: 429 });
+  // No key of their own: a few cents of answers a day on the shared key, then they bring one.
+  let free: Awaited<ReturnType<typeof checkFree>> | null = null;
+  if (!apiKey) {
+    if (!process.env.TOGETHER_API_KEY) return needKey(null);
+    free = await checkFree(req);
+    if (!free.ok) return needKey(free);
   }
 
   const encoder = new TextEncoder();
@@ -50,27 +54,31 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const source = haveKey
-        ? streamChat({
-            messages: buildMessages(doc, thread, history, isLengthKey(body.length) ? body.length : "normal"),
-            model,
-            apiKey,
-            maxTokens: body.length === "long" ? 1400 : 900,
-            signal: req.signal,
-          })
-        : streamDemo(demoAnswer(thread));
+      const source = streamChat({
+        messages: buildMessages(doc, thread, history, isLengthKey(body.length) ? body.length : "normal"),
+        model,
+        apiKey,
+        maxTokens: body.length === "long" ? 1400 : 900,
+        signal: req.signal,
+      });
+      let cost: number | null = null;
       try {
-        for await (const event of source) controller.enqueue(send(event));
+        for await (const event of source) {
+          if (event.type === "usage") cost = event.usage.costUsd;
+          controller.enqueue(send(event));
+        }
       } catch (e) {
         if (!req.signal.aborted) controller.enqueue(send({ type: "error", text: `Stream failed: ${String(e)}` }));
       } finally {
         controller.close();
+        if (free) await chargeFree(free.subject, cost ?? estimateUsd(docChars, MODELS[model].inPerM));
       }
     },
   });
 
   return new Response(stream, {
     headers: {
+      ...(free ? { "X-Free-Left": free.left.toFixed(3) } : {}),
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",

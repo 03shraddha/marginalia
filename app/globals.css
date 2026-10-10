@@ -578,12 +578,58 @@ kbd,
   animation: grow-y 0.25s var(--ease-out);
 }
 
-/* Focus mode dims everything but the paragraph you are on. */
+/*
+ * Focus mode: the title and the text, nothing else. The rail, numbers,
+ * margin, byline, gloss, composer and footer all go; marks lose their ink;
+ * the top bar tucks away until the pointer reaches the top edge. The
+ * paragraph you are on stays lit and the rest recede.
+ */
+.focus-mode .reader-grid {
+  grid-template-columns: minmax(0, var(--m));
+}
+.focus-mode .reader-grid > :is(.rg-rail, .rg-numgap, .rg-gutter, .rg-margin) {
+  display: none;
+}
+/* Important: these elements also carry display utilities, which outrank this layer. */
+.focus-mode .focus-hide {
+  display: none !important;
+}
+.focus-mode .prose-read .pnum {
+  visibility: hidden;
+}
+.focus-mode .prose-read :is(.m-hl, .m-gloss) {
+  background: none;
+  cursor: auto;
+}
 .focus-mode .prose-read .blk {
   opacity: 0.28;
 }
 .focus-mode .prose-read .blk.is-cursor {
   opacity: 1;
+}
+.focus-mode .reader-grid {
+  animation: fade 0.5s var(--ease-out);
+}
+
+/* Says once how to leave, then gets out of the way. */
+.focus-hint {
+  animation: focus-hint 2.8s var(--ease-out) both;
+}
+
+@keyframes focus-hint {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  12%,
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
 }
 
 /* ---------- marks: your highlighter and the model's pen ---------- */
@@ -1843,5 +1889,144 @@ mark.key .cite {
   }
   .tray-slot {
     transform: none;
+  }
+}
+
+/* Figures and tables from the source page. Pictures load from where they live,
+   fade in once they arrive, and never upscale past their own size. */
+.prose-read .blk[data-type="figure"] {
+  margin: 1.6em 0 1.5em;
+}
+
+.prose-read .fig-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 72vh;
+  margin: 0 auto;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+}
+
+.prose-read .fig-img.is-loaded {
+  opacity: 1;
+}
+
+[data-theme="night"] .prose-read .fig-img,
+[data-theme="ink"] .prose-read .fig-img {
+  filter: brightness(0.9);
+}
+
+.prose-read .blk[data-type="figure"] .blk-text {
+  margin-top: 0.75em;
+  font-family: var(--font-sans);
+  font-size: 0.68em;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.prose-read .blk[data-type="table"] {
+  margin: 1.5em 0 1.6em;
+}
+
+.prose-read .tbl {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overscroll-behavior: contain;
+}
+
+.prose-read .tbl table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.66em;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-read .tbl th,
+.prose-read .tbl td {
+  padding: 0.6em 0.9em;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+}
+
+.prose-read .tbl th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: inset 0 -1px 0 var(--rule-strong);
+}
+
+.prose-read .tbl td {
+  color: var(--ink-2);
+}
+
+.prose-read .tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The reader's own notes in the margin: their words, in the reading face,
+   on a rule the colour of the highlight they belong to. */
+.mnote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: block;
+  padding: 6px 12px 7px 14px;
+  border-left: 2px solid color-mix(in oklab, var(--note-c) 80%, transparent);
+  border-radius: 0 9px 9px 0;
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  cursor: text;
+  transition:
+    transform 0.42s var(--ease-out),
+    background-color 0.25s,
+    color 0.25s;
+  will-change: transform;
+}
+
+[data-face="book"] .mnote {
+  font-family: var(--font-book);
+}
+
+.mnote:hover,
+.mnote:focus-visible,
+.mnote.is-active {
+  background: color-mix(in oklab, var(--bg-raised) 70%, transparent);
+  color: var(--ink);
+}
+
+.mnote:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Below the margin's width, a highlight with a note carries a small mark at its end. */
+.note-dot {
+  display: none;
+}
+
+@media (max-width: 1079px) {
+  .note-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 0 0.12em 3px;
+    border-radius: 99px;
+    background: var(--rubric);
+    vertical-align: middle;
   }
 }

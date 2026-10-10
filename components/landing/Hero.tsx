@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUp, RotateCcw, TextCursor } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { ABOUT_DOC } from "@/lib/about";
 import { ACTION_QUESTIONS, ACTIONS, type Action } from "@/lib/actions";
 import { streamAsk } from "@/lib/ask";
@@ -10,13 +10,12 @@ import { Writing } from "@/components/reader/Writing";
 
 const DEMO_QUOTE = "any line";
 const DEMO_QUESTION = "how does this work?";
-const DEMO_NOTE =
-  "Select a line in any article, PDF or book, then type a question. The answer appears here, in the margin, beside the words it explains, with links to the paragraphs it used.";
+const DEMO_NOTE = "Select a line in any article, PDF or book, then type a question.";
 
 /**
  * The demo, in phases: 1 a cursor arrives, 2 it drags across the phrase,
  * 3 a question is typed, 4 the pen underlines the phrase and carries the
- * answer into the margin, 5 it is the reader's turn.
+ * answer into the margin, 5 it rests, and the reader can try it.
  */
 type Phase = 0 | 1 | 2 | 3 | 4 | 5;
 type Note = { quote: string; question: string; text: string; streaming: boolean; error?: string; demo: boolean };
@@ -80,11 +79,32 @@ function Words({ text, start = 0, step = 11 }: { text: string; start?: number; s
 }
 
 /**
+ * The landing's top half. A newcomer gets the demonstration in the margin; a
+ * signed-in reader gets the same headline at rest, and their own highlights
+ * where the example note would be.
+ */
+export function Hero({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  if (!aside) return <DemoHero>{children}</DemoHero>;
+  return (
+    <section className="relative isolate mx-auto grid w-full max-w-[1320px] items-start gap-x-20 gap-y-12 px-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <h1 className="hero-title font-serif text-ink">
+          <span className="block">Highlight any line.</span>
+          <span className="block">Ask it anything.</span>
+        </h1>
+        {children}
+      </div>
+      {aside}
+    </section>
+  );
+}
+
+/**
  * The headline glosses itself. On load it plays the whole interaction once:
  * a phrase is selected, a question is typed, and the pen carries the answer
  * into the margin. Then it is real: select any words in the headline and ask.
  */
-export function Hero({ children }: { children: ReactNode }) {
+function DemoHero({ children }: { children: ReactNode }) {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const markRef = useRef<HTMLSpanElement>(null);
@@ -377,30 +397,15 @@ export function Hero({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          <div className={`hero-foot mt-5 flex items-center gap-2 border-t border-rule pt-3.5 text-[12.5px] leading-snug ${phase >= 5 && !note.streaming ? "is-in" : ""}`}>
-            {note.demo ? (
-              <>
-                <TextCursor size={14} className="shrink-0 text-rubric-text" aria-hidden />
-                <span className="flex-1 text-ink-2">Your turn: select any word.</span>
-                <button
-                  type="button"
-                  onClick={play}
-                  data-tip="Play the example again"
-                  aria-label="Play the example again"
-                  className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
-                >
-                  <RotateCcw size={13} />
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-ink-3">Answered from a page about Gloss.</span>
-                <button type="button" onClick={backToExample} className="shrink-0 text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
-                  Clear
-                </button>
-              </>
-            )}
-          </div>
+          {/* The example stands on its own; a reader's own answer gets a way back to it. */}
+          {!note.demo && (
+            <div className={`hero-foot mt-5 flex items-center gap-2 border-t border-rule pt-3.5 text-[12.5px] leading-snug ${phase >= 5 && !note.streaming ? "is-in" : ""}`}>
+              <span className="flex-1 text-ink-3">Answered from a page about Gloss.</span>
+              <button type="button" onClick={backToExample} className="shrink-0 text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
+                Clear
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

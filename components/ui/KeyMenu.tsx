@@ -8,10 +8,14 @@ import { Popover, barBtn } from "./Popover";
 
 const STORAGE_KEY = "together:api-key";
 
-/** Bring your own Together key. Stored in this browser only. */
+/** Today's free use of the shared key, as the share still unspent (0 to 1). */
+type Free = { left: number; signedIn: boolean };
+
+/** Bring your own Together key. Stored in this browser only. A little reading a day is free without one. */
 export function KeyMenu() {
   const [key, setKey] = useState("");
   const [house, setHouse] = useState<boolean | null>(null);
+  const [free, setFree] = useState<Free | null>(null);
 
   useEffect(() => {
     try {
@@ -19,11 +23,19 @@ export function KeyMenu() {
     } catch {}
     fetch("/api/key")
       .then((r) => r.json())
-      .then((j: { house?: boolean }) => setHouse(Boolean(j.house)))
+      .then((j: { house?: boolean; free?: Free | null }) => {
+        setHouse(Boolean(j.house));
+        setFree(j.free ?? null);
+      })
       .catch(() => setHouse(false));
+    // Every answer on the shared key reports what is left.
+    const onFree = (e: Event) => setFree((f) => (f ? { ...f, left: (e as CustomEvent<number>).detail } : f));
+    window.addEventListener("gloss:free", onFree);
+    return () => window.removeEventListener("gloss:free", onFree);
   }, []);
 
-  const status = key ? "Your key" : house === false ? "Demo mode" : null;
+  const spent = house === false || free?.left === 0;
+  const status = key ? "Your key" : spent ? "Add a key" : free && free.left <= 0.25 ? "Low on free use" : null;
 
   return (
     <Popover
@@ -31,6 +43,7 @@ export function KeyMenu() {
       tip={key ? "Using your Together key" : "Add your Together key"}
       width={320}
       triggerClass={barBtn}
+      openOn="gloss:key"
       trigger={
         <>
           {key ? <span aria-hidden className="size-1.5 rounded-full bg-good" /> : <KeyRound size={15} aria-hidden />}
@@ -38,12 +51,12 @@ export function KeyMenu() {
         </>
       }
     >
-      {(close) => <KeyPanel current={key} house={house} onSave={(v) => setKey(v)} close={close} />}
+      {(close) => <KeyPanel current={key} house={house} free={free} onSave={(v) => setKey(v)} close={close} />}
     </Popover>
   );
 }
 
-function KeyPanel({ current, house, onSave, close }: { current: string; house: boolean | null; onSave: (v: string) => void; close: () => void }) {
+function KeyPanel({ current, house, free, onSave, close }: { current: string; house: boolean | null; free: Free | null; onSave: (v: string) => void; close: () => void }) {
   const [draft, setDraft] = useState(current);
   const [state, setState] = useState<"idle" | "checking" | "bad">("idle");
 
@@ -74,10 +87,23 @@ function KeyPanel({ current, house, onSave, close }: { current: string; house: b
     <div>
       <p className="text-[13.5px] font-medium text-ink">Your Together API key</p>
       <p className="mt-1 text-[12.5px] leading-snug text-ink-3">
-        {house
-          ? "Gloss runs on a shared key right now. Add yours to use your own quota."
-          : "No key on this server, so answers are labelled demo output. Add a key for real ones."}
+        {current
+          ? "Answers and reading aloud use your key, with no daily limit."
+          : house && free
+            ? `Free use resets each day${free.signedIn ? "" : ", and signing in doubles it"}. After that, answers need your key. Reading aloud always does.`
+            : "Add your key to start asking."}
       </p>
+      {!current && house && free && (
+        <div className="mt-3">
+          <div className="flex items-baseline justify-between text-[11.5px] text-ink-3">
+            <span>Free today</span>
+            <span className="tabular-nums">{free.left > 0 ? `${Math.max(1, Math.round(free.left * 100))}% left` : "Used up"}</span>
+          </div>
+          <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-rule" aria-hidden>
+            <span className="block h-full rounded-full bg-[var(--rubric)] transition-[width] duration-500" style={{ width: `${Math.round(free.left * 100)}%` }} />
+          </span>
+        </div>
+      )}
       <input
         autoFocus
         type="password"
