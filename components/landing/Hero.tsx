@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUp, RotateCcw, TextCursor } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { ABOUT_DOC } from "@/lib/about";
 import { ACTION_QUESTIONS, ACTIONS, type Action } from "@/lib/actions";
 import { streamAsk } from "@/lib/ask";
@@ -10,13 +10,12 @@ import { Writing } from "@/components/reader/Writing";
 
 const DEMO_QUOTE = "any line";
 const DEMO_QUESTION = "how does this work?";
-const DEMO_NOTE =
-  "Select a line in any article, PDF or book, then type a question. The answer appears here, in the margin, beside the words it explains, with links to the paragraphs it used.";
+const DEMO_NOTE = "Select a line in any article, PDF or book, then type a question.";
 
 /**
  * The demo, in phases: 1 a cursor arrives, 2 it drags across the phrase,
  * 3 a question is typed, 4 the pen underlines the phrase and carries the
- * answer into the margin, 5 it is the reader's turn.
+ * answer into the margin, 5 it rests, and the reader can try it.
  */
 type Phase = 0 | 1 | 2 | 3 | 4 | 5;
 type Note = { quote: string; question: string; text: string; streaming: boolean; error?: string; demo: boolean };
@@ -377,30 +376,15 @@ export function Hero({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          <div className={`hero-foot mt-5 flex items-center gap-2 border-t border-rule pt-3.5 text-[12.5px] leading-snug ${phase >= 5 && !note.streaming ? "is-in" : ""}`}>
-            {note.demo ? (
-              <>
-                <TextCursor size={14} className="shrink-0 text-rubric-text" aria-hidden />
-                <span className="flex-1 text-ink-2">Your turn: select any word.</span>
-                <button
-                  type="button"
-                  onClick={play}
-                  data-tip="Play the example again"
-                  aria-label="Play the example again"
-                  className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
-                >
-                  <RotateCcw size={13} />
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-ink-3">Answered from a page about Gloss.</span>
-                <button type="button" onClick={backToExample} className="shrink-0 text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
-                  Clear
-                </button>
-              </>
-            )}
-          </div>
+          {/* The example stands on its own; a reader's own answer gets a way back to it. */}
+          {!note.demo && (
+            <div className={`hero-foot mt-5 flex items-center gap-2 border-t border-rule pt-3.5 text-[12.5px] leading-snug ${phase >= 5 && !note.streaming ? "is-in" : ""}`}>
+              <span className="flex-1 text-ink-3">Answered from a page about Gloss.</span>
+              <button type="button" onClick={backToExample} className="shrink-0 text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
+                Clear
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
