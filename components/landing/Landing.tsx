@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/ui/TopBar";
 import { wordCount, type Article } from "@/lib/article";
 import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
+import { normalizeUrl } from "@/lib/links";
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
@@ -95,6 +96,24 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     },
     [finish]
   );
+
+  // A link handed in from elsewhere, by the bookmarklet or a share: /?url=… opens it, /?save=… shelves it for later.
+  const handed = useRef(false);
+  useEffect(() => {
+    if (!hydrated || handed.current) return;
+    handed.current = true;
+    const q = new URLSearchParams(window.location.search);
+    const later = q.has("save");
+    const raw = (q.get("save") ?? q.get("url") ?? "").trim();
+    if (!raw) return;
+    // Off the address bar, so a reload or a shared screenshot does not import it again.
+    window.history.replaceState(null, "", "/");
+    if (!looksLikeUrl(raw)) return setError("That does not look like a link.");
+    const known = useStore.getState().library.find((x) => x.sourceUrl && normalizeUrl(x.sourceUrl) === normalizeUrl(raw));
+    if (known) return later ? setSaved({ id: known.id, title: known.title }) : go(known.id);
+    setUrl(raw);
+    void fromUrl(raw, later);
+  }, [hydrated, fromUrl, go]);
 
   const fromFile = useCallback(
     async (f: File) => {

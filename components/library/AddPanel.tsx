@@ -3,7 +3,7 @@
 import { SignInButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Loader2, Trash2, X } from "lucide-react";
+import { BookOpen, BookmarkPlus, Check, Copy, Loader2, Trash2, X } from "lucide-react";
 import { importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { normalizeUrl } from "@/lib/links";
 import { useStore } from "@/lib/store";
@@ -74,22 +74,51 @@ export function AddButton({ onClick, compact }: { onClick: () => void; compact?:
 
 type Row = { url: string; state: "waiting" | "reading" | "saved" | "already" | "failed"; title?: string; error?: string };
 
+/** How many links one Save reads in. A Pocket export can hold thousands; the rest wait in the box for the next Save. */
+const BATCH = 100;
+
+/** Every web link in an export: Pocket, Instapaper and Raindrop CSVs, Pocket's HTML, or a plain list. */
+function linksIn(text: string): string[] {
+  const found = text.match(/https?:\/\/[^\s"'<>,]+/gi) ?? [];
+  return [...new Set(found.map((u) => u.replace(/[).;\]]+$/, "")))];
+}
+
 function Links() {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [over, setOver] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => ref.current?.focus(), []);
 
   const urls = [...new Set(text.split(/[\s,]+/).map((s) => s.trim()).filter(looksLikeUrl))];
+
+  const fromExport = async (f: File) => {
+    const found = linksIn(await f.text().catch(() => ""));
+    if (!found.length) return setNote(`No links found in ${f.name}.`);
+    setText((cur) => [cur.trim(), ...found].filter(Boolean).join("\n"));
+    setNote(`Found ${found.length} link${found.length === 1 ? "" : "s"} in ${f.name}.`);
+  };
 
   const save = async () => {
     if (!urls.length || busy) return;
     setBusy(true);
     const have = new Set(useStore.getState().library.flatMap((x) => (x.sourceUrl ? [normalizeUrl(x.sourceUrl)] : [])));
-    const list: Row[] = urls.map((url) => ({ url, state: have.has(normalizeUrl(url)) ? "already" : "waiting" }));
+    const all: Row[] = urls.map((url) => ({ url, state: have.has(normalizeUrl(url)) ? "already" : "waiting" }));
+    const fresh = all.filter((r) => r.state === "waiting");
+    const known = all.length - fresh.length;
+    const rest = fresh.slice(BATCH).map((r) => r.url);
+    // A long export lists only what is being read now; a short paste shows every link, saved before or not.
+    const list = all.length > BATCH ? fresh.slice(0, BATCH) : all;
     setRows(list);
-    setText("");
+    setText(rest.join("\n"));
+    setNote(
+      all.length > BATCH
+        ? [rest.length ? `Saving ${BATCH} now; ${rest.length} more wait above for the next Save.` : `Saving ${fresh.length}.`, known ? `${known} already in your library.` : ""].filter(Boolean).join(" ")
+        : null
+    );
     const set = (i: number, r: Partial<Row>) => setRows((cur) => cur.map((x, j) => (j === i ? { ...x, ...r } : x)));
     const todo = list.map((r, i) => ({ r, i })).filter((x) => x.r.state === "waiting");
     const next = async () => {
@@ -108,10 +137,41 @@ function Links() {
   return (
     <div className="mt-5">
       <p className="text-[19px] font-serif leading-tight text-ink">Save links to your library</p>
-      <p className="mt-1 text-[13px] text-ink-3">One or many, a line each. Gloss reads each page in and sorts it onto a topic. PDFs work too.</p>
+      <p className="mt-1 text-[13px] text-ink-3">
+        One or many, a line each. Gloss reads each page in and sorts it onto a topic. PDFs work too. Leaving Pocket, Instapaper or Raindrop?{" "}
+        <button type="button" onClick={() => fileRef.current?.click()} className="text-ink-2 underline decoration-rule-strong underline-offset-2 hover:text-ink">
+          Drop its export here
+        </button>
+        .
+      </p>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,.html,.htm,.txt,.json,text/csv,text/html,text/plain,application/json"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void fromExport(f);
+          e.target.value = "";
+        }}
+      />
       <textarea
         ref={ref}
         value={text}
+        onDragOver={(e) => {
+          if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+          e.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          const f = e.dataTransfer.files?.[0];
+          setOver(false);
+          if (!f) return;
+          e.preventDefault();
+          void fromExport(f);
+        }}
+        style={over ? { borderColor: "var(--rubric)", borderStyle: "dashed" } : undefined}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -128,9 +188,10 @@ function Links() {
         <span className="text-[12.5px] text-ink-4">{urls.length ? `${urls.length} link${urls.length === 1 ? "" : "s"}` : text.trim() ? "No links found yet" : ""}</span>
         <button type="button" onClick={save} disabled={!urls.length || busy} className="add-btn">
           {busy && <Loader2 size={14} className="animate-spin" />}
-          {busy ? "Saving" : urls.length > 1 ? `Save ${urls.length}` : "Save"}
+          {busy ? "Saving" : urls.length > 1 ? `Save ${Math.min(urls.length, BATCH)}` : "Save"}
         </button>
       </div>
+      {note && <p className="mt-2 text-[12.5px] text-ink-3">{note}</p>}
       {rows.length > 0 && (
         <ul className="add-rows scroll-thin">
           {rows.map((r) => (
@@ -148,6 +209,45 @@ function Links() {
           ))}
         </ul>
       )}
+      <Bookmarklets />
+    </div>
+  );
+}
+
+/**
+ * Bookmarklets: one click on any page opens it in Gloss, in a new tab, to read now
+ * or to shelve for later (`/?url=` and `/?save=` on the home page).
+ */
+function Bookmarklets() {
+  const readRef = useRef<HTMLAnchorElement>(null);
+  const saveRef = useRef<HTMLAnchorElement>(null);
+  const [origin, setOrigin] = useState("https://usegloss.io");
+  const code = (param: "url" | "save") => `javascript:void(window.open('${origin}/?${param}='+encodeURIComponent(location.href)))`;
+  useEffect(() => setOrigin(window.location.origin), []);
+  // React refuses javascript: links in JSX, so they are set by hand.
+  useEffect(() => {
+    readRef.current?.setAttribute("href", code("url"));
+    saveRef.current?.setAttribute("href", code("save"));
+  });
+  const pill = "inline-flex cursor-grab items-center gap-1.5 rounded-full border border-rule-strong bg-bg px-3 py-1.5 text-[13px] font-medium text-ink shadow-[var(--shadow-card)] active:cursor-grabbing";
+  return (
+    <div className="mt-6 border-t border-rule pt-5">
+      <p className="lib-label">From any page</p>
+      <p className="mt-1 text-[13px] text-ink-3">Drag one to your bookmarks bar, then click it on any article.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <a ref={readRef} onClick={(e) => e.preventDefault()} data-tip="Drag me to your bookmarks bar" className={pill}>
+          <BookOpen size={14} className="text-ink-3" /> Read in Gloss
+        </a>
+        <a ref={saveRef} onClick={(e) => e.preventDefault()} data-tip="Drag me to your bookmarks bar" className={pill}>
+          <BookmarkPlus size={14} className="text-ink-3" /> Save to Gloss
+        </a>
+      </div>
+      <details className="mt-3 text-[12.5px] text-ink-3">
+        <summary className="cursor-pointer select-none hover:text-ink-2">On a phone</summary>
+        <div className="mt-2">
+          <CopyBlock title="Bookmark any page, then edit the bookmark" body="Paste this as its address and name it Save to Gloss." text={code("save")} />
+        </div>
+      </details>
     </div>
   );
 }
