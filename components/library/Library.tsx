@@ -3,10 +3,8 @@
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
-import { ChevronLeft, LayoutGrid, Library as LibraryIcon, Plus, Search, X } from "lucide-react";
-import { Account } from "@/components/account/Account";
-import { Lockup } from "@/components/brand/Gloss";
-import { SettingsMenu } from "@/components/ui/SettingsMenu";
+import { ChevronLeft, LayoutGrid, Library as LibraryIcon, Search, X } from "lucide-react";
+import { TopBar } from "@/components/ui/TopBar";
 import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
 import { forgetCover, paintAll } from "@/lib/covers";
 import { SAMPLE_SHELF } from "@/lib/classics";
@@ -17,7 +15,8 @@ import { applySettings } from "@/lib/settings";
 import { backfill } from "@/lib/shelving";
 import { useStore } from "@/lib/store";
 import { watchShelf } from "@/lib/sync";
-import { AddPanel, type AddTab } from "./AddPanel";
+import { AddButton, AddPanel, type AddTab } from "./AddPanel";
+import { Arrivals, type Wave } from "./Arrivals";
 import { Glyph } from "./Book";
 import { BookOpen, type Origin } from "./BookOpen";
 import { Shelf } from "./Shelf";
@@ -72,6 +71,15 @@ export function Library() {
     } catch {}
   }, [hydrate]);
 
+  const [wave, setWave] = useState<Wave | null>(null);
+  const waveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const closeWave = useCallback(() => {
+    clearTimeout(waveTimer.current);
+    setWave((w) => w && { ...w, leaving: true });
+    waveTimer.current = setTimeout(() => setWave(null), 240);
+  }, []);
+  useEffect(() => () => clearTimeout(waveTimer.current), []);
+
   // Signed in, the shelf is checked every few seconds while it's open, so an agent's saves arrive as you look.
   useEffect(() => watchShelf(), []);
 
@@ -89,7 +97,22 @@ export function Library() {
     setFresh((f) => new Set([...f, ...added]));
     // Each arrival's own timer, so a quick run of imports never leaves the early ones marked.
     for (const id of added) setTimeout(() => setFresh((f) => (f.has(id) ? new Set([...f].filter((x) => x !== id)) : f)), 2600);
-  }, [hydrated, library]);
+
+    // And they gather on the arrivals card: one card per run, kept open while more keep coming.
+    const items = library.filter((x) => added.includes(x.id) && x.origin !== "sample");
+    if (!items.length) return;
+    const byAgent = items.find((x) => x.addedBy === "agent");
+    setWave((w) => {
+      const cur = w && !w.done && !w.leaving ? w : null;
+      return { ids: [...(cur?.ids ?? []), ...items.map((x) => x.id)], agent: Boolean(cur?.agent || byAgent), via: cur?.via ?? byAgent?.addedVia, done: false };
+    });
+    // An agent's saves come in batches a few seconds apart; the run is over once it goes quiet.
+    clearTimeout(waveTimer.current);
+    waveTimer.current = setTimeout(() => {
+      setWave((w) => w && { ...w, done: true });
+      waveTimer.current = setTimeout(closeWave, 9000);
+    }, byAgent ? 14_000 : 6000);
+  }, [hydrated, library, closeWave]);
 
   // Texts shelved before the library existed are sorted onto topics the first time it opens.
   useEffect(() => {
@@ -242,45 +265,15 @@ export function Library() {
 
   return (
     <div className={`library relative z-[1] min-h-dvh transition-[opacity,filter] duration-300 ${leaving ? "opacity-0 blur-[2px]" : ""}`}>
-      <header className="lib-top">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2.5 text-[14.5px]">
-          <Lockup />
-          <span className="ml-1.5 text-ink-4 max-sm:hidden" aria-hidden>
-            /
-          </span>
-          <button type="button" onClick={() => go({ view: topic ? "topics" : view })} className="rounded-md font-medium text-ink max-sm:hidden">
-            Library
-          </button>
-          {T && (
-            <>
-              <span className="text-ink-4 max-md:hidden" aria-hidden>
-                /
-              </span>
-              <span className="flex min-w-0 items-center gap-1.5 truncate text-ink-2 max-md:hidden" style={{ animation: "fade .3s both" }}>
-                <span className="size-2 shrink-0 rounded-full" style={{ background: T.shades[0] }} />
-                {T.name}
-              </span>
-            </>
-          )}
-        </nav>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Add to the library"
-            data-tip="Add to the library"
-            onClick={() => setAdding("links")}
-            className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-sunk hover:text-ink"
-          >
-            <Plus size={18} />
-          </button>
-          <SettingsMenu compact />
-          <Account />
-        </div>
-      </header>
+      <div className="lib-top">
+        <TopBar here="library" onLibrary={() => go({ view: topic ? "topics" : view })} />
+      </div>
 
       <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 sm:px-8">
         {!T && (
           <section className="lib-hero">
+            <div className="lib-hero-row">
+            <div className="min-w-0">
             <p className="lib-eyebrow">
               <LibraryIcon size={14} /> Library
             </p>
@@ -310,6 +303,9 @@ export function Library() {
                 )}
               </p>
             )}
+            </div>
+            <AddButton onClick={() => setAdding("agent")} />
+            </div>
             {fromAgent.length > 0 && (
               <button type="button" className="lib-news" onClick={() => (setTag("agent"), setOnly(null), go({ view: "shelf" }))}>
                 <Glyph k="agent" size={22} />
@@ -324,6 +320,7 @@ export function Library() {
             <button type="button" onClick={() => go({ view: "topics" })} className="lib-back">
               <ChevronLeft size={16} /> All topics
             </button>
+            <AddButton compact onClick={() => setAdding("agent")} />
           </div>
         ) : (
           <div className="lib-tools">
@@ -421,6 +418,21 @@ export function Library() {
         />
       )}
 
+      {wave && (
+        <Arrivals
+          wave={wave}
+          books={wave.ids.flatMap((id) => books.find((b) => b.id === id) ?? [])}
+          onClose={closeWave}
+          onShow={() => {
+            closeWave();
+            setAdding(null);
+            setTag(null);
+            setOnly(null);
+            setSort("recent");
+            go({ view: "shelf" });
+          }}
+        />
+      )}
       {adding && <AddPanel tab={adding} onTab={setAdding} onClose={() => setAdding(null)} signedIn={Boolean(isSignedIn)} />}
     </div>
   );

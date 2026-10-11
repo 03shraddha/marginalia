@@ -7,6 +7,7 @@ import { Check, Copy, Loader2, Trash2, X } from "lucide-react";
 import { importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { normalizeUrl } from "@/lib/links";
 import { useStore } from "@/lib/store";
+import { Mark, MarkStack, type AgentMark } from "./AgentMarks";
 import { Glyph } from "./Book";
 
 export type AddTab = "links" | "agent";
@@ -38,11 +39,11 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
       <section role="dialog" aria-modal aria-label="Add to the library" className="add-panel">
         <header className="flex items-center justify-between gap-3">
           <div className="lib-sort !ml-0" role="tablist" aria-label="Add">
-            <button type="button" role="tab" aria-selected={tab === "links"} aria-checked={tab === "links"} onClick={() => onTab("links")}>
-              Save links
-            </button>
             <button type="button" role="tab" aria-selected={tab === "agent"} aria-checked={tab === "agent"} onClick={() => onTab("agent")}>
               Connect an agent
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "links"} aria-checked={tab === "links"} onClick={() => onTab("links")}>
+              Save links manually
             </button>
           </div>
           <button type="button" aria-label="Close" data-tip="Close" data-tip-kbd="Esc" onClick={onClose} className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink">
@@ -53,6 +54,19 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
       </section>
     </div>,
     document.body
+  );
+}
+
+/** What opens the panel: plain about adding articles, with the agents that can do it for you. */
+export function AddButton({ onClick, compact }: { onClick: () => void; compact?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} className={`lib-add${compact ? " is-compact" : ""}`}>
+      <MarkStack size={compact ? 22 : 28} />
+      <span className="min-w-0 text-left">
+        <span className="lib-add-title">Add articles</span>
+        {!compact && <span className="lib-add-sub">Connect Grok Bot, Claude or ChatGPT, or paste links</span>}
+      </span>
+    </button>
   );
 }
 
@@ -141,12 +155,17 @@ function Links() {
 /* ---------- an agent ---------- */
 
 type Conn = { id: string; label: string; createdAt: string; lastUsedAt: string | null };
-const LABELS = ["Grok", "Claude", "ChatGPT", "Other"];
+const LABELS: { label: string; mark?: AgentMark }[] = [
+  { label: "Grok Bot", mark: "grok" },
+  { label: "Claude", mark: "claude" },
+  { label: "ChatGPT", mark: "chatgpt" },
+  { label: "Other" },
+];
 
 function Agent({ signedIn }: { signedIn: boolean }) {
   const [conns, setConns] = useState<Conn[] | null>(null);
   const [made, setMade] = useState<{ token: string; label: string } | null>(null);
-  const [label, setLabel] = useState("Grok");
+  const [label, setLabel] = useState("Grok Bot");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://usegloss.io";
@@ -197,8 +216,9 @@ function Agent({ signedIn }: { signedIn: boolean }) {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="lib-sort !ml-0" role="radiogroup" aria-label="Which agent">
             {LABELS.map((l) => (
-              <button key={l} type="button" role="radio" aria-checked={label === l} onClick={() => setLabel(l)}>
-                {l}
+              <button key={l.label} type="button" role="radio" aria-checked={label === l.label} onClick={() => setLabel(l.label)} className="inline-flex items-center gap-1.5">
+                {l.mark && <Mark k={l.mark} size={14} />}
+                {l.label}
               </button>
             ))}
           </div>
@@ -240,7 +260,7 @@ function AgentIntro() {
       <div>
         <p className="font-serif text-[19px] leading-tight text-ink">Let your agent shelve for you</p>
         <p className="mt-1 text-[13px] leading-[1.5] text-ink-3">
-          Gloss has an MCP server. Give it to Grok, Claude or ChatGPT, then ask: &ldquo;go through my X bookmarks from this month and save the articles to my Gloss library.&rdquo; Each one is read in, sorted onto a topic, and on your shelves the next time you open Gloss.
+          Gloss has an MCP server. Give it to Grok Bot, Claude or ChatGPT, then ask: &ldquo;go through my X bookmarks from this month and save the articles to my Gloss library.&rdquo; Each one is read in, sorted onto a topic, and on your shelves the next time you open Gloss.
         </p>
       </div>
     </div>
@@ -252,7 +272,7 @@ const PROMPT = "Go through my X bookmarks from the last month, find the ones tha
 function Setup({ token, label, origin }: { token: string; label: string; origin: string }) {
   const url = `${origin}/mcp`;
   const steps: { title: string; body: string; copy: string }[] =
-    label === "Grok"
+    label === "Grok Bot" || label === "Grok"
       ? [
           { title: "Grok Bot: say this in a chat", body: "It asks you to confirm; then the Gloss tools are ready.", copy: `Add a custom MCP server called Gloss at ${url} with the header Authorization set to Bearer ${token}` },
           { title: "Or grok.com: Connectors, New connector, Custom", body: "This link carries your token, so keep it private.", copy: `${url}/${token}` },

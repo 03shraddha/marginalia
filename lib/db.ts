@@ -106,9 +106,9 @@ export async function revokeToken(userId: string, id: string): Promise<boolean> 
 }
 
 /** The reader a token belongs to, noting that it was used. Null for an unknown or revoked token. */
-export async function tokenUser(hash: string): Promise<string | null> {
-  const rows = await db().query("update agent_tokens set last_used_at = now() where hash = $1 and not revoked returning user_id", [hash]);
-  return rows.length ? String(rows[0].user_id) : null;
+export async function tokenUser(hash: string): Promise<{ userId: string; label: string } | null> {
+  const rows = await db().query("update agent_tokens set last_used_at = now() where hash = $1 and not revoked returning user_id, label", [hash]);
+  return rows.length ? { userId: String(rows[0].user_id), label: String(rows[0].label ?? "") } : null;
 }
 
 /* ---------- the library, for an agent ---------- */

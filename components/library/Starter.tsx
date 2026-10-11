@@ -7,7 +7,7 @@ import { CLASSICS, classicCover } from "@/lib/classics";
 import { importFromUrl, keep } from "@/lib/import";
 import { useStore } from "@/lib/store";
 import type { AddTab } from "./AddPanel";
-import { Glyph } from "./Book";
+import { MarkStack } from "./AgentMarks";
 
 /**
  * Under a shelf that is still nearly empty: three ways to fill it. A dozen
@@ -70,11 +70,11 @@ export function Starter({ count, signedIn, onAdd }: { count: number; signedIn: b
       </button>
       <button type="button" className="starter-card" onClick={() => onAdd("agent")}>
         <span className="starter-icon is-agent">
-          <Glyph k="agent" size={34} />
+          <MarkStack size={24} />
         </span>
         <span className="starter-title">Let your agent shelve for you</span>
         <span className="starter-body">
-          Give Grok, Claude or ChatGPT your library, and ask it to save the good articles from your bookmarks.{!signedIn && " Needs an account."}
+          Give Grok Bot, Claude or ChatGPT your library, and ask it to save the good articles from your bookmarks.{!signedIn && " Needs an account."}
         </span>
       </button>
     </section>

@@ -1,14 +1,9 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import Link from "next/link";
-import { Library } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Lockup } from "@/components/brand/Gloss";
-import { Account } from "@/components/account/Account";
-import { KeyMenu } from "@/components/ui/KeyMenu";
-import { SettingsMenu } from "@/components/ui/SettingsMenu";
+import { TopBar } from "@/components/ui/TopBar";
 import { wordCount, type Article } from "@/lib/article";
 import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { SAMPLES } from "@/lib/samples";
@@ -217,17 +212,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
 
   return (
     <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
-      <header className="relative z-20 mx-auto flex h-[var(--topbar-h)] w-full max-w-[1400px] shrink-0 items-center justify-between px-5 sm:px-8">
-        <Lockup />
-        <nav aria-label="Settings" className="flex items-center gap-1">
-          <Link href="/library" aria-label="Your library" data-tip="Your library" className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-sunk hover:text-ink">
-            <Library size={18} />
-          </Link>
-          <SettingsMenu compact />
-          <KeyMenu />
-          <Account />
-        </nav>
-      </header>
+      <TopBar />
 
       {/* One column: the headline and the link bar, then a quiet space that is yours once you have highlights. */}
       <main className="relative flex-1 pb-24 pt-[clamp(40px,9vh,112px)] max-lg:pb-10">

@@ -15,24 +15,96 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  display: flex;
-  height: var(--topbar-h);
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 16px;
   background: color-mix(in oklab, var(--bg) 86%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-@media (min-width: 640px) {
-  .lib-top {
-    padding: 0 28px;
-  }
-}
 
 .lib-hero {
   padding: clamp(28px, 6vh, 64px) 0 26px;
+}
+.lib-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 32px;
+}
+
+/* ---------- adding: the button, with the agents that can do it for you ---------- */
+
+.lib-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px 8px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-strong);
+  background: var(--bg-raised);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 6px 18px -10px rgb(0 0 0 / 0.25);
+  color: var(--ink);
+  animation: rise 0.6s 0.15s var(--ease-out) both;
+  transition: transform 0.16s var(--ease-out), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lib-add:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-add:hover {
+    border-color: color-mix(in oklab, var(--ink) 30%, var(--rule-strong));
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 10px 24px -12px rgb(0 0 0 / 0.35);
+  }
+  .lib-add:hover .mark-disc:nth-child(1) {
+    transform: translateX(-3px) rotate(-6deg);
+  }
+  .lib-add:hover .mark-disc:nth-child(3) {
+    transform: translateX(3px) rotate(6deg);
+  }
+}
+.lib-add-title {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.lib-add-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.lib-add.is-compact {
+  margin-left: auto;
+  gap: 9px;
+  padding: 5px 14px 5px 6px;
+  animation: none;
+}
+.lib-add.is-compact .lib-add-title {
+  font-size: 13.5px;
+}
+@media (max-width: 639px) {
+  .lib-add:not(.is-compact) {
+    width: 100%;
+  }
+}
+
+.mark-stack {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.mark-disc {
+  display: grid;
+  width: var(--mark);
+  height: var(--mark);
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg-raised), 0 0 0 2.5px var(--rule-strong);
+  transition: transform 0.2s var(--ease-out);
+}
+.mark-disc + .mark-disc {
+  margin-left: calc(var(--mark) * -0.28);
 }
 .lib-eyebrow {
   display: inline-flex;
@@ -276,21 +348,6 @@
   font-size: 12.5px;
   color: var(--ink-4);
   animation: fade 1s 1.4s both;
-}
-
-.lib-add {
-  position: absolute;
-  right: 0;
-  top: 44px;
-  z-index: 40;
-  width: min(340px, calc(100vw - 32px));
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid var(--rule);
-  background: var(--bg-raised);
-  box-shadow: var(--shadow-pop);
-  transform-origin: top right;
-  animation: pop-in 0.18s var(--ease-out) both;
 }
 
 /* ---------- the bookcase ---------- */
@@ -1488,7 +1545,9 @@ button.starter-card:active {
   color: var(--ink-2);
 }
 .starter-icon.is-agent {
-  background: color-mix(in oklab, #8e3b76 10%, var(--bg-sunk));
+  width: auto;
+  place-items: center start;
+  background: none;
 }
 .starter-btn,
 .add-btn {
@@ -1601,4 +1660,244 @@ button.starter-card:active {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-4);
+}
+
+/* ---------- arrivals: what just landed on the shelf ---------- */
+
+.arr {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 90;
+  width: min(520px, calc(100vw - 32px));
+  padding: 14px 14px 16px 16px;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--rule-strong);
+  background: var(--bg-raised);
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.06);
+  transform: translateX(-50%);
+  animation: arr-in 0.45s var(--ease-out) both;
+}
+.arr[data-leaving] {
+  animation: arr-out 0.24s var(--ease-out) both;
+}
+@keyframes arr-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 28px) scale(0.96);
+  }
+}
+@keyframes arr-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 16px) scale(0.98);
+  }
+}
+.arr-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.arr-who {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--rule-strong);
+}
+.arr:not([data-done]) .arr-who {
+  animation: arr-pulse 1.6s ease-in-out infinite;
+}
+@keyframes arr-pulse {
+  50% {
+    box-shadow: 0 0 0 1px var(--rule-strong), 0 0 0 6px color-mix(in oklab, var(--ink) 8%, transparent);
+  }
+}
+.arr-line {
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+.arr-line b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.arr-count {
+  display: grid;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 7px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+.arr-x {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--ink-3);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.arr-x:hover {
+  background: var(--bg-sunk);
+  color: var(--ink);
+}
+.arr-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.arr-books {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  padding-left: 4px;
+}
+.arr-book {
+  position: relative;
+  width: 34px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 2px 4px 4px 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.14), 2px 4px 10px -4px rgb(0 0 0 / 0.45), inset 3px 0 0 rgb(0 0 0 / 0.16);
+  transform-origin: 50% 100%;
+  animation: arr-pop 0.55s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+}
+.arr-book + .arr-book,
+.arr-book + .arr-more {
+  margin-left: -10px;
+}
+.arr-book > img,
+.arr-book > .duotone {
+  position: absolute;
+  inset: 5px 4px 12px 6px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+}
+.arr-book > .duotone img {
+  width: 100%;
+  height: 100%;
+}
+@keyframes arr-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-46px) rotate(-14deg) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+.arr-more {
+  display: grid;
+  height: 48px;
+  padding: 0 9px;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--bg-sunk);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--rule-strong);
+  animation: fade 0.3s both;
+}
+.arr-latest {
+  min-width: 0;
+  flex: 1;
+  animation: arr-line 0.4s var(--ease-out) both;
+}
+@keyframes arr-line {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.arr-title {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arr-topic {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.arr-bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ink) 55%, transparent), transparent) 0 0 / 40% 100% no-repeat;
+  animation: arr-bar 1.4s linear infinite;
+}
+@keyframes arr-bar {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+.arr-show {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  animation: arr-line 0.35s var(--ease-out) both;
+  transition: transform 0.15s var(--ease-out);
+}
+.arr-show:active {
+  transform: scale(0.97);
+}
+.arr-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 91;
+  pointer-events: none;
+}
+.arr-confetti > span {
+  position: fixed;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arr,
+  .arr-book,
+  .arr-latest,
+  .arr-show {
+    animation-name: fade;
+  }
+  .arr:not([data-done]) .arr-who,
+  .arr-bar {
+    animation: none;
+  }
+  .arr[data-leaving] {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
 }

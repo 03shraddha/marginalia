@@ -74,7 +74,7 @@ function snapshot(): Snapshot {
 /** Pages that want arrivals as they happen, and how to tell the running sync. */
 let watchers = 0;
 let poke: (() => void) | null = null;
-const WATCH_MS = 10_000;
+const WATCH_MS = 5000;
 
 /** Pull now and every few seconds while the returned stop hasn't been called. */
 export function watchShelf(): () => void {

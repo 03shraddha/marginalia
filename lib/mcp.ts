@@ -102,22 +102,23 @@ export async function handle(req: Request, pathToken?: string): Promise<Response
   const header = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   const token = looksLikeToken(header) ? header : looksLikeToken(pathToken) ? pathToken : null;
   if (!process.env.DATABASE_URL) return fail(first.id, -32000, "The Gloss library is not available on this server.", 503);
-  let userId: string | null = null;
+  let who: { userId: string; label: string } | null = null;
   try {
-    userId = token ? await tokenUser(hashToken(token)) : null;
+    who = token ? await tokenUser(hashToken(token)) : null;
   } catch {
     return fail(first.id, -32000, "The Gloss library is not reachable right now. Try again in a minute.", 503);
   }
-  if (!userId) return fail(first.id, -32001, `Missing or revoked Gloss token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
+  if (!who) return fail(first.id, -32001, `Missing or revoked Gloss token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
+  const { userId, label } = who;
   if (!allow(`mcp:${userId}`, 60, 60_000)) return fail(first.id, -32002, "Too many requests. Wait a minute, then try again.", 429);
 
   // Notifications get no answer; with nothing to answer, the reply is an empty 202.
-  const answers = (await Promise.all(msgs.map((m) => answer(m, userId)))).filter((a) => a !== null);
+  const answers = (await Promise.all(msgs.map((m) => answer(m, userId, label)))).filter((a) => a !== null);
   if (!answers.length) return new Response(null, { status: 202, headers: CORS });
   return json(batch ? answers : answers[0]);
 }
 
-async function answer(msg: Rpc, userId: string): Promise<object | null> {
+async function answer(msg: Rpc, userId: string, label: string): Promise<object | null> {
   if (msg.id === undefined || msg.method?.startsWith("notifications/")) return null;
   const ok = (result: unknown) => ({ jsonrpc: "2.0", id: msg.id, result });
   const err = (code: number, message: string) => ({ jsonrpc: "2.0", id: msg.id ?? null, error: { code, message } });
@@ -139,7 +140,7 @@ async function answer(msg: Rpc, userId: string): Promise<object | null> {
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        if (name === "save_articles") return ok(await saveArticles(userId, args));
+        if (name === "save_articles") return ok(await saveArticles(userId, args, label));
         if (name === "search_library") return ok(await searchLibrary(userId, args));
         if (name === "list_topics") return ok(await listTopics(userId));
         return err(-32602, `Unknown tool: ${name}`);
@@ -161,7 +162,7 @@ type Saved = { url: string; status: "saved" | "already_saved" | "failed"; title?
 
 const SOCIAL = /^(x\.com|twitter\.com|mobile\.twitter\.com|t\.co|threads\.net|bsky\.app|instagram\.com|facebook\.com|linkedin\.com\/posts)/;
 
-async function saveArticles(userId: string, args: Record<string, unknown>) {
+async function saveArticles(userId: string, args: Record<string, unknown>, via: string) {
   const raw = Array.isArray(args.urls) ? args.urls.filter((u): u is string => typeof u === "string" && u.trim().length > 0) : [];
   if (!raw.length) return toolError("Send at least one URL in `urls`.");
   if (raw.length > PER_CALL) return toolError(`At most ${PER_CALL} URLs per call. Send the rest in another call.`);
@@ -207,7 +208,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>) {
       }
     }
 
-    const item = shelfItem(a, { topic, tags, scene });
+    const item = shelfItem(a, { topic, tags, scene, via });
     await shelveForUser(userId, item, a);
     have.set(key, { id: a.id, data: item as unknown as Record<string, unknown>, pct: 0 });
     return { url, status: "saved", title: a.title, topic: TOPIC[topic ?? "unsorted"].name };
@@ -229,7 +230,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>) {
   return toolResult(`${head}\n${lines.join("\n")}\n\nThey'll be on the shelves at ${SITE}/library.`, { saved: count("saved"), alreadySaved: count("already_saved"), failed: count("failed"), results });
 }
 
-function shelfItem(a: Article, s: { topic?: TopicKey; tags?: string[]; scene?: string }): LibraryItem {
+function shelfItem(a: Article, s: { topic?: TopicKey; tags?: string[]; scene?: string; via?: string }): LibraryItem {
   const item: LibraryItem = {
     id: a.id,
     title: a.title,
@@ -246,6 +247,8 @@ function shelfItem(a: Article, s: { topic?: TopicKey; tags?: string[]; scene?: s
     tags: s.tags,
     scene: s.scene,
     addedBy: "agent",
+    // The connection's name, as the reader chose it ("Grok Bot", "Claude"), so the library can say who shelved it.
+    addedVia: s.via || undefined,
   };
   for (const k of Object.keys(item) as (keyof LibraryItem)[]) if (item[k] === undefined) delete item[k];
   return item;

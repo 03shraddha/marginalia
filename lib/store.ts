@@ -82,6 +82,8 @@ export type LibraryItem = {
   finishedAt?: number;
   /** Shelved by an agent, through the Gloss MCP server. */
   addedBy?: "agent";
+  /** Which connection an agent saved it through, by the name the reader gave it. */
+  addedVia?: string;
 };
 
 export type Progress = { block: string; pct: number; at: number };
