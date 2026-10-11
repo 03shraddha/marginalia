@@ -86,30 +86,41 @@ export function notAllowed() {
 }
 
 export async function handle(req: Request, pathToken?: string): Promise<Response> {
-  let msg: Rpc;
+  let body: unknown;
   try {
-    msg = await req.json();
+    body = await req.json();
   } catch {
-    return fail(null, -32700, "Parse error: the body must be one JSON-RPC message.", 400);
+    return fail(null, -32700, "Parse error: the body must be JSON-RPC.", 400);
   }
-  if (Array.isArray(msg) || typeof msg !== "object" || !msg) return fail(null, -32600, "Send one JSON-RPC message per request.", 400);
+  // Clients on the 2025-03-26 protocol may send a batch: an array of messages, answered with an array.
+  const batch = Array.isArray(body);
+  const msgs = (batch ? body : [body]) as Rpc[];
+  if (!msgs.length || msgs.some((m) => typeof m !== "object" || !m)) return fail(null, -32600, "Send a JSON-RPC message, or an array of them.", 400);
+  const first = msgs[0];
+  console.info("mcp:", msgs.map((m) => m.method).join(", "), first.method === "initialize" ? JSON.stringify({ v: first.params?.protocolVersion, client: first.params?.clientInfo }) : "");
 
   const header = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   const token = looksLikeToken(header) ? header : looksLikeToken(pathToken) ? pathToken : null;
-  if (!process.env.DATABASE_URL) return fail(msg.id, -32000, "The Gloss library is not available on this server.", 503);
+  if (!process.env.DATABASE_URL) return fail(first.id, -32000, "The Gloss library is not available on this server.", 503);
   let userId: string | null = null;
   try {
     userId = token ? await tokenUser(hashToken(token)) : null;
   } catch {
-    return fail(msg.id, -32000, "The Gloss library is not reachable right now. Try again in a minute.", 503);
+    return fail(first.id, -32000, "The Gloss library is not reachable right now. Try again in a minute.", 503);
   }
-  if (!userId) return fail(msg.id, -32001, `Missing or revoked Gloss token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
+  if (!userId) return fail(first.id, -32001, `Missing or revoked Gloss token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
+  if (!allow(`mcp:${userId}`, 60, 60_000)) return fail(first.id, -32002, "Too many requests. Wait a minute, then try again.", 429);
 
-  // A notification gets no answer.
-  if (msg.id === undefined || msg.method?.startsWith("notifications/")) return new Response(null, { status: 202, headers: CORS });
-  if (!allow(`mcp:${userId}`, 60, 60_000)) return fail(msg.id, -32002, "Too many requests. Wait a minute, then try again.", 429);
+  // Notifications get no answer; with nothing to answer, the reply is an empty 202.
+  const answers = (await Promise.all(msgs.map((m) => answer(m, userId)))).filter((a) => a !== null);
+  if (!answers.length) return new Response(null, { status: 202, headers: CORS });
+  return json(batch ? answers : answers[0]);
+}
 
-  const ok = (result: unknown) => json({ jsonrpc: "2.0", id: msg.id, result });
+async function answer(msg: Rpc, userId: string): Promise<object | null> {
+  if (msg.id === undefined || msg.method?.startsWith("notifications/")) return null;
+  const ok = (result: unknown) => ({ jsonrpc: "2.0", id: msg.id, result });
+  const err = (code: number, message: string) => ({ jsonrpc: "2.0", id: msg.id ?? null, error: { code, message } });
   switch (msg.method) {
     case "initialize": {
       const asked = String(msg.params?.protocolVersion ?? "");
@@ -131,13 +142,13 @@ export async function handle(req: Request, pathToken?: string): Promise<Response
         if (name === "save_articles") return ok(await saveArticles(userId, args));
         if (name === "search_library") return ok(await searchLibrary(userId, args));
         if (name === "list_topics") return ok(await listTopics(userId));
-        return fail(msg.id, -32602, `Unknown tool: ${name}`);
+        return err(-32602, `Unknown tool: ${name}`);
       } catch (e) {
         return ok(toolError(`Something went wrong: ${e instanceof Error ? e.message : String(e)}`));
       }
     }
     default:
-      return fail(msg.id, -32601, `Method not found: ${msg.method}`);
+      return err(-32601, `Method not found: ${msg.method}`);
   }
 }
 
