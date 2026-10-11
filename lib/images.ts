@@ -83,6 +83,9 @@ export function prepareImages(doc: Document, base: string) {
     pic.replaceWith(img);
   }
 
+  // Placeholders and non-pictures go first: one left beside a real picture (Cloudflare's blurred
+  // stand-in) would stop the climb to that picture's own wrapper below.
+  const pictures: { img: Element; src: string }[] = [];
   for (const img of Array.from(doc.querySelectorAll("img"))) {
     const raw = realSrc(img);
     if (!raw) {
@@ -97,10 +100,15 @@ export function prepareImages(doc: Document, base: string) {
       continue;
     }
     if (!/^https?:/i.test(src)) continue;
-    if (NOT_A_PICTURE.test(src)) {
+    if (NOT_A_PICTURE.test(src) || darkOnly(img, src)) {
       img.remove();
       continue;
     }
+    pictures.push({ img, src });
+  }
+
+  const figures: Element[] = [];
+  for (const { img, src } of pictures) {
     if (img.closest(CHROME) || hasJunkAncestor(img)) continue;
     const w = Number(attrOf(img, "width"));
     if (w && w < 200) continue;
@@ -132,7 +140,50 @@ export function prepareImages(doc: Document, base: string) {
       fig.appendChild(fc);
     }
     wrap.replaceWith(fig);
+    figures.push(fig);
   }
+
+  // A gallery or carousel holds its figures in wrappers with no text of their own, and Readability
+  // drops any block with more pictures than paragraphs (OpenAI, claude.dev). The figures join the flow.
+  for (const fig of figures) {
+    for (let p = fig.parentElement; p && !STOP.test(p.tagName.toUpperCase()) && onlyFigures(p); ) {
+      const up = p.parentElement;
+      p.replaceWith(...Array.from(p.childNodes));
+      p = up;
+    }
+  }
+}
+
+/** Where a picture's own wrapper ends and the article's structure begins. */
+const STOP = /^(BODY|ARTICLE|MAIN|SECTION|P|LI|TD|TH|BLOCKQUOTE|FIGURE)$/;
+
+/** An element holding figures and nothing else: no text, no other elements. */
+function onlyFigures(el: Element): boolean {
+  let n = 0;
+  for (const c of Array.from(el.childNodes)) {
+    if (c.nodeType === 1) {
+      if ((c as Element).tagName.toUpperCase() !== "FIGURE") return false;
+      n++;
+    } else if (c.nodeType === 3 && (c.textContent ?? "").trim()) return false;
+  }
+  return n > 0;
+}
+
+/** Named classes for the dark-theme copy of a picture: "theme-image-dark", "dark-only", "only-dark". */
+const DARK_CLASS = /^((theme-)?(image|img)-dark|dark-(only|mode-only|image|img)|(only|show)-dark)$/i;
+
+/**
+ * The dark-theme copy of a picture that also comes in light (Gimlet, Tailwind's
+ * "hidden dark:block", GitHub's "#gh-dark-mode-only"). The reader shows each once.
+ */
+function darkOnly(img: Element, src: string): boolean {
+  if (/#gh-dark-mode-only$/.test(src)) return true;
+  for (const el of [img, img.parentElement]) {
+    const tokens = (el?.getAttribute("class") ?? "").split(/\s+/);
+    if (tokens.some((t) => DARK_CLASS.test(t))) return true;
+    if (tokens.includes("hidden") && tokens.some((t) => /^dark:(block|inline|inline-block|flex|grid)$/.test(t))) return true;
+  }
+  return false;
 }
 
 function hasJunkAncestor(el: Element): boolean {

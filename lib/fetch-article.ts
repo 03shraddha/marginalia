@@ -15,6 +15,8 @@ import { APP_UA } from "@/lib/together";
 
 const MAX_BYTES = 6_000_000;
 const MAX_PDF_BYTES = 25_000_000;
+/** Fewer words than this is a page whose article never reached the HTML. The shortest real one on a tested shelf had 220. */
+const MIN_WORDS = 80;
 
 /** Refuse anything that resolves to a private, loopback or link-local address. */
 function isPrivate(ip: string): boolean {
@@ -60,6 +62,46 @@ function dekFrom(excerpt: string | null | undefined, blocks: Block[]): string | 
   const first = norm(blocks.find((b) => b.type === "p")?.runs.map((r) => r.text).join("") ?? "");
   if (first.startsWith(norm(dek).slice(0, 60))) return undefined;
   return dek.length > 280 ? `${dek.slice(0, 277).replace(/\s+\S*$/, "")}...` : dek;
+}
+
+/**
+ * React streaming (Next.js App Router, Suspense) sends a skeleton first:
+ * `<!--$?--><template id="B:6"></template>...fallback...<!--/$-->`, and the real
+ * content later in `<div hidden id="S:6">`, which a script ($RC) moves into
+ * place. Readability drops hidden nodes, so the article went with it. This does
+ * the script's work: the content replaces its placeholder and the fallback goes.
+ * A segment for `<template id="P:9">` ($RS) replaces that template.
+ */
+function revealStreamed(doc: Document) {
+  for (const seg of Array.from(doc.querySelectorAll("div[hidden]"))) {
+    const m = /^S:(\d+)$/.exec(seg.id);
+    if (!m) continue;
+    const boundary = doc.getElementById(`B:${m[1]}`);
+    const slot = boundary ?? doc.getElementById(`P:${m[1]}`);
+    if (!slot?.parentNode) {
+      seg.removeAttribute("hidden");
+      continue;
+    }
+    if (boundary) {
+      // The fallback runs from the template to the comment that closes its boundary.
+      let depth = 0;
+      for (let n = boundary.nextSibling; n; ) {
+        const next = n.nextSibling;
+        if (n.nodeType === 8) {
+          const data = (n as Comment).data;
+          if (data === "/$") {
+            if (depth === 0) break;
+            depth--;
+          } else if (data === "$" || data === "$?" || data === "$!") depth++;
+        }
+        n.parentNode?.removeChild(n);
+        n = next;
+      }
+    }
+    while (seg.firstChild) slot.parentNode.insertBefore(seg.firstChild, slot);
+    slot.parentNode.removeChild(slot);
+    seg.parentNode?.removeChild(seg);
+  }
 }
 
 export type FetchResult =
@@ -129,6 +171,11 @@ export async function fetchArticle(raw: string, opts: { pdf?: boolean } = {}): P
     document.head?.appendChild(base);
   } catch {}
 
+  // Pages streamed by React arrive with their content hidden, to be swapped in by a script.
+  try {
+    revealStreamed(document as unknown as Document);
+  } catch {}
+
   // Data tables (header cells or a caption) often carry classes like "sticky-header"
   // that Readability reads as page furniture and strips. Their classes go, so they stay.
   for (const t of Array.from(document.querySelectorAll("table"))) {
@@ -179,7 +226,9 @@ export async function fetchArticle(raw: string, opts: { pdf?: boolean } = {}): P
   if (lead && !blocks.slice(0, 4).some((b) => b.type === "figure") && !blocks.some((b) => b.type === "figure" && shownAlready(b.src))) {
     blocks = [{ id: "b0", type: "figure", runs: [], src: lead }, ...blocks];
   }
-  if (blocks.filter((b) => b.type === "p").length < 2) {
+  // A page drawn by scripts (a Google Doc, an app shell) leaves only its newsletter box and footer.
+  const words = blocks.reduce((n, b) => n + b.runs.map((r) => r.text).join("").split(/\s+/).filter(Boolean).length, 0);
+  if (blocks.filter((b) => b.type === "p").length < 2 || words < MIN_WORDS) {
     return { ok: false, error: "That page has too little text to read here.", status: 422 };
   }
 
