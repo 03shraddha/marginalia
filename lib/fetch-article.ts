@@ -104,6 +104,21 @@ function revealStreamed(doc: Document) {
   }
 }
 
+const SOCIAL = /^(x\.com|twitter\.com|mobile\.twitter\.com|threads\.net|bsky\.app|instagram\.com|facebook\.com|linkedin\.com\/posts)/;
+const VIDEO = /^(youtube\.com|m\.youtube\.com|music\.youtube\.com|youtu\.be|vimeo\.com|tiktok\.com)\//;
+
+/** Links that are a post or a video rather than an article: their pages are script shells with nothing to read. */
+export function notAnArticle(url: string): "social" | "video" | null {
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`);
+  } catch {
+    return null;
+  }
+  const at = `${u.hostname.replace(/^www\./, "")}${u.pathname}`;
+  return SOCIAL.test(at) ? "social" : VIDEO.test(at) ? "video" : null;
+}
+
 export type FetchResult =
   | { ok: true; article: Article }
   | { ok: true; pdf: ArrayBuffer; name: string }
@@ -113,6 +128,9 @@ export type FetchResult =
 export async function fetchArticle(raw: string, opts: { pdf?: boolean } = {}): Promise<FetchResult> {
   const checked = await safeUrl(raw.trim());
   if (typeof checked === "string") return { ok: false, error: checked, status: 400 };
+  const kind = notAnArticle(checked.toString());
+  if (kind === "social") return { ok: false, error: "That's a post, not an article. Open the link it shares, or copy the post and use Paste text.", status: 422 };
+  if (kind === "video") return { ok: false, error: "That's a video, and Gloss reads text. Copy its transcript and use Paste text.", status: 422 };
 
   // Follow redirects by hand so every hop gets the same private-address check.
   let res: Response | null = null;

@@ -12,7 +12,7 @@ import { hashToken, looksLikeToken } from "./agent";
 import { normalizeUrl } from "./links";
 import { wordCount, type Article } from "./article";
 import { shelfOf, shelveForUser, tokenUser, type ShelfRow } from "./db";
-import { fetchArticle } from "./fetch-article";
+import { fetchArticle, notAnArticle } from "./fetch-article";
 import { TOPIC, TOPICS, isTopic, yearOf, type TopicKey } from "./library";
 import { chargeFree, checkFreeUser } from "./quota";
 import { allow } from "./ratelimit";
@@ -160,7 +160,6 @@ const toolResult = (text: string, structured: Record<string, unknown>) => ({ con
 
 type Saved = { url: string; status: "saved" | "already_saved" | "failed"; title?: string; topic?: string; reason?: string };
 
-const SOCIAL = /^(x\.com|twitter\.com|mobile\.twitter\.com|t\.co|threads\.net|bsky\.app|instagram\.com|facebook\.com|linkedin\.com\/posts)/;
 
 async function saveArticles(userId: string, args: Record<string, unknown>, via: string) {
   const raw = Array.isArray(args.urls) ? args.urls.filter((u): u is string => typeof u === "string" && u.trim().length > 0) : [];
@@ -178,8 +177,9 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
   const results: Saved[] = [];
 
   const one = async ({ url, key }: { url: string; key: string }): Promise<Saved> => {
-    const host = key.replace(/^https?:\/\//, "");
-    if (SOCIAL.test(host)) return { url, status: "failed", reason: "This is a social post, not an article. Send the link the post points to." };
+    const kind = notAnArticle(url);
+    if (kind === "social") return { url, status: "failed", reason: "This is a social post, not an article. Send the link the post points to." };
+    if (kind === "video") return { url, status: "failed", reason: "This is a video, not an article. Gloss reads text." };
     const known = have.get(key);
     if (known) return { url, status: "already_saved", title: String(known.data.title ?? ""), topic: TOPIC[isTopic(known.data.topic) ? known.data.topic : "unsorted"].name };
     if (budget <= 0) return { url, status: "failed", reason: `The daily limit of ${PER_DAY} saves is reached. Try again tomorrow.` };
