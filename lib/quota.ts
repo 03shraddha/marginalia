@@ -43,14 +43,9 @@ function memAdd(subject: string, usd: number) {
   if (memory.size > 20_000) for (const key of memory.keys()) if (!key.startsWith(today())) memory.delete(key);
 }
 
-/** The usd column, added once per instance to the table that counted requests before. */
-let ready: Promise<unknown> | null = null;
-const ensure = () => (ready ??= db().query("alter table free_usage add column if not exists usd double precision not null default 0").catch(() => (ready = null)));
-
 async function spent(subject: string): Promise<{ mine: number; all: number }> {
   if (process.env.DATABASE_URL) {
     try {
-      await ensure();
       const rows = await db().query("select subject, usd from free_usage where day = current_date and subject in ($1, $2)", [subject, ALL]);
       const get = (s: string) => Number(rows.find((r) => r.subject === s)?.usd ?? 0);
       return { mine: get(subject), all: get(ALL) };
@@ -91,7 +86,6 @@ export async function chargeFree(subject: string, usd: number) {
   if (!(usd > 0)) return;
   if (process.env.DATABASE_URL) {
     try {
-      await ensure();
       await db().query(
         `insert into free_usage (subject, day, count, usd) values ($1, current_date, 1, $3), ($2, current_date, 1, $3)
          on conflict (subject, day) do update set count = free_usage.count + 1, usd = free_usage.usd + excluded.usd`,

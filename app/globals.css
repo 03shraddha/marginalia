@@ -279,6 +279,17 @@ kbd,
 
 }
 
+/* iOS Safari zooms the page into any field under 16px when it takes focus. On
+   touch screens every field is 16px, so asking a question keeps the page still.
+   Important, so it beats the text-[14px] utilities and the field classes in library.css. */
+@media (pointer: coarse) {
+  input:not([type="range"], [type="checkbox"], [type="radio"], [type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 @layer components {
 /* ---------- reader layout: rail, numbers, text, gutter, margin ---------- */
 
