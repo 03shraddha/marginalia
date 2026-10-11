@@ -48,6 +48,9 @@ export async function pushRows(userId: string, changes: Partial<Record<Collectio
   const queries = Object.entries(changes)
     .filter(([t, rows]) => isCollection(t) && rows?.length)
     .map(([t, rows]) => sql.query(upsert(t as Collection), [userId, JSON.stringify(rows)]));
+  // A text taken off the shelf takes its painted cover with it.
+  const gone = (changes.articles ?? []).filter((r) => r.deleted).map((r) => r.id);
+  if (gone.length) queries.push(sql.query("delete from covers where user_id = $1 and id = any($2::text[])", [userId, gone]));
   if (queries.length) await sql.transaction(queries);
 }
 

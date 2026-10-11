@@ -16,6 +16,7 @@ import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { backfill } from "@/lib/shelving";
 import { useStore } from "@/lib/store";
+import { watchShelf } from "@/lib/sync";
 import { AddPanel, type AddTab } from "./AddPanel";
 import { Glyph } from "./Book";
 import { BookOpen, type Origin } from "./BookOpen";
@@ -70,6 +71,9 @@ export function Library() {
       localStorage.setItem(SEEN_KEY, String(Date.now()));
     } catch {}
   }, [hydrate]);
+
+  // Signed in, the shelf is checked every few seconds while it's open, so an agent's saves arrive as you look.
+  useEffect(() => watchShelf(), []);
 
   // Anything that lands on the shelf while you look (an import, a sync from your agent) drops in.
   useEffect(() => {
