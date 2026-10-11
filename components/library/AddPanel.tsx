@@ -391,7 +391,7 @@ function Setup({ token, label, origin }: { token: string; label: string; origin:
       {steps.map((s) => (
         <CopyBlock key={s.title} title={s.title} body={s.body} text={s.copy} />
       ))}
-      <CopyBlock title="Then ask it something like" body="Agents save the article a post links to, not the post." text={PROMPT} />
+      <CopyBlock title="Then ask it something like" body="Agents save the article a post links to. When the post is the piece, like an X Article or a long post, they send its text." text={PROMPT} />
     </div>
   );
 }

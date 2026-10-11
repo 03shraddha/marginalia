@@ -1,6 +1,6 @@
 /**
- * The Gloss MCP server: a reader's agent saves articles to their library and
- * looks through it. Streamable HTTP, stateless: every request is one JSON-RPC
+ * The Gloss MCP server: a reader's agent saves articles (by link, or as text it
+ * has read itself) to their library and looks through it. Streamable HTTP, stateless: every request is one JSON-RPC
  * message answered with JSON, no session and no event stream.
  *
  * Auth is a personal token from the library ("Connect an agent"), sent as
@@ -10,7 +10,7 @@
 
 import { hashToken, looksLikeToken } from "./agent";
 import { normalizeUrl } from "./links";
-import { wordCount, type Article } from "./article";
+import { blockText, textToArticle, wordCount, type Article } from "./article";
 import { shelfOf, shelveForUser, tokenUser, type ShelfRow } from "./db";
 import { fetchArticle, notAnArticle } from "./fetch-article";
 import { TOPIC, TOPICS, isTopic, yearOf, type TopicKey } from "./library";
@@ -22,11 +22,14 @@ import type { LibraryItem } from "./store";
 
 const VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PER_CALL = 25;
+/** About 60,000 words: a long essay or a two-hour transcript, well short of a book. */
+const MAX_TEXT = 400_000;
 const PER_DAY = 200;
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://usegloss.io";
 
 const INSTRUCTIONS = `Gloss is a reader. This server is the reader's own library in Gloss: save articles to it, and look through what is there.
-When saving from social posts or bookmarks, send the URL of the article, essay or paper itself (the link inside the post), not the post. Gloss reads each page in, sorts it onto a topic, and it appears on the reader's shelves the next time they open Gloss.`;
+When saving from social posts or bookmarks, send the URL of the article, essay or paper itself (the link inside the post), not the post. Gloss reads each page in, sorts it onto a topic, and it appears on the reader's shelves the next time they open Gloss.
+Gloss can't fetch posts on X and other social sites, videos, or pages behind a login. When the post itself is the piece (an X Article, a long post, a thread) or the reader wants a video's transcript, read it yourself and send the full text with save_text.`;
 
 const TOOLS = [
   {
@@ -40,6 +43,25 @@ const TOOLS = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  {
+    name: "save_text",
+    title: "Save a text to the library",
+    description: "Save a text you have read yourself to the reader's Gloss library, for what Gloss can't fetch from a link: an X Article, a long post or a thread on X, a video's transcript, a page behind a login. Send the whole text as Markdown (blank lines between paragraphs, # for headings), word for word, not a summary. Give the original URL so the reader can open the source and the text isn't saved twice. One text per call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", minLength: 1, maxLength: MAX_TEXT, description: "The full text, as Markdown." },
+        title: { type: "string", description: "Its title. For a post with none, a short title in the author's words." },
+        author: { type: "string", description: "Who wrote or said it." },
+        url: { type: "string", description: "Where it came from: the post, article or video URL." },
+        source: { type: "string", description: "The publication or site, like \"X\" or a YouTube channel. Defaults to the URL's site." },
+        published: { type: "string", description: "When it was published, as a date." },
+      },
+      required: ["text"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "search_library",
@@ -141,6 +163,7 @@ async function answer(msg: Rpc, userId: string, label: string): Promise<object |
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
         if (name === "save_articles") return ok(await saveArticles(userId, args, label));
+        if (name === "save_text") return ok(await saveText(userId, args, label));
         if (name === "search_library") return ok(await searchLibrary(userId, args));
         if (name === "list_topics") return ok(await listTopics(userId));
         return err(-32602, `Unknown tool: ${name}`);
@@ -169,8 +192,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
   const shelf = await shelfOf(userId);
   const have = new Map<string, ShelfRow>();
   for (const r of shelf) if (typeof r.data.sourceUrl === "string") have.set(normalizeUrl(r.data.sourceUrl), r);
-  const dayAgo = Date.now() - 86_400_000;
-  let budget = PER_DAY - shelf.filter((r) => r.data.addedBy === "agent" && Number(r.data.addedAt) > dayAgo).length;
+  let budget = savesLeft(shelf);
 
   const seen = new Set<string>();
   const queue = raw.map((url) => ({ url, key: normalizeUrl(url) })).filter((x) => (seen.has(x.key) ? false : (seen.add(x.key), true)));
@@ -178,8 +200,8 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
 
   const one = async ({ url, key }: { url: string; key: string }): Promise<Saved> => {
     const kind = notAnArticle(url);
-    if (kind === "social") return { url, status: "failed", reason: "This is a social post, not an article. Send the link the post points to." };
-    if (kind === "video") return { url, status: "failed", reason: "This is a video, not an article. Gloss reads text." };
+    if (kind === "social") return { url, status: "failed", reason: "This is a social post, not an article. Send the link the post points to, or, if the post is the piece, read it and send its text with save_text." };
+    if (kind === "video") return { url, status: "failed", reason: "This is a video, not an article. Gloss reads text: send its transcript with save_text." };
     const known = have.get(key);
     if (known) return { url, status: "already_saved", title: String(known.data.title ?? ""), topic: TOPIC[isTopic(known.data.topic) ? known.data.topic : "unsorted"].name };
     if (budget <= 0) return { url, status: "failed", reason: `The daily limit of ${PER_DAY} saves is reached. Try again tomorrow.` };
@@ -194,20 +216,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
       return { url, status: "already_saved", title: String(k.data.title ?? "") };
     }
 
-    // Sort it now, on the reader's own allowance. Out of allowance, it waits in Unsorted and the browser sorts it later.
-    let topic: TopicKey | undefined;
-    let tags: string[] | undefined;
-    let scene: string | undefined;
-    const free = await checkFreeUser(userId);
-    if (free.ok) {
-      const c = await classify({ title: a.title, author: a.author, source: a.source, dek: a.dek, excerpt: excerptOf(a.blocks) });
-      if (c.ok) {
-        await chargeFree(free.subject, c.usd);
-        ({ topic, scene } = c.shelving);
-        tags = c.shelving.tags.length ? c.shelving.tags : undefined;
-      }
-    }
-
+    const { topic, tags, scene } = await sortOf(userId, a);
     const item = shelfItem(a, { topic, tags, scene, via });
     await shelveForUser(userId, item, a);
     have.set(key, { id: a.id, data: item as unknown as Record<string, unknown>, pct: 0 });
@@ -230,6 +239,71 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
   return toolResult(`${head}\n${lines.join("\n")}\n\nThey'll be on the shelves at ${SITE}/library.`, { saved: count("saved"), alreadySaved: count("already_saved"), failed: count("failed"), results });
 }
 
+/** Saves an agent may still make today: PER_DAY across both save tools. */
+function savesLeft(shelf: ShelfRow[]) {
+  const dayAgo = Date.now() - 86_400_000;
+  return PER_DAY - shelf.filter((r) => r.data.addedBy === "agent" && Number(r.data.addedAt) > dayAgo).length;
+}
+
+/** Sort it now, on the reader's own allowance. Out of allowance, it waits in Unsorted and the browser sorts it later. */
+async function sortOf(userId: string, a: Article): Promise<{ topic?: TopicKey; tags?: string[]; scene?: string }> {
+  const free = await checkFreeUser(userId);
+  if (!free.ok) return {};
+  const c = await classify({ title: a.title, author: a.author, source: a.source, dek: a.dek, excerpt: excerptOf(a.blocks) });
+  if (!c.ok) return {};
+  await chargeFree(free.subject, c.usd);
+  return { topic: c.shelving.topic, scene: c.shelving.scene, tags: c.shelving.tags.length ? c.shelving.tags : undefined };
+}
+
+/* ---------- save_text ---------- */
+
+const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+
+async function saveText(userId: string, args: Record<string, unknown>, via: string) {
+  const text = str(args.text);
+  if (!text) return toolError("Send the text in `text`.");
+  if (text.length > MAX_TEXT) return toolError(`That text is too long: at most ${MAX_TEXT.toLocaleString("en-US")} characters.`);
+  let url: string | undefined;
+  if (str(args.url)) {
+    try {
+      const u = new URL(str(args.url)!);
+      if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error();
+      url = u.toString();
+    } catch {
+      return toolError("`url` must be a web address, starting with https://.");
+    }
+  }
+
+  const shelf = await shelfOf(userId);
+  if (url) {
+    const known = shelf.find((r) => typeof r.data.sourceUrl === "string" && normalizeUrl(r.data.sourceUrl) === normalizeUrl(url));
+    if (known) return toolResult(`Already in the library: ${String(known.data.title ?? url)}`, { status: "already_saved", title: String(known.data.title ?? "") });
+  }
+  if (savesLeft(shelf) <= 0) return toolError(`The daily limit of ${PER_DAY} saves is reached. Try again tomorrow.`);
+
+  const title = str(args.title);
+  const a = textToArticle(text, { title, origin: "paste" });
+  // A text that opens with its own title as a heading shouldn't show it twice.
+  if (title && a.blocks[0]?.type.startsWith("h") && blockText(a.blocks[0]).trim().toLowerCase() === title.toLowerCase()) a.blocks.shift();
+  if (!a.blocks.length) return toolError("There was no readable text in that.");
+  a.author = str(args.author);
+  a.source = str(args.source) ?? (url ? new URL(url).hostname.replace(/^www\./, "") : undefined);
+  a.sourceUrl = url;
+  a.published = str(args.published);
+  for (const k of ["author", "source", "sourceUrl", "published"] as const) if (a[k] === undefined) delete a[k];
+
+  const item = shelfItem(a, { ...(await sortOf(userId, a)), via });
+  await shelveForUser(userId, item, a);
+  const topic = TOPIC[isTopic(item.topic) ? item.topic : "unsorted"].name;
+  return toolResult(`Saved: ${a.title} (${topic}, ${item.words.toLocaleString("en-US")} words)\n\nIt'll be on the shelves at ${SITE}/library.`, {
+    status: "saved",
+    title: a.title,
+    topic,
+    words: item.words,
+    readInGloss: `${SITE}/read/${a.id}`,
+  });
+}
+
 function shelfItem(a: Article, s: { topic?: TopicKey; tags?: string[]; scene?: string; via?: string }): LibraryItem {
   const item: LibraryItem = {
     id: a.id,
@@ -237,7 +311,7 @@ function shelfItem(a: Article, s: { topic?: TopicKey; tags?: string[]; scene?: s
     author: a.author,
     source: a.source,
     words: wordCount(a),
-    origin: "url",
+    origin: a.origin ?? "url",
     addedAt: Date.now(),
     dek: a.dek,
     year: yearOf(a.published),
