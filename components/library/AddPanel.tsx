@@ -275,7 +275,6 @@ function Setup({ token, label, origin }: { token: string; label: string; origin:
     label === "Grok Bot" || label === "Grok"
       ? [
           { title: "Grok Bot: say this in a chat", body: "It asks you to confirm; then the Gloss tools are ready.", copy: `Add a custom MCP server called Gloss at ${url} with the header Authorization set to Bearer ${token}` },
-          { title: "Or grok.com: Connectors, New connector, Custom", body: "This link carries your token, so keep it private.", copy: `${url}/${token}` },
         ]
       : label === "Claude"
         ? [
