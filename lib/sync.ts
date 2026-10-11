@@ -14,10 +14,14 @@
  *
  * The baseline lives in localStorage per user, so a second account on the
  * same browser starts fresh and receives what is on this device.
+ *
+ * While a page watches the shelf (the library), it also pulls every few
+ * seconds, so what an agent saves arrives while you look.
  */
 
 import { forgetDoc, loadDoc, saveDoc, useStore, type RemoteChanges } from "./store";
 import type { Article } from "./article";
+import { forgetCover } from "./covers";
 
 const COLLECTIONS = ["articles", "highlights", "glosses", "briefs", "progress"] as const;
 type Collection = (typeof COLLECTIONS)[number];
@@ -65,6 +69,20 @@ function snapshot(): Snapshot {
   }
   for (const [aid, p] of Object.entries(st.progress)) put("progress", aid, aid, p);
   return { entities, busy };
+}
+
+/** Pages that want arrivals as they happen, and how to tell the running sync. */
+let watchers = 0;
+let poke: (() => void) | null = null;
+const WATCH_MS = 5000;
+
+/** Pull now and every few seconds while the returned stop hasn't been called. */
+export function watchShelf(): () => void {
+  watchers++;
+  poke?.();
+  return () => {
+    watchers--;
+  };
 }
 
 const emptyBaseline = (): Baseline => ({ since: null, seen: Object.fromEntries(COLLECTIONS.map((c) => [c, {}])) as Baseline["seen"] });
@@ -152,6 +170,8 @@ export function startSync(userId: string) {
     for (const r of changes.articles ?? []) {
       const before = base.seen.articles[r.id];
       if (!r.deleted && r.data && before && (r.data as { rev?: number }).rev !== undefined && stable(r.data) !== before[0]) void forgetDoc(r.id);
+      // Removed on another device: its painted cover goes from this one too.
+      if (r.deleted) void forgetCover(r.id);
     }
     useStore.getState().applyRemote(changes);
 
@@ -182,15 +202,18 @@ export function startSync(userId: string) {
   });
 
   let lastPull = 0;
+  const pullIfStale = (ms: number) => {
+    if (document.visibilityState === "hidden" || Date.now() - lastPull < ms) return;
+    lastPull = Date.now();
+    sync();
+  };
   const onVisible = () => {
-    if (document.visibilityState === "hidden") {
-      serial(push);
-    } else if (Date.now() - lastPull > 20_000) {
-      lastPull = Date.now();
-      sync();
-    }
+    if (document.visibilityState === "hidden") serial(push);
+    else pullIfStale(watchers ? WATCH_MS : 20_000);
   };
   document.addEventListener("visibilitychange", onVisible);
+  const ticker = setInterval(() => watchers && pullIfStale(WATCH_MS - 1000), WATCH_MS);
+  poke = () => pullIfStale(3000);
 
   lastPull = Date.now();
   sync();
@@ -200,6 +223,8 @@ export function startSync(userId: string) {
       stopped = true;
       unsubscribe();
       if (timer) clearTimeout(timer);
+      clearInterval(ticker);
+      poke = null;
       document.removeEventListener("visibilitychange", onVisible);
     },
   };

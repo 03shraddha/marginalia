@@ -3,10 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Lockup } from "@/components/brand/Gloss";
-import { Account } from "@/components/account/Account";
-import { KeyMenu } from "@/components/ui/KeyMenu";
-import { SettingsMenu } from "@/components/ui/SettingsMenu";
+import { TopBar } from "@/components/ui/TopBar";
 import { wordCount, type Article } from "@/lib/article";
 import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { SAMPLES } from "@/lib/samples";
@@ -16,7 +13,8 @@ import { Hero } from "./Hero";
 import { HomeBelow } from "./HomeBelow";
 import { ImportBar, type Busy } from "./ImportBar";
 import { PasteSheet } from "./PasteSheet";
-import { Tray, type TrayItem } from "./Tray";
+import { LibraryLine, type Saved } from "./LibraryLine";
+import { ShelfSheet, type ShelfItem } from "./ShelfSheet";
 
 /** One screen: a headline that shows what it does, a place to paste, and your shelf. */
 export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boolean }) {
@@ -36,6 +34,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   const [error, setError] = useState<string | null>(null);
   const [errorNeedsKey, setErrorNeedsKey] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [saved, setSaved] = useState<Saved | null>(null);
   const [dragging, setDragging] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,20 +69,29 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   );
 
   const fromUrl = useCallback(
-    async (raw: string) => {
+    async (raw: string, later = false) => {
       if (!raw.trim()) return;
       setError(null);
+      setSaved(null);
       let host = raw.trim();
       try {
         host = new URL(/^https?:/i.test(host) ? host : `https://${host}`).hostname.replace(/^www\./, "");
       } catch {}
-      setBusy({ label: `Reading ${host}` });
-      const r = await importFromUrl(raw);
-      if (r.ok) finish(r.article);
-      else {
+      setBusy({ label: `${later ? "Saving" : "Reading"} ${host}` });
+      // A link to a PDF is read here in the browser, with its progress in the bar.
+      const r = await importFromUrl(raw, (p, label) => setBusy({ label: label ?? `Reading ${host}`, pct: p }));
+      if (!r.ok) {
         setError(r.error);
+        setErrorNeedsKey(Boolean(r.needKey));
         setBusy(null);
+        return;
       }
+      if (!later) return finish(r.article, r.file);
+      const err = await keep(r.article, r.file);
+      setBusy(null);
+      if (err) return setError(err);
+      setUrl("");
+      setSaved({ id: r.article.id, title: r.article.title });
     },
     [finish]
   );
@@ -173,7 +181,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     };
   }, [busy, fromUrl, fromFile, fromText]);
 
-  const items: TrayItem[] = useMemo(() => {
+  const items: ShelfItem[] = useMemo(() => {
     const p = (id: string) => (hydrated ? progress[id]?.pct ?? 0 : 0);
     const g = (id: string) => (hydrated ? (glosses[id] ?? []).length : 0);
     const mine = library.map((x) => ({
@@ -198,23 +206,16 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
       touched: hydrated ? progress[a.id]?.at ?? 0 : 0,
     }));
     // What you are in the middle of comes first, then whatever was touched last.
-    const reading = (x: TrayItem) => Number(x.pct > 0 && x.pct < 1);
+    const reading = (x: ShelfItem) => Number(x.pct > 0 && x.pct < 1);
     return [...mine, ...samples].sort((a, b) => reading(b) - reading(a) || b.touched - a.touched);
   }, [library, progress, glosses, hydrated]);
 
   return (
     <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
-      <header className="relative z-20 mx-auto flex h-[var(--topbar-h)] w-full max-w-[1400px] shrink-0 items-center justify-between px-5 sm:px-8">
-        <Lockup />
-        <nav aria-label="Settings" className="flex items-center gap-1">
-          <SettingsMenu compact />
-          <KeyMenu />
-          <Account />
-        </nav>
-      </header>
+      <TopBar />
 
       {/* One column: the headline and the link bar, then a quiet space that is yours once you have highlights. */}
-      <main className="relative flex-1 pb-[200px] pt-[clamp(40px,9vh,112px)] max-lg:pb-10">
+      <main className="relative flex-1 pb-24 pt-[clamp(40px,9vh,112px)] max-lg:pb-10">
         <Hero>
           <ImportBar
             ref={inputRef}
@@ -224,14 +225,16 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
             error={error}
             errorNeedsKey={errorNeedsKey}
             onSubmit={fromUrl}
+            onSave={(u) => fromUrl(u, true)}
             onPickFile={() => fileRef.current?.click()}
             onPasteText={() => setPasteOpen(true)}
           />
+          <LibraryLine saved={saved} />
         </Hero>
         <HomeBelow signedIn={signedIn} />
       </main>
 
-      <Tray items={items} onOpen={go} onRemove={removeFromLibrary} onAdd={() => fileRef.current?.click()} />
+      <ShelfSheet items={items} onOpen={go} onRemove={removeFromLibrary} />
 
       <input
         ref={fileRef}

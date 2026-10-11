@@ -64,6 +64,26 @@ export type LibraryItem = {
   addedAt: number;
   /** Bumped when the text itself is replaced (read more carefully), so sync sends it again. */
   rev?: number;
+  /* The library: where it is shelved, and what it looks like there. */
+  /** One of the library's topics (lib/library.ts); missing until it has been sorted. */
+  topic?: string;
+  tags?: string[];
+  /** What the painted cover shows, written when the text is sorted. */
+  scene?: string;
+  dek?: string;
+  year?: number;
+  sourceUrl?: string;
+  /** The page's own lead picture. */
+  image?: string;
+  /** A painted cover: a bundled one by path, or "painted" for one made for this text. */
+  cover?: string;
+  favorite?: boolean;
+  /** When it was first read to the end. */
+  finishedAt?: number;
+  /** Shelved by an agent, through the Gloss MCP server. */
+  addedBy?: "agent";
+  /** Which connection an agent saved it through, by the name the reader gave it. */
+  addedVia?: string;
 };
 
 export type Progress = { block: string; pct: number; at: number };
@@ -119,7 +139,9 @@ type State = Persisted &
     removeHighlight: (articleId: string, id: string) => void;
     setBrief: (articleId: string, b: BriefState | null) => void;
     setProgress: (articleId: string, p: Progress) => void;
-    addToLibrary: (a: Article, words: number) => void;
+    addToLibrary: (a: Article, words: number, extra?: Partial<LibraryItem>) => void;
+    /** Change a shelf entry's library fields: its topic, tags, cover, favourite. */
+    shelve: (id: string, patch: Partial<LibraryItem>) => void;
     removeFromLibrary: (id: string) => void;
     replaceText: (a: Article, words: number) => Promise<boolean>;
     updateText: (a: Article, words: number) => Promise<boolean>;
@@ -240,15 +262,39 @@ export const useStore = create<State>((set, get) => ({
       return { briefs };
     }),
 
-  setProgress: (articleId, p) => set((st) => ({ progress: { ...st.progress, [articleId]: p } })),
+  setProgress: (articleId, p) =>
+    set((st) => {
+      // The first time a text is read to the end, the library notes when.
+      const done = p.pct >= 1 && st.library.some((x) => x.id === articleId && !x.finishedAt);
+      return {
+        progress: { ...st.progress, [articleId]: p },
+        ...(done ? { library: st.library.map((x) => (x.id === articleId ? { ...x, finishedAt: p.at } : x)) } : {}),
+      };
+    }),
 
-  addToLibrary: (a, words) =>
-    set((st) => ({
-      library: [
-        { id: a.id, title: a.title, author: a.author, source: a.source, words, origin: a.origin, addedAt: a.addedAt ?? Date.now() },
-        ...st.library.filter((x) => x.id !== a.id),
-      ],
-    })),
+  addToLibrary: (a, words, extra) =>
+    set((st) => {
+      const year = Number(a.published?.match(/\b(1[5-9]\d\d|20\d\d)\b/)?.[1]) || undefined;
+      const item: LibraryItem = {
+        id: a.id,
+        title: a.title,
+        author: a.author,
+        source: a.source,
+        words,
+        origin: a.origin,
+        addedAt: a.addedAt ?? Date.now(),
+        dek: a.dek,
+        year,
+        sourceUrl: a.sourceUrl,
+        image: a.image,
+        ...extra,
+      };
+      // Undefined fields are left out, so a shelf entry's JSON stays as small as it was.
+      for (const k of Object.keys(item) as (keyof LibraryItem)[]) if (item[k] === undefined) delete item[k];
+      return { library: [item, ...st.library.filter((x) => x.id !== a.id)] };
+    }),
+
+  shelve: (id, patch) => set((st) => ({ library: st.library.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
 
   removeFromLibrary: (id) => {
     void dropDoc(id);

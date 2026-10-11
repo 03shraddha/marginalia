@@ -32,6 +32,8 @@ export type Article = {
   source?: string;
   sourceUrl?: string;
   blocks: Block[];
+  /** The page's own lead picture (og:image), by its original URL: the library shows it on the cover. */
+  image?: string;
   /** Where it came from: the bundled shelf, a link, pasted text, or a file. */
   origin?: "sample" | "url" | "paste" | "file";
   /** PDF pages that looked hard (columns, tables, maths) and wait to be read again by a vision model (lib/upgrade.ts). */

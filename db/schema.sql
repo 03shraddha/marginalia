@@ -73,3 +73,27 @@ create table if not exists free_usage (
 -- What that free use cost, in dollars: the allowance is a budget, not a count.
 -- "free:all" is everyone's total, for the daily ceiling.
 alter table free_usage add column if not exists usd double precision not null default 0;
+
+-- Covers painted for a signed-in reader's texts (opt-in), so other devices fetch them
+-- instead of painting them again. A JPEG, base64.
+create table if not exists covers (
+  user_id text not null,
+  id text not null,             -- the article id
+  jpeg text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+-- Tokens that let a reader's agent (Grok Bot, Claude, ...) save to their library through /mcp.
+-- Only a hash of each token is kept; the token itself is shown once, when it is made.
+create table if not exists agent_tokens (
+  id text primary key,
+  user_id text not null,
+  hash text not null unique,
+  label text not null default '',
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  revoked boolean not null default false
+);
+
+create index if not exists agent_tokens_user on agent_tokens (user_id);

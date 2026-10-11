@@ -1259,16 +1259,6 @@ mark.key .cite {
   }
 }
 
-/* Scrolled down the landing, the shelf tucks under the bottom edge, so it never sits on your highlights. */
-@media (min-width: 1024px) {
-  .tray {
-    transition: transform 0.45s var(--ease-out);
-  }
-  .tray.is-tucked {
-    transform: translateY(140px);
-  }
-}
-
 /* ---------- notebook ---------- */
 
 /* The margin steps back while the notebook covers it; on very wide screens both fit. */
@@ -1313,132 +1303,38 @@ mark.key .cite {
   }
 }
 
-/* ---------- the shelf: papers at the bottom edge ---------- */
+/* ---------- under the link bar: the way to the library ---------- */
 
-.tray {
-  position: fixed;
-  inset-inline: 0;
-  bottom: -124px;
-  z-index: 10;
-  height: 360px;
-  pointer-events: none;
-}
-
-.tray::before {
-  /* a soft floor, so the cards read as resting on something */
-  content: "";
-  position: absolute;
-  inset: auto 0 124px;
-  height: 130px;
-  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg-sunk) 60%, transparent));
-  pointer-events: none;
-}
-
-.tray::after {
-  /* the bottom edge of the page: papers slide out of a little fog */
-  content: "";
-  position: absolute;
-  inset: auto 0 124px;
-  z-index: 2;
-  height: 40px;
-  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--bg) 92%, transparent));
-  pointer-events: none;
-}
-
-.tray-scroll {
-  position: relative;
-  height: 100%;
+.lib-line {
   display: flex;
-  justify-content: safe center;
-  gap: 16px;
-  padding: 140px 40px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-padding-inline: 40px;
-  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  max-width: 600px;
+  min-height: 46px;
+  margin: 18px auto 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  animation: rise 0.45s var(--ease-out) both;
+}
+.lib-line-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-sunk);
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.lib-line-go:hover {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--bg-sunk) 80%, var(--ink) 8%);
 }
 
-.tray-slot {
-  position: relative;
-  flex: none;
-  width: 248px;
-  height: 214px;
-  pointer-events: auto;
-  transform: translateY(0) rotate(var(--tilt, 0deg));
-  transition: transform 0.45s var(--ease-out);
-}
-
-.tray-slot:hover,
-.tray-slot:focus-within {
-  transform: translateY(-136px) rotate(0deg);
-}
-
-.tray-card {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  padding: 16px 18px 18px;
-  border: 1px solid var(--rule);
-  border-radius: 14px;
-  background: var(--bg-raised);
-  box-shadow: var(--shadow-card);
-  text-align: left;
-  transition:
-    box-shadow 0.3s,
-    border-color 0.3s;
-}
-
-.tray-slot:hover .tray-card,
-.tray-slot:focus-within .tray-card {
-  box-shadow: var(--shadow-pop);
-  border-color: var(--rule-strong);
-}
-
-.tray-add {
-  align-items: flex-start;
-  border-style: dashed;
-  border-color: var(--rule-strong);
-  background: color-mix(in oklab, var(--bg-raised) 60%, transparent);
-  box-shadow: none;
-}
-
-/* More than the desk holds: a pile, its lower sheets peeking above the top one. */
-.tray-pile {
-  position: relative;
-  isolation: isolate;
-  cursor: pointer;
-}
-
-.tray-pile::before,
-.tray-pile::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border: 1px solid var(--rule);
-  border-radius: 14px;
-  background: var(--bg-raised);
-  box-shadow: var(--shadow-card);
-  transition: transform 0.45s var(--ease-out);
-}
-
-.tray-pile::before {
-  transform: translateY(-7px) rotate(-2.2deg);
-}
-
-.tray-pile::after {
-  transform: translateY(-12px) rotate(1.6deg);
-  z-index: -2;
-}
-
-.tray-slot:hover .tray-pile::before {
-  transform: translate(-6px, -10px) rotate(-4deg);
-}
-
-.tray-slot:hover .tray-pile::after {
-  transform: translate(7px, -16px) rotate(3.5deg);
-}
+/* ---------- the shelf sheet: every text and highlight, pulled up over the page ---------- */
 
 /* The whole shelf, pulled up over the desk. */
 .shelf-sheet {
@@ -1463,65 +1359,6 @@ mark.key .cite {
 .shelf-row {
   border-bottom: 1px solid var(--rule);
   animation: rise 0.4s var(--ease-out) both;
-}
-
-.tray-ribbon {
-  position: absolute;
-  top: -1px;
-  right: 18px;
-  width: 11px;
-  height: 30px;
-  background: var(--rubric);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
-}
-
-.tray-remove {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 99px;
-  color: var(--ink-3);
-  background: var(--bg-sunk);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.tray-slot:hover .tray-remove,
-.tray-remove:focus-visible {
-  opacity: 1;
-}
-
-@media (max-width: 1023px) {
-  .tray {
-    position: relative;
-    bottom: auto;
-    height: auto;
-    pointer-events: auto;
-  }
-  .tray::before,
-  .tray::after {
-    display: none;
-  }
-  .tray-scroll {
-    justify-content: flex-start;
-    padding: 8px 20px 28px;
-    scroll-snap-type: x mandatory;
-    mask-image: none;
-  }
-  .tray-slot {
-    width: 230px;
-    height: 200px;
-    transform: none;
-    scroll-snap-align: start;
-  }
-  .tray-slot:hover,
-  .tray-slot:focus-within {
-    transform: none;
-  }
 }
 
 @keyframes drop {
@@ -1702,9 +1539,6 @@ mark.key .cite {
   .hero-mark::before,
   .hero-mark::after {
     animation: none;
-  }
-  .tray-slot {
-    transform: none;
   }
 }
 
