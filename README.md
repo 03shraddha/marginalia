@@ -4,7 +4,7 @@
 
 <h1 align="center">Gloss</h1>
 
-<p align="center">A reader for articles, chapters and PDFs: select any line, start typing, and an open model writes the answer in the margin beside it, citing paragraphs you can check. <a href="https://usegloss.io">usegloss.io</a></p>
+<p align="center">A reader for articles, chapters and PDFs: select any line, start typing, and an open model writes the answer in the margin beside it, citing paragraphs you can check: <a href="https://usegloss.io">usegloss.io</a></p>
 
 ## Tech stack
 
