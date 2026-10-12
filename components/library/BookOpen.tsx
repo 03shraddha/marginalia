@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, ArrowUpRight, PencilLine, Star, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronDown, PencilLine, Star, Trash2 } from "lucide-react";
 import { fmtMinutes, hash, hostOf, lookOf, tagsOf, TOPIC, TOPICS, type Book, type TopicKey } from "@/lib/library";
 import { Cover, Glyph, Spine } from "./Book";
 
@@ -106,12 +106,13 @@ export function BookOpen({
       setPhase("open");
       return;
     }
-    const fly = b.animate(flight(g, origin), { duration: origin.kind === "spine" ? 1050 : 820, fill: "forwards" });
-    const delay = origin.kind === "spine" ? 900 : 640;
-    const opts: KeyframeAnimationOptions = { duration: 950, delay, easing: easeInOut, fill: "forwards" };
+    const fly = b.animate(flight(g, origin), { duration: origin.kind === "spine" ? 840 : 660, fill: "forwards" });
+    // The cover starts to open just before the book lands, so the two read as one movement.
+    const delay = origin.kind === "spine" ? 700 : 500;
+    const opts: KeyframeAnimationOptions = { duration: 780, delay, easing: easeInOut, fill: "forwards" };
     c.animate([{ transform: `${coverZ} rotateY(0deg)` }, { transform: `${coverZ} rotateY(-180deg)` }], opts);
     s.animate([{ transform: "translateX(0px)" }, { transform: `translateX(${shift}px)` }], opts);
-    const t1 = setTimeout(() => setPhase("open"), delay + 380);
+    const t1 = setTimeout(() => setPhase("open"), delay + 300);
     return () => {
       clearTimeout(t1);
       fly.cancel();
@@ -126,7 +127,7 @@ export function BookOpen({
     setPhase("out");
     const b = bookRef.current!, c = coverRef.current!, s = shiftRef.current!;
     if (reduce) return onClose();
-    const opts: KeyframeAnimationOptions = { duration: 620, easing: easeInOut, fill: "forwards" };
+    const opts: KeyframeAnimationOptions = { duration: 540, easing: easeInOut, fill: "forwards" };
     c.getAnimations().forEach((a) => a.commitStyles?.());
     c.animate([{ transform: `${coverZ} rotateY(-180deg)` }, { transform: `${coverZ} rotateY(0deg)` }], opts);
     s.animate([{ transform: `translateX(${shift}px)` }, { transform: "translateX(0px)" }], opts);
@@ -135,7 +136,7 @@ export function BookOpen({
       .map((k) => ({ ...k, offset: 1 - k.offset }))
       .reverse()
       .map((k, i, all) => ({ ...k, easing: i < all.length - 1 ? ease : undefined }));
-    const fly = b.animate(back, { duration: origin.kind === "spine" ? 900 : 700, delay: 420, fill: "forwards" });
+    const fly = b.animate(back, { duration: origin.kind === "spine" ? 760 : 600, delay: 360, fill: "forwards" });
     await fly.finished.catch(() => {});
     onClose();
   }, [book, coverZ, onClose, origin, reduce, shift]);
@@ -162,7 +163,7 @@ export function BookOpen({
 
   const read = () => {
     setPhase("leaving");
-    setTimeout(() => onRead(book), reduce ? 0 : 420);
+    setTimeout(() => onRead(book), reduce ? 0 : 360);
   };
 
   const reading = book.pct > 0 && book.pct < 1;
@@ -196,14 +197,47 @@ export function BookOpen({
             {/* The first page. */}
             <div className="ob-face ob-page" style={{ width: g.W - 9, height: g.H - 12, top: 6, left: 1, transform: `translateZ(${g.D / 2 - 2}px)` }}>
               <div className="ob-page-in scroll-thin">
-                <p className="ob-kicker">
-                  <span className="ob-chip" style={{ ["--c" as string]: t.shades[0] }}>
-                    <Glyph k={t.key} size={15} /> {t.name}
+                <div className="ob-kicker">
+                  {/* The topic it is shelved under, and the way to move it: one chip. */}
+                  <label className="ob-chip" style={{ ["--c" as string]: t.shades[0] }} data-tip="Move to another topic">
+                    <Glyph k={t.key} size={15} />
+                    <span>{t.name}</span>
+                    <ChevronDown size={13} strokeWidth={2.2} className="ob-chip-caret" aria-hidden />
+                    <select value={book.topic} onChange={(e) => onShelve(book, { topic: e.target.value as TopicKey })} aria-label="Topic">
+                      {TOPICS.map((x) => (
+                        <option key={x.key} value={x.key}>
+                          {x.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="ob-tools">
+                    <button
+                      type="button"
+                      className="ob-icon"
+                      aria-pressed={book.favorite}
+                      aria-label={book.favorite ? "Remove from favourites" : "Add to favourites"}
+                      data-tip={book.favorite ? "Favourite" : "Add to favourites"}
+                      onClick={() => onShelve(book, { favorite: !book.favorite })}
+                    >
+                      <Star size={15} fill={book.favorite ? "currentColor" : "none"} />
+                    </button>
+                    {!book.sample && (
+                      <button type="button" className="ob-icon" aria-label="Rename" data-tip="Rename" onClick={() => setRenaming(true)}>
+                        <PencilLine size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ob-icon"
+                      aria-label={book.sample ? "Remove this sample" : "Remove from the library"}
+                      data-tip={book.sample ? "Remove this sample" : "Remove from the library"}
+                      onClick={() => onRemove(book)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </span>
-                  {book.year && <span className="tabular-nums">{book.year}</span>}
-                  <span aria-hidden>·</span>
-                  <span>{fmtMinutes(book.minutes)}</span>
-                </p>
+                </div>
                 {renaming ? (
                   <TitleField
                     title={book.title}
@@ -221,10 +255,13 @@ export function BookOpen({
                     </button>
                   </h2>
                 )}
-                <p className="ob-author">{book.author}</p>
-                <span className="ob-rule" aria-hidden>
-                  ❦
-                </span>
+                <p className="ob-author">
+                  {book.author}
+                  <span className="ob-meta">
+                    {book.year ? `${book.year} · ` : ""}
+                    {fmtMinutes(book.minutes)}
+                  </span>
+                </p>
                 {book.dek && <p className="ob-dek">{book.dek}</p>}
                 {(tagsOf(book).length > 0 || book.tags.length > 0 || book.agent || book.sample) && (
                   <p className="ob-tags">
@@ -260,42 +297,6 @@ export function BookOpen({
                     {book.pct >= 1 ? "Read again" : reading ? "Continue reading" : "Start reading"}
                     <ArrowRight size={16} />
                   </button>
-                  <div className="ob-shelf">
-                    <label className="ob-move" data-tip="Move to another topic">
-                      <Glyph k={book.topic} size={16} />
-                      <select value={book.topic} onChange={(e) => onShelve(book, { topic: e.target.value as TopicKey })} aria-label="Topic">
-                        {TOPICS.map((x) => (
-                          <option key={x.key} value={x.key}>
-                            {x.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      className="ob-icon"
-                      aria-pressed={book.favorite}
-                      aria-label={book.favorite ? "Remove from favourites" : "Add to favourites"}
-                      data-tip={book.favorite ? "Favourite" : "Add to favourites"}
-                      onClick={() => onShelve(book, { favorite: !book.favorite })}
-                    >
-                      <Star size={16} fill={book.favorite ? "currentColor" : "none"} />
-                    </button>
-                    {!book.sample && (
-                      <button type="button" className="ob-icon" aria-label="Rename" data-tip="Rename" onClick={() => setRenaming(true)}>
-                        <PencilLine size={15} />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="ob-icon"
-                      aria-label={book.sample ? "Remove this sample" : "Remove from the library"}
-                      data-tip={book.sample ? "Remove this sample" : "Remove from the library"}
-                      onClick={() => onRemove(book)}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
                   <div className="ob-sub">
                     {book.url ? (
                       <a href={book.url} target="_blank" rel="noreferrer" className="ob-link">
@@ -318,14 +319,17 @@ export function BookOpen({
                 <Cover book={book} look={look} draw />
               </div>
               <div className="ob-face ob-cover-inside" style={{ ["--c" as string]: look.color, ["--c2" as string]: t.shades[3] }}>
+                {/* A bookplate pasted inside the cover: whose it is, and when it was shelved. */}
                 <div className="ex-libris">
-                  <p className="ex-head">Ex libris</p>
                   <div className="ex-art">
-                    <Glyph k={t.key} size={68} />
+                    <Glyph k={t.key} size={60} />
                   </div>
+                  <p className="ex-head">From the library of</p>
                   <p className="ex-name">{owner}</p>
+                  <span className="ex-rule" aria-hidden />
                   <p className="ex-meta">
-                    No. {plateNo} · shelved {shelved}
+                    No. {plateNo}
+                    {book.added ? ` · ${shelved}` : ""}
                   </p>
                 </div>
               </div>

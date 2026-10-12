@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { anchorToRange, blockEl } from "@/lib/anchor";
 import { MARKERS } from "@/lib/settings";
 import { useStore, type Gloss, type Highlight } from "@/lib/store";
-import { GlossCard } from "./GlossCard";
+import { GlossCard, marginStyle } from "./GlossCard";
 
 /** Room between notes; one-line notes in a crowded stretch sit close, like a list. */
 const GAP = 16;
@@ -72,6 +72,12 @@ export function Margin({
   const size = useStore((s) => s.settings.size);
   const [layout, setLayout] = useState<Layout>({ tops: {}, anchors: {}, mini: {}, height: 0, hintTop: 0 });
   const raf = useRef(0);
+  // Cards already shown in their place. Until then a card has no transition,
+  // so on load it appears beside its passage instead of sliding down from the top.
+  const placed = useRef(new Set<string>());
+  useLayoutEffect(() => {
+    for (const id of Object.keys(layout.tops)) placed.current.add(id);
+  }, [layout]);
 
   const compute = useCallback(() => {
     const col = colRef.current;
@@ -186,7 +192,8 @@ export function Margin({
           }}
           gloss={g}
           variant="margin"
-          top={layout.tops[g.id] ?? 0}
+          top={layout.tops[g.id]}
+          fresh={!placed.current.has(g.id)}
           active={active === g.id}
           mini={layout.mini[g.id] ?? false}
           hover={hover === g.id}
@@ -205,7 +212,7 @@ export function Margin({
           type="button"
           onClick={() => onOpenNote(h)}
           className={`mnote${active === h.id ? " is-active" : ""}`}
-          style={{ transform: `translateY(${Math.round(layout.tops[h.id] ?? 0)}px)`, ["--note-c" as string]: MARKERS.find((m) => m.key === (h.color ?? "yellow"))?.color }}
+          style={{ ...marginStyle(layout.tops[h.id], !placed.current.has(h.id)), ["--note-c" as string]: MARKERS.find((m) => m.key === (h.color ?? "yellow"))?.color }}
           aria-label={`Your note: ${h.note}. Edit note.`}
         >
           <span className="line-clamp-4 whitespace-pre-line">{h.note}</span>

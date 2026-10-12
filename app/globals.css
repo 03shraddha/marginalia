@@ -1218,7 +1218,8 @@ mark.key .cite {
 /* ---------- landing: the headline, marked once ---------- */
 
 .hero-title {
-  font-size: clamp(2.9rem, 7vw, 6.8rem);
+  /* By the width, and by the height too, so the whole landing fits one screen on a short laptop. */
+  font-size: clamp(2.9rem, min(7vw, 10.5vh), 6.8rem);
   line-height: 0.98;
   font-weight: 350;
   letter-spacing: -0.038em;
@@ -1319,14 +1320,20 @@ mark.key .cite {
 .lib-line {
   display: flex;
   max-width: 600px;
-  min-height: 46px;
-  margin: 18px auto 0;
+  height: 34px;
+  margin: 14px auto 0;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 13.5px;
   color: var(--ink-3);
   animation: rise 0.45s var(--ease-out) both;
+}
+.lib-line-note {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
 }
 .lib-line-go {
   display: inline-flex;
@@ -1343,6 +1350,260 @@ mark.key .cite {
 .lib-line-go:hover {
   color: var(--ink);
   background: color-mix(in oklab, var(--bg-sunk) 80%, var(--ink) 8%);
+}
+
+/* ---------- the desk: what is yours, at the foot of the landing ---------- */
+
+/* One frame for every state (classics, how it works, latest highlights,
+   today's review): a header line, a row of tiles of one height, a foot line. */
+.desk {
+  width: 100%;
+  max-width: 904px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.desk.is-holding {
+  height: 198px;
+}
+.desk-head {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+  animation: fade 0.6s 0.2s var(--ease-out) both;
+}
+.desk-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.desk-aside {
+  flex-shrink: 0;
+}
+.desk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ink-3);
+  transition: color 0.2s ease;
+}
+.desk-link svg {
+  transition: transform 0.3s var(--ease-out);
+}
+.desk-link:hover {
+  color: var(--ink);
+}
+.desk-link:hover svg {
+  transform: translateX(2px);
+}
+
+.desk-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.desk-tiles > li,
+.desk > .desk-tile {
+  animation: rise 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 240ms);
+}
+.desk-tile {
+  position: relative;
+  display: flex;
+  height: 124px;
+  flex-direction: column;
+  padding: 15px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.3s var(--ease-out), border-color 0.2s ease, box-shadow 0.3s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  a.desk-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--rule-strong);
+    box-shadow: var(--shadow-pop);
+  }
+}
+a.desk-tile:active {
+  transform: scale(0.99);
+}
+a.desk-tile:focus-visible {
+  outline-offset: 3px;
+  border-radius: 16px;
+}
+
+/* The source under a quote: it darkens and grows an arrow when reached for. */
+.desk-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  transition: color 0.2s ease;
+}
+.desk-source-go {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.3s var(--ease-out);
+}
+:is(a.desk-tile, .desk-tile a):hover .desk-source {
+  color: var(--ink);
+}
+:is(a.desk-tile, .desk-tile a):hover .desk-source-go {
+  opacity: 1;
+  transform: none;
+}
+
+/* A classic: a small book, the cloth of its shelf colour with its plate on the front. */
+.desk-tile.is-book {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 14px 14px;
+}
+.desk-cover {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 92px;
+  flex-shrink: 0;
+  padding: 6px 6px 0 9px;
+  border-radius: 2px 4px 4px 2px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 1px rgb(0 0 0 / 0.08), 0 10px 18px -10px rgb(40 30 20 / 0.55);
+  transform-origin: 0 100%;
+  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out);
+}
+.desk-cover::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.14));
+}
+.desk-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.08) 6%, transparent 14%);
+  pointer-events: none;
+}
+.desk-cover img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.16);
+}
+.desk-cover-type {
+  display: block;
+  width: 62%;
+  height: 2px;
+  margin: 11px 0 0;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.55;
+  box-shadow: 0 5px 0 -0.5px currentColor;
+}
+@media (hover: hover) and (pointer: fine) {
+  a.desk-tile:hover .desk-cover {
+    transform: rotate(-2.5deg) translateY(-2px);
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 1px rgb(0 0 0 / 0.08), 6px 14px 22px -10px rgb(40 30 20 / 0.6);
+  }
+}
+
+/* How it works: plain tiles, not links. */
+.desk-tile.is-step {
+  box-shadow: none;
+  background: color-mix(in oklab, var(--bg-raised) 55%, transparent);
+}
+.desk-step-n {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--rubric-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fewer than three highlights: the empty places keep the row's shape. */
+.desk-tile.is-room {
+  align-items: center;
+  justify-content: center;
+  padding: 18px 26px;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ink-4);
+}
+
+/* Today's review: one wide tile, the line on the left, what to do with it on the right. */
+.desk-tile.is-review {
+  flex-direction: row;
+  gap: 20px;
+  padding: 16px 16px 14px 20px;
+}
+
+.desk-foot {
+  min-height: 20px;
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+  animation: fade 0.6s 0.5s var(--ease-out) both;
+}
+
+@media (max-width: 639px) {
+  .desk {
+    padding: 0 20px;
+  }
+  .desk.is-holding {
+    height: 0;
+  }
+  .desk-tiles {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .desk-tile {
+    height: auto;
+    min-height: 0;
+  }
+  .desk-tile.is-book {
+    padding-block: 12px;
+  }
+  .desk-cover {
+    width: 52px;
+    height: 74px;
+    padding: 5px 5px 0 7px;
+  }
+  .desk-cover-type {
+    margin-top: 8px;
+  }
+  .desk-tile.is-room {
+    display: none;
+  }
+  .desk-tile.is-review {
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 
 /* ---------- the shelf sheet: every text and highlight, pulled up over the page ---------- */
@@ -1424,6 +1685,8 @@ mark.key .cite {
 
 /* ---------- tooltips: one for the whole app, instant, in the lens's inks ---------- */
 
+/* Placed and moved by script (components/ui/Tooltips.tsx). No CSS transition
+   on its transform: a new box would glide in from the top-left corner. */
 .tip-box {
   position: fixed;
   left: 0;
@@ -1433,43 +1696,45 @@ mark.key .cite {
   will-change: transform;
 }
 
-.tip-box.is-warm {
-  transition: transform 0.16s var(--ease-out);
-}
-
 .tip {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  gap: 2px;
   width: max-content;
-  max-width: 240px;
-  padding: 5px 8px;
-  border-radius: 7px;
+  max-width: 248px;
+  padding: 6px 9px;
+  border-radius: 8px;
   font-family: var(--font-sans);
   font-size: 12px;
   line-height: 1.3;
+  letter-spacing: 0.005em;
   background: var(--lens-bg);
   color: var(--lens-fg);
-  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.12);
-  animation: tip-pop 0.12s var(--ease-out);
+  box-shadow: 0 8px 22px -8px rgb(0 0 0 / 0.38), 0 1px 2px rgb(0 0 0 / 0.14), inset 0 0 0 0.5px rgb(255 255 255 / 0.06);
+  transform-origin: 50% 100%;
 }
 
-.tip-box[data-side="top"] .tip {
-  --ty: 3px;
-}
 .tip-box[data-side="bottom"] .tip {
-  --ty: -3px;
+  transform-origin: 50% 0;
+}
+.tip-box[data-side="left"] .tip {
+  transform-origin: 100% 50%;
+}
+.tip-box[data-side="right"] .tip {
+  transform-origin: 0 50%;
 }
 
-.tip-box.is-warm .tip {
-  animation: none;
+/* Leaving: a quick fade where it stands. Coming back, it is there at once. */
+.tip-box.is-leaving .tip {
+  opacity: 0;
+  transition: opacity 0.11s ease-out;
 }
 
 .tip-main {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .tip-hint {
@@ -1477,11 +1742,11 @@ mark.key .cite {
 }
 
 .tip:has(.tip-hint) {
-  padding: 6px 9px 7px;
+  padding: 7px 10px 8px;
 }
 
 .tip-kbd {
-  margin-right: -2px;
+  margin-right: -3px;
   padding: 2px 5px;
   border: 0;
   border-radius: 4px;
@@ -1502,13 +1767,6 @@ mark.key .cite {
 .tip-paper .tip-kbd {
   color: var(--ink-2);
   background: var(--bg-sunk);
-}
-
-@keyframes tip-pop {
-  from {
-    opacity: 0;
-    transform: translateY(var(--ty, 0)) scale(0.97);
-  }
 }
 
 /* ---------- a new theme pours in from the swatch you picked ---------- */

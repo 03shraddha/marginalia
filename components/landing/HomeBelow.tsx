@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { ArrowRight } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
-import { tidyTitle } from "@/lib/article";
+import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
+import { SAMPLE_SHELF } from "@/lib/classics";
+import { lookOf } from "@/lib/library";
+import { useLibraryPrefs } from "@/lib/library-prefs";
 import { SAMPLES } from "@/lib/samples";
 import { useStore } from "@/lib/store";
 import { todaysReview } from "@/lib/review";
 import { DailyHighlight } from "./DailyHighlight";
+import { Desk, DeskLink } from "./Desk";
 
 const RECENT = 3;
 
@@ -17,29 +22,44 @@ const STEPS = [
   { title: "Ask it anything", body: "The answer lands in the margin, citing the text." },
 ];
 
+/** A sample as a small book: the cloth it has on the library shelf, its plate on the front. */
+function BookFront({ id, words }: { id: string; words: number }) {
+  const shelf = SAMPLE_SHELF[id];
+  const look = lookOf({ id, topic: shelf?.topic ?? "unsorted", minutes: readingMinutes(words) });
+  return (
+    <span className="desk-cover" style={{ background: look.color, color: look.fg }} aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={shelf?.cover} alt="" draggable={false} />
+      <span className="desk-cover-type" />
+    </span>
+  );
+}
+
 function SignInLine({ children }: { children: string }) {
   return (
-    <p className="mt-7 text-center text-[13px] text-ink-3">
+    <>
       {children}{" "}
       <SignInButton mode="modal">
         <button type="button" className="font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
           Sign in
         </button>
       </SignInButton>
-    </p>
+    </>
   );
 }
 
 /**
- * The quiet space under the headline. Once you have highlights, it is yours:
- * today's review and the lines you marked last. Before that, how it works in
- * three steps. Signed out, a line about keeping it all on every device.
+ * What lies on the desk. With highlights, they are yours: today's review while
+ * one is due, otherwise the lines you marked last. Before that, the bundled
+ * classics to start on (or, once you have texts of your own, how it works).
  */
 export function HomeBelow({ signedIn }: { signedIn: boolean }) {
   const hydrated = useStore((s) => s.hydrated);
   const highlights = useStore((s) => s.highlights);
   const library = useStore((s) => s.library);
   const setUI = useStore((s) => s.setUI);
+  const { hiddenSamples } = useLibraryPrefs();
+  const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id));
 
   const titleOf = useMemo(() => {
     const m = new Map<string, string>();
@@ -57,59 +77,77 @@ export function HomeBelow({ signedIn }: { signedIn: boolean }) {
     [highlights, titleOf]
   );
 
-  if (!hydrated) return <div className="h-40" aria-hidden />;
+  // Held open at its full size until the shelf is read, so nothing shifts when it fills.
+  if (!hydrated) return <div className="desk is-holding" aria-hidden />;
+
+  const foot = signedIn ? null : <SignInLine>{all.length ? "These live in this browser only." : "Keep your highlights on every device."}</SignInLine>;
 
   if (!all.length)
-    return (
-      <section aria-label="How it works" className="mx-auto mt-16 w-full max-w-[760px] px-6 sm:px-10" style={{ animation: "rise 0.5s 0.2s var(--ease-out) both" }}>
-        <ol className="grid gap-6 border-t border-rule pt-7 sm:grid-cols-3 sm:gap-8">
+    return library.length || !samples.length ? (
+      <Desk label="How it works" foot={foot}>
+        <ol className="desk-tiles">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="text-left">
-              <span className="font-serif text-[15px] tabular-nums text-rubric-text">{i + 1}</span>
-              <p className="mt-1 text-[14.5px] font-medium text-ink">{s.title}</p>
-              <p className="mt-1 text-[13.5px] leading-[1.5] text-ink-3">{s.body}</p>
+            <li key={s.title} className="desk-tile is-step" style={{ ["--i" as string]: i }}>
+              <span className="desk-step-n">{i + 1}</span>
+              <p className="mt-3 text-[14.5px] font-medium text-ink">{s.title}</p>
+              <p className="mt-1 text-[13.5px] leading-[1.42] text-ink-3">{s.body}</p>
             </li>
           ))}
         </ol>
-        {!signedIn && <SignInLine>Keep your highlights on every device.</SignInLine>}
-      </section>
+      </Desk>
+    ) : (
+      <Desk label="No link handy? Start with a classic" aside={<DeskLink href="/library">More classics</DeskLink>} foot={foot}>
+        <ol className="desk-tiles">
+          {samples.map((a, i) => (
+            <li key={a.id} style={{ ["--i" as string]: i }}>
+              <Link href={`/read/${a.id}`} className="desk-tile is-book">
+                <BookFront id={a.id} words={wordCount(a)} />
+                <span className="flex min-w-0 flex-col self-stretch py-0.5">
+                  <span className="line-clamp-2 font-serif text-[17.5px] leading-[1.2] tracking-[-0.01em] text-ink">{a.title}</span>
+                  <span className="mt-1 truncate text-[13px] text-ink-2">{a.author}</span>
+                  <span className="mt-auto text-[12.5px] tabular-nums text-ink-3">
+                    {a.published} · {readingMinutes(wordCount(a))} min
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+          {samples.length < 3 && (
+            <li className="desk-tile is-room" style={{ ["--i" as string]: samples.length, gridColumn: `span ${3 - samples.length}` }}>
+              Paste a link above to start a shelf of your own.
+            </li>
+          )}
+        </ol>
+      </Desk>
     );
 
-  // One thing at a time: today's review while a highlight is due, otherwise the lines marked last.
-  const due = todaysReview(all).deck.length > 0;
+  if (todaysReview(all).deck.length > 0) return <DailyHighlight foot={foot} />;
+
   return (
-    <section aria-label="Your highlights" className="mx-auto mt-14 w-full max-w-[680px] px-6 text-left sm:px-10" style={{ animation: "rise 0.5s 0.2s var(--ease-out) both" }}>
-      {due ? (
-        <DailyHighlight />
-      ) : (
-        <>
-          <div className="flex items-baseline justify-between gap-4 border-b border-rule pb-2.5">
-            <h2 className="text-[12.5px] font-medium text-ink-3">Your latest highlights</h2>
-            <button
-              type="button"
-              onClick={() => setUI({ shelf: "highlights" })}
-              className="shrink-0 text-[13px] text-ink-3 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink"
-            >
-              {`All ${all.length}`}
-            </button>
-          </div>
-          <ol className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-3">
-            {all.slice(0, RECENT).map((h) => (
-              <li key={h.id}>
-                <Link href={`/read/${h.articleId}?hl=${h.id}`} className="group block">
-                  <p className="line-clamp-3 font-serif text-[15.5px] leading-[1.5] text-ink [font-variation-settings:'opsz'_20]">
-                    <span className="m-hl" data-c={h.color && h.color !== "yellow" ? h.color : undefined}>
-                      {h.anchor.quote.trim()}
-                    </span>
-                  </p>
-                  <p className="mt-2 truncate text-[12.5px] text-ink-3 transition-colors group-hover:text-ink">{tidyTitle(titleOf.get(h.articleId)!)}</p>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-      {!signedIn && <SignInLine>These live in this browser only.</SignInLine>}
-    </section>
+    <Desk label="Your latest highlights" aside={<DeskLink onClick={() => setUI({ shelf: "highlights" })}>{`All ${all.length}`}</DeskLink>} foot={foot}>
+      <ol className="desk-tiles">
+        {all.slice(0, RECENT).map((h, i) => (
+          <li key={h.id} style={{ ["--i" as string]: i }}>
+            <Link href={`/read/${h.articleId}?hl=${h.id}`} className="desk-tile is-quote">
+              <p className="line-clamp-3 font-serif text-[15.5px] leading-[1.5] text-ink [font-variation-settings:'opsz'_20]">
+                <span className="m-hl" data-c={h.color && h.color !== "yellow" ? h.color : undefined}>
+                  {h.anchor.quote.trim()}
+                </span>
+              </p>
+              <p className="desk-source">
+                <span className="truncate">{tidyTitle(titleOf.get(h.articleId)!)}</span>
+                <ArrowRight size={13} className="desk-source-go" aria-hidden />
+              </p>
+            </Link>
+          </li>
+        ))}
+        {/* Fewer than three: the room left keeps the row's shape. */}
+        {all.length < RECENT && (
+          <li className="desk-tile is-room" style={{ ["--i" as string]: all.length, gridColumn: `span ${RECENT - all.length}` }}>
+            Select a line in anything you read, and it waits for you here.
+          </li>
+        )}
+      </ol>
+    </Desk>
   );
 }

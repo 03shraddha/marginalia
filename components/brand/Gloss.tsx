@@ -18,9 +18,9 @@ export function GlossMark({ className = "size-6" }: { className?: string }) {
  */
 export function GlossWordmark() {
   return (
-    <span className="flex h-9 items-center gap-2 text-ink">
-      <GlossMark className="size-[22px] shrink-0" />
-      <span className="block translate-y-[2px] font-serif text-[23px] font-[440] leading-[23px] tracking-[-0.02em] [font-variation-settings:'opsz'_36]">
+    <span className="flex h-9 items-center gap-[7px] text-ink">
+      <GlossMark className="size-[21px] shrink-0" />
+      <span className="block translate-y-[2px] font-serif text-[21px] font-[440] leading-[21px] tracking-[-0.018em] [font-variation-settings:'opsz'_36]">
         Gloss
       </span>
     </span>

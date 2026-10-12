@@ -94,8 +94,8 @@ export function TogetherLink({ className = "" }: { className?: string }) {
       className={`flex h-9 shrink-0 items-center rounded-sm text-ink opacity-75 transition-opacity duration-200 hover:opacity-100 ${className}`}
     >
       {/* The wordmark box includes descender room; lift it 1px so its letters center on the nav line. */}
-      <TogetherWordmark className="hidden h-[17px] w-auto -translate-y-px min-[860px]:block" />
-      <TogetherMark className="h-[19px] w-auto min-[860px]:hidden" />
+      <TogetherWordmark className="hidden h-[20px] w-auto -translate-y-px min-[860px]:block" />
+      <TogetherMark className="h-[21px] w-auto min-[860px]:hidden" />
     </a>
   );
 }

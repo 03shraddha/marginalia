@@ -22,12 +22,16 @@ export function Mark({ k, size = 16, className }: { k: AgentMark; size?: number;
   );
 }
 
-/** The three marks overlapping in little discs, as on a "works with" button. */
+/**
+ * The three marks overlapping in little discs, as on a "works with" button.
+ * Each disc has its own layer, in order, so the stack never reshuffles when
+ * one of them moves.
+ */
 export function MarkStack({ size = 26 }: { size?: number }) {
   return (
     <span className="mark-stack" aria-hidden style={{ ["--mark" as string]: `${size}px` }}>
-      {(["grok", "claude", "chatgpt"] as const).map((k) => (
-        <span key={k} className="mark-disc">
+      {(["grok", "claude", "chatgpt"] as const).map((k, i) => (
+        <span key={k} className="mark-disc" style={{ zIndex: i + 1 }}>
           <Mark k={k} size={Math.round(size * 0.56)} />
         </span>
       ))}
