@@ -24,7 +24,7 @@ const VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PER_CALL = 25;
 /** About 60,000 words: a long essay or a two-hour transcript, well short of a book. */
 const MAX_TEXT = 400_000;
-const PER_DAY = 200;
+const PER_DAY = 1000;
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://usegloss.io";
 
 const INSTRUCTIONS = `Gloss is a reader. This server is the reader's own library in Gloss: save articles to it, and look through what is there.
