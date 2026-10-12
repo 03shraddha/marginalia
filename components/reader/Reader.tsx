@@ -33,7 +33,9 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
   const [article, setArticle] = useState<Article | null>(initial);
   const [missing, setMissing] = useState(false);
   const hydrate = useStore((s) => s.hydrate);
-  const shown = useMemo(() => (article ? displayArticle(article) : null), [article]);
+  // A text renamed on the shelf keeps its new name here too.
+  const renamed = useStore((s) => s.library.find((x) => x.id === id)?.title);
+  const shown = useMemo(() => (article ? displayArticle(renamed && renamed !== article.title ? { ...article, title: renamed } : article) : null), [article, renamed]);
 
   useEffect(() => {
     hydrate();

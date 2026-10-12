@@ -1097,6 +1097,37 @@ button.plank-label:hover {
   letter-spacing: -0.016em;
   text-wrap: balance;
 }
+/* Click the title to rename it. */
+.ob-title-btn {
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-wrap: inherit;
+  color: inherit;
+  cursor: text;
+  border-radius: 4px;
+  text-decoration: underline dashed transparent 1px;
+  text-underline-offset: 5px;
+  transition: text-decoration-color 0.2s ease;
+}
+.ob-title-btn:hover {
+  text-decoration-color: var(--rule-strong);
+}
+.ob-title-field {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+  min-height: 1.08em;
+  padding: 0;
+  margin-bottom: -2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--rubric);
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
 .ob-author {
   margin-top: 8px;
   font-family: var(--font-serif);

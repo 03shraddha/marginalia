@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, ArrowUpRight, Star, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, PencilLine, Star, Trash2 } from "lucide-react";
 import { fmtMinutes, hash, hostOf, lookOf, tagsOf, TOPIC, TOPICS, type Book, type TopicKey } from "@/lib/library";
 import { Cover, Glyph, Spine } from "./Book";
 
@@ -55,7 +55,7 @@ function flight(g: Geo, o: Origin) {
  * A book, taken off the shelf. It comes out spine first, turns to show its
  * cover as it reaches you, and opens: a bookplate on the left, and on the
  * right what it is, how far you are, and the way in. From here it can be
- * moved to another topic, starred, or taken off the shelf. Esc puts it back.
+ * renamed, moved to another topic, starred, or taken off the shelf. Esc puts it back.
  */
 export function BookOpen({
   book,
@@ -71,11 +71,12 @@ export function BookOpen({
   owner: string;
   onClose: () => void;
   onRead: (b: Book) => void;
-  onShelve: (b: Book, patch: { topic?: TopicKey; favorite?: boolean }) => void;
+  onShelve: (b: Book, patch: { topic?: TopicKey; favorite?: boolean; title?: string }) => void;
   onRemove: (b: Book) => void;
 }) {
   const [g] = useState(() => measure(book));
   const [phase, setPhase] = useState<"in" | "open" | "out" | "leaving">("in");
+  const [renaming, setRenaming] = useState(false);
   const bookRef = useRef<HTMLDivElement>(null);
   const shiftRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLDivElement>(null);
@@ -203,13 +204,29 @@ export function BookOpen({
                   <span aria-hidden>·</span>
                   <span>{fmtMinutes(book.minutes)}</span>
                 </p>
-                <h2 className="ob-title">{book.title}</h2>
+                {renaming ? (
+                  <TitleField
+                    title={book.title}
+                    onDone={(title) => {
+                      setRenaming(false);
+                      if (title && title !== book.title) onShelve(book, { title });
+                    }}
+                  />
+                ) : book.sample ? (
+                  <h2 className="ob-title">{book.title}</h2>
+                ) : (
+                  <h2 className="ob-title">
+                    <button type="button" className="ob-title-btn" data-tip="Rename" onClick={() => setRenaming(true)}>
+                      {book.title}
+                    </button>
+                  </h2>
+                )}
                 <p className="ob-author">{book.author}</p>
                 <span className="ob-rule" aria-hidden>
                   ❦
                 </span>
                 {book.dek && <p className="ob-dek">{book.dek}</p>}
-                {(tagsOf(book).length > 0 || book.tags.length > 0 || book.agent) && (
+                {(tagsOf(book).length > 0 || book.tags.length > 0 || book.agent || book.sample) && (
                   <p className="ob-tags">
                     {tagsOf(book).map((x) => (
                       <span key={x.key}>
@@ -221,6 +238,7 @@ export function BookOpen({
                         <Glyph k="agent" size={15} /> Shelved by your agent
                       </span>
                     )}
+                    {book.sample && <span className="is-word">a sample from Gloss</span>}
                     {book.tags.map((x) => (
                       <span key={x} className="is-word">
                         {x}
@@ -264,10 +282,19 @@ export function BookOpen({
                       <Star size={16} fill={book.favorite ? "currentColor" : "none"} />
                     </button>
                     {!book.sample && (
-                      <button type="button" className="ob-icon" aria-label="Remove from the library" data-tip="Remove from the library" onClick={() => onRemove(book)}>
-                        <Trash2 size={15} />
+                      <button type="button" className="ob-icon" aria-label="Rename" data-tip="Rename" onClick={() => setRenaming(true)}>
+                        <PencilLine size={15} />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="ob-icon"
+                      aria-label={book.sample ? "Remove this sample" : "Remove from the library"}
+                      data-tip={book.sample ? "Remove this sample" : "Remove from the library"}
+                      onClick={() => onRemove(book)}
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                   <div className="ob-sub">
                     {book.url ? (
@@ -308,5 +335,45 @@ export function BookOpen({
       </div>
     </div>,
     document.body
+  );
+}
+
+/** The title, as a field: Enter or leaving it keeps the new name, Esc keeps the old one. */
+function TitleField({ title, onDone }: { title: string; onDone: (title: string | null) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const done = useRef(false);
+  const finish = (v: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(v === null ? null : v.replace(/\s+/g, " ").trim().slice(0, 300));
+  };
+
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    el.focus({ preventScroll: true });
+    el.select();
+  }, []);
+
+  return (
+    <textarea
+      ref={ref}
+      className="ob-title ob-title-field"
+      defaultValue={title}
+      rows={1}
+      aria-label="Title"
+      spellCheck={false}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(e.currentTarget.value);
+        } else if (e.key === "Escape") {
+          // Esc here puts the name back, not the book.
+          e.preventDefault();
+          e.stopPropagation();
+          finish(null);
+        }
+      }}
+      onBlur={(e) => finish(e.currentTarget.value)}
+    />
   );
 }

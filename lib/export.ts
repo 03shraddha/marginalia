@@ -108,7 +108,7 @@ export async function exportAll(): Promise<number> {
   for (const id of ids) {
     const item = st.library.find((x) => x.id === id);
     const doc = SAMPLES.find((a) => a.id === id) ?? (await loadDoc(id));
-    const title = tidyTitle(doc?.title ?? item?.title ?? id);
+    const title = tidyTitle(item?.title ?? doc?.title ?? id);
     const meta: NotesMeta = {
       title,
       author: doc?.author ?? item?.author,

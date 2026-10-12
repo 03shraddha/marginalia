@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Download, Search, X } from "lucide-react";
+import { Check, Download, PencilLine, Search, X } from "lucide-react";
 import { readingMinutes, tidyTitle } from "@/lib/article";
 import { exportAll } from "@/lib/export";
 import { useStore, type Highlight } from "@/lib/store";
@@ -52,16 +52,18 @@ function Ring({ pct }: { pct: number }) {
  * The whole shelf, pulled up over the desk: every text, newest reading first,
  * found by typing. Arrow keys walk the list; S opens it from the desk. The
  * same sheet turns to every highlight and note across the shelf, and exports
- * all of them as Markdown.
+ * all of them as Markdown. Any text can be renamed or taken off the shelf.
  */
 export function ShelfSheet({
   items,
   onOpen,
+  onRename,
   onRemove,
 }: {
   items: ShelfItem[];
   onOpen: (id: string, hl?: string) => void;
-  onRemove: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onRemove: (it: ShelfItem) => void;
 }) {
   const view = useStore((s) => s.shelf);
   const setUI = useStore((s) => s.setUI);
@@ -71,6 +73,7 @@ export function ShelfSheet({
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [exported, setExported] = useState<number | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +96,7 @@ export function ShelfSheet({
     setQ("");
     setFilter("all");
     setExported(null);
+    setRenaming(null);
     // Ready to type with a keyboard; on a phone, no keyboard leaping over the list.
     if (window.matchMedia("(pointer: fine)").matches) requestAnimationFrame(() => inputRef.current?.focus());
     const onKey = (e: KeyboardEvent) => {
@@ -102,6 +106,8 @@ export function ShelfSheet({
         return;
       }
       if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      // The caret moves in a title being renamed.
+      if (e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && e.target !== inputRef.current)) return;
       const rows = [...(listRef.current?.querySelectorAll<HTMLElement>("[data-row]") ?? [])];
       if (!rows.length) return;
       e.preventDefault();
@@ -269,6 +275,16 @@ export function ShelfSheet({
           <ul ref={listRef} className="scroll-thin -mx-3 grid flex-1 content-start gap-x-6 overflow-y-auto px-3 pb-10 pt-2 md:grid-cols-2">
             {shown.map((it, i) => (
               <li key={it.id} className="shelf-row group relative" style={{ animationDelay: `${Math.min(i, 14) * 18}ms` }}>
+                {renaming === it.id ? (
+                  <RenameRow
+                    title={tidyTitle(it.title)}
+                    onDone={(title) => {
+                      setRenaming(null);
+                      if (title && title !== tidyTitle(it.title)) onRename(it.id, title);
+                    }}
+                  />
+                ) : (
+                <>
                 <Link
                   href={`/read/${it.id}`}
                   data-row
@@ -278,7 +294,7 @@ export function ShelfSheet({
                     onOpenChange(false);
                     onOpen(it.id);
                   }}
-                  className="flex items-start gap-3.5 rounded-[12px] px-3 py-3 pr-10 transition-colors hover:bg-sunk/70 focus-visible:bg-sunk/70 focus-visible:outline-offset-[-2px]"
+                  className="flex items-start gap-3.5 rounded-[12px] px-3 py-3 pr-[4.5rem] transition-colors hover:bg-sunk/70 focus-visible:bg-sunk/70 focus-visible:outline-offset-[-2px]"
                 >
                   <span className="mt-0.5">
                     <Ring pct={it.pct} />
@@ -286,6 +302,7 @@ export function ShelfSheet({
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 font-serif text-[18px] leading-[1.2] tracking-[-0.01em] text-ink">{tidyTitle(it.title)}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12.5px] text-ink-3">
+                      {it.sample && <span className="rounded-full border border-dashed border-rule-strong px-1.5 text-[11.5px] leading-[17px] text-ink-3">Sample</span>}
                       <span className="max-w-[60%] truncate">{it.byline}</span>
                       <span aria-hidden className="text-ink-4">{"·"}</span>
                       <span className="tabular-nums">{it.pct > 0 && it.pct < 1 ? `${Math.round(it.pct * 100)}% read` : `${readingMinutes(it.words)} min`}</span>
@@ -303,13 +320,24 @@ export function ShelfSheet({
                 {!it.sample && (
                   <button
                     type="button"
-                    aria-label={`Remove ${it.title} from your shelf`}
-                    data-tip="Remove from shelf"
-                    onClick={() => onRemove(it.id)}
-                    className="absolute right-2 top-3 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-[opacity,background-color] hover:bg-bg hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                    aria-label={`Rename ${it.title}`}
+                    data-tip="Rename"
+                    onClick={() => setRenaming(it.id)}
+                    className="absolute right-10 top-3 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-[opacity,background-color] hover:bg-bg hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                   >
-                    <X size={14} />
+                    <PencilLine size={14} />
                   </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={it.sample ? `Remove the sample ${it.title}` : `Remove ${it.title} from your shelf`}
+                  data-tip={it.sample ? "Remove this sample" : "Remove from shelf"}
+                  onClick={() => onRemove(it)}
+                  className="absolute right-2 top-3 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-[opacity,background-color] hover:bg-bg hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                >
+                  <X size={14} />
+                </button>
+                </>
                 )}
               </li>
             ))}
@@ -324,6 +352,45 @@ export function ShelfSheet({
       </section>
     </div>,
     document.body
+  );
+}
+
+/** A title being renamed in place: Enter or leaving keeps it, Esc keeps the old one. */
+function RenameRow({ title, onDone }: { title: string; onDone: (title: string | null) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const done = useRef(false);
+  const finish = (v: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(v === null ? null : v.replace(/\s+/g, " ").trim().slice(0, 300));
+  };
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  return (
+    <div className="flex items-start gap-3.5 rounded-[12px] bg-sunk/70 px-3 py-3">
+      <span className="mt-0.5 size-6 shrink-0" aria-hidden />
+      <input
+        ref={ref}
+        defaultValue={title}
+        aria-label="Title"
+        spellCheck={false}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finish(e.currentTarget.value);
+          } else if (e.key === "Escape") {
+            // Esc here puts the name back; the sheet stays open.
+            e.preventDefault();
+            e.stopPropagation();
+            finish(null);
+          }
+        }}
+        onBlur={(e) => finish(e.currentTarget.value)}
+        className="min-w-0 flex-1 border-b-[1.5px] border-[var(--rubric)] bg-transparent pb-0.5 font-serif text-[18px] leading-[1.2] tracking-[-0.01em] text-ink outline-none focus-visible:outline-none"
+      />
+    </div>
   );
 }
 

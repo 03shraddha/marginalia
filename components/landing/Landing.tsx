@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/ui/TopBar";
 import { wordCount, type Article } from "@/lib/article";
 import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
+import { hideSample, useLibraryPrefs } from "@/lib/library-prefs";
 import { normalizeUrl } from "@/lib/links";
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
@@ -29,6 +30,8 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   const progress = useStore((s) => s.progress);
   const glosses = useStore((s) => s.glosses);
   const removeFromLibrary = useStore((s) => s.removeFromLibrary);
+  const shelve = useStore((s) => s.shelve);
+  const { hiddenSamples } = useLibraryPrefs();
 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
@@ -213,7 +216,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
       sample: false,
       touched: (hydrated ? progress[x.id]?.at : 0) || x.addedAt,
     }));
-    const samples = SAMPLES.map((a) => ({
+    const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id)).map((a) => ({
       id: a.id,
       title: a.title,
       byline: [a.author?.split(" ").slice(-1)[0], a.published].filter(Boolean).join(", "),
@@ -227,7 +230,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     // What you are in the middle of comes first, then whatever was touched last.
     const reading = (x: ShelfItem) => Number(x.pct > 0 && x.pct < 1);
     return [...mine, ...samples].sort((a, b) => reading(b) - reading(a) || b.touched - a.touched);
-  }, [library, progress, glosses, hydrated]);
+  }, [library, progress, glosses, hydrated, hiddenSamples]);
 
   return (
     <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
@@ -253,7 +256,12 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
         <HomeBelow signedIn={signedIn} />
       </main>
 
-      <ShelfSheet items={items} onOpen={go} onRemove={removeFromLibrary} />
+      <ShelfSheet
+        items={items}
+        onOpen={go}
+        onRename={(id, title) => shelve(id, { title })}
+        onRemove={(it) => (it.sample ? hideSample(it.id) : removeFromLibrary(it.id))}
+      />
 
       <input
         ref={fileRef}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { tidyTitle } from "@/lib/article";
+import { useLibraryPrefs } from "@/lib/library-prefs";
 import { SAMPLES } from "@/lib/samples";
 import { useStore } from "@/lib/store";
 
@@ -17,6 +18,8 @@ export function LibraryLine({ saved }: { saved: Saved | null }) {
   const hydrated = useStore((s) => s.hydrated);
   const library = useStore((s) => s.library);
   const progress = useStore((s) => s.progress);
+  const { hiddenSamples } = useLibraryPrefs();
+  const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id));
 
   const reading = useMemo(() => {
     const titles = new Map(library.map((x) => [x.id, x.title]));
@@ -42,11 +45,11 @@ export function LibraryLine({ saved }: { saved: Saved | null }) {
     );
 
   // Nothing of your own yet: the bundled samples, one click from reading.
-  if (!library.length)
+  if (!library.length && samples.length)
     return (
       <p className="lib-line">
         <span>No link handy? Try</span>
-        {SAMPLES.map((a, i) => (
+        {samples.map((a, i) => (
           <span key={a.id} className="inline-flex items-center gap-2.5">
             {i > 0 && <span className="text-ink-4">·</span>}
             <Link href={`/read/${a.id}`} className="text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
