@@ -2,11 +2,14 @@
 
 import { useSyncExternalStore } from "react";
 
-/** The library's own preferences, kept apart from the reading settings. */
-export type LibraryPrefs = { paintedCovers: boolean };
+/**
+ * The library's own preferences, kept apart from the reading settings.
+ * `hiddenSamples`: the bundled samples taken off this device's shelf.
+ */
+export type LibraryPrefs = { paintedCovers: boolean; hiddenSamples: string[] };
 
 const KEY = "gloss:library";
-const DEFAULTS: LibraryPrefs = { paintedCovers: false };
+const DEFAULTS: LibraryPrefs = { paintedCovers: false, hiddenSamples: [] };
 const listeners = new Set<() => void>();
 let cache: LibraryPrefs | null = null;
 
@@ -26,6 +29,12 @@ export function setLibraryPrefs(p: Partial<LibraryPrefs>) {
     localStorage.setItem(KEY, JSON.stringify(cache));
   } catch {}
   listeners.forEach((l) => l());
+}
+
+/** Take a bundled sample off the shelf. It can still be opened by its link. */
+export function hideSample(id: string) {
+  const hidden = read().hiddenSamples;
+  if (!hidden.includes(id)) setLibraryPrefs({ hiddenSamples: [...hidden, id] });
 }
 
 export function useLibraryPrefs(): LibraryPrefs {

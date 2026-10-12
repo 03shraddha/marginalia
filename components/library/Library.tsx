@@ -9,7 +9,7 @@ import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
 import { forgetCover, paintAll } from "@/lib/covers";
 import { SAMPLE_SHELF } from "@/lib/classics";
 import { SORTS, sortBooks, TAGS, TOPIC, TOPICS, topicOf, type Book, type Sort, type TagKey, type Topic, type TopicKey } from "@/lib/library";
-import { useLibraryPrefs } from "@/lib/library-prefs";
+import { hideSample, useLibraryPrefs } from "@/lib/library-prefs";
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { backfill } from "@/lib/shelving";
@@ -26,7 +26,7 @@ import { TopicGrid, TopicPage } from "./Topics";
 type View = "shelf" | "topics";
 
 const SEEN_KEY = "gloss:library-seen";
-/** Samples stay on the shelf until it has this many texts of your own, or for good once opened. */
+/** Samples stay on the shelf until it has this many texts of your own, or for good once opened, unless taken off. */
 const SAMPLES_UNTIL = 6;
 
 /**
@@ -148,7 +148,7 @@ export function Library() {
       agent: x.addedBy === "agent",
       sample: false,
     }));
-    const samples: Book[] = SAMPLES.filter((a) => own.length < SAMPLES_UNTIL || read(a.id) > 0).map((a) => ({
+    const samples: Book[] = SAMPLES.filter((a) => !prefs.hiddenSamples.includes(a.id) && (own.length < SAMPLES_UNTIL || read(a.id) > 0)).map((a) => ({
       id: a.id,
       title: a.title,
       author: a.author ?? "",
@@ -168,7 +168,7 @@ export function Library() {
     return [...mine, ...samples];
     // `own.length` is derived from `library`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [library, progress, highlights, hydrated]);
+  }, [library, progress, highlights, hydrated, prefs.hiddenSamples]);
 
   const sorted = useMemo(() => sortBooks(books, sort), [books, sort]);
 
@@ -407,6 +407,7 @@ export function Library() {
           onShelve={(b, patch) => shelveItem(b.id, patch)}
           onRemove={(b) => {
             setOpen(null);
+            if (b.sample) return hideSample(b.id);
             removeFromLibrary(b.id);
             void forgetCover(b.id);
           }}
