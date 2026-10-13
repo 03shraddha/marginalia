@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
-import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
-import { SAMPLE_SHELF } from "@/lib/classics";
-import { lookOf } from "@/lib/library";
-import { useLibraryPrefs } from "@/lib/library-prefs";
+import { tidyTitle } from "@/lib/article";
 import { SAMPLES } from "@/lib/samples";
 import { useStore } from "@/lib/store";
 import { todaysReview } from "@/lib/review";
@@ -21,19 +18,6 @@ const STEPS = [
   { title: "Select any line", body: "A word, a sentence, a passage." },
   { title: "Ask it anything", body: "The answer lands in the margin, citing the text." },
 ];
-
-/** A sample as a small book: the cloth it has on the library shelf, its plate on the front. */
-function BookFront({ id, words }: { id: string; words: number }) {
-  const shelf = SAMPLE_SHELF[id];
-  const look = lookOf({ id, topic: shelf?.topic ?? "unsorted", minutes: readingMinutes(words) });
-  return (
-    <span className="desk-cover" style={{ background: look.color, color: look.fg }} aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={shelf?.cover} alt="" draggable={false} />
-      <span className="desk-cover-type" />
-    </span>
-  );
-}
 
 function SignInLine({ children }: { children: string }) {
   return (
@@ -50,16 +34,13 @@ function SignInLine({ children }: { children: string }) {
 
 /**
  * What lies on the desk. With highlights, they are yours: today's review while
- * one is due, otherwise the lines you marked last. Before that, the bundled
- * classics to start on (or, once you have texts of your own, how it works).
+ * one is due, otherwise the lines you marked last. Before that, how it works.
  */
 export function HomeBelow({ signedIn }: { signedIn: boolean }) {
   const hydrated = useStore((s) => s.hydrated);
   const highlights = useStore((s) => s.highlights);
   const library = useStore((s) => s.library);
   const setUI = useStore((s) => s.setUI);
-  const { hiddenSamples } = useLibraryPrefs();
-  const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id));
 
   const titleOf = useMemo(() => {
     const m = new Map<string, string>();
@@ -82,8 +63,9 @@ export function HomeBelow({ signedIn }: { signedIn: boolean }) {
 
   const foot = signedIn ? null : <SignInLine>{all.length ? "These live in this browser only." : "Keep your highlights on every device."}</SignInLine>;
 
+  // Before any highlights: Hassan's three steps, for first-timers and anyone signed out.
   if (!all.length)
-    return library.length || !samples.length ? (
+    return (
       <Desk label="How it works" foot={foot}>
         <ol className="desk-tiles">
           {STEPS.map((s, i) => (
@@ -93,30 +75,6 @@ export function HomeBelow({ signedIn }: { signedIn: boolean }) {
               <p className="mt-1 text-[13.5px] leading-[1.42] text-ink-3">{s.body}</p>
             </li>
           ))}
-        </ol>
-      </Desk>
-    ) : (
-      <Desk label="No link handy? Start with a classic" aside={<DeskLink href="/library">More classics</DeskLink>} foot={foot}>
-        <ol className="desk-tiles">
-          {samples.map((a, i) => (
-            <li key={a.id} style={{ ["--i" as string]: i }}>
-              <Link href={`/read/${a.id}`} className="desk-tile is-book">
-                <BookFront id={a.id} words={wordCount(a)} />
-                <span className="flex min-w-0 flex-col self-stretch py-0.5">
-                  <span className="line-clamp-2 font-serif text-[17.5px] leading-[1.2] tracking-[-0.01em] text-ink">{a.title}</span>
-                  <span className="mt-1 truncate text-[13px] text-ink-2">{a.author}</span>
-                  <span className="mt-auto text-[12.5px] tabular-nums text-ink-3">
-                    {a.published} · {readingMinutes(wordCount(a))} min
-                  </span>
-                </span>
-              </Link>
-            </li>
-          ))}
-          {samples.length < 3 && (
-            <li className="desk-tile is-room" style={{ ["--i" as string]: samples.length, gridColumn: `span ${3 - samples.length}` }}>
-              Paste a link above to start a shelf of your own.
-            </li>
-          )}
         </ol>
       </Desk>
     );

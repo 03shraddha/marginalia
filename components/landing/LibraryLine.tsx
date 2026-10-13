@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { tidyTitle } from "@/lib/article";
 import { useLibraryPrefs } from "@/lib/library-prefs";
+import { SAMPLE_SHELF } from "@/lib/classics";
 import { SAMPLES } from "@/lib/samples";
 import { useStore } from "@/lib/store";
 
@@ -23,9 +24,9 @@ function Ring({ pct }: { pct: number }) {
 }
 
 /**
- * One quiet line under the link bar: what you just saved, or what you were in
- * the middle of, and the way to the library. Its room is always kept, so the
- * headline above never moves when it fills.
+ * One quiet line under the link bar: what you just saved, what you were in the
+ * middle of and the way to the library, or, with nothing of your own yet, the
+ * bundled samples. Its room is always kept, so the headline above never moves.
  */
 export function LibraryLine({ saved }: { saved: Saved | null }) {
   const hydrated = useStore((s) => s.hydrated);
@@ -59,7 +60,23 @@ export function LibraryLine({ saved }: { saved: Saved | null }) {
       </p>
     );
 
-  if (!reading && !library.length) return <div className="lib-line" aria-hidden />;
+  // Nothing of your own yet: the bundled samples, one click from reading.
+  if (!reading && !library.length) {
+    const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id));
+    if (!samples.length) return <div className="lib-line" aria-hidden />;
+    return (
+      <p className="lib-line">
+        <span>No link handy? Try</span>
+        {samples.map((a) => (
+          <Link key={a.id} href={`/read/${a.id}`} className="lib-sample" data-tip={a.title} data-tip-hint={`${a.author}, ${a.published}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={SAMPLE_SHELF[a.id]?.cover} alt="" draggable={false} />
+            {a.author?.split(" ").slice(-1)[0]}
+          </Link>
+        ))}
+      </p>
+    );
+  }
 
   return (
     <p className="lib-line">

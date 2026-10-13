@@ -1352,6 +1352,47 @@ mark.key .cite {
   background: color-mix(in oklab, var(--bg-sunk) 80%, var(--ink) 8%);
 }
 
+/* A bundled sample under the link bar: a small plate of its cover, and its author. */
+.lib-sample {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  color: var(--ink-2);
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s var(--ease-out);
+}
+.lib-sample img {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+.lib-sample:hover {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.lib-sample:active {
+  transform: scale(0.97);
+}
+@media (max-width: 639px) {
+  /* On a phone the question sits on its own line, and the samples under it. */
+  .lib-line:has(.lib-sample) {
+    height: auto;
+    min-height: 34px;
+    flex-wrap: wrap;
+    gap: 8px 6px;
+  }
+  .lib-line:has(.lib-sample) > span:first-child {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
 /* ---------- the desk: what is yours, at the foot of the landing ---------- */
 
 /* One frame for every state (classics, how it works, latest highlights,
@@ -1466,67 +1507,6 @@ a.desk-tile:focus-visible {
   transform: none;
 }
 
-/* A classic: a small book, the cloth of its shelf colour with its plate on the front. */
-.desk-tile.is-book {
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 16px 14px 14px;
-}
-.desk-cover {
-  position: relative;
-  display: block;
-  width: 64px;
-  height: 92px;
-  flex-shrink: 0;
-  padding: 6px 6px 0 9px;
-  border-radius: 2px 4px 4px 2px;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 1px rgb(0 0 0 / 0.08), 0 10px 18px -10px rgb(40 30 20 / 0.55);
-  transform-origin: 0 100%;
-  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out);
-}
-.desk-cover::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 3px;
-  width: 2px;
-  background: linear-gradient(90deg, rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.14));
-}
-.desk-cover::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.08) 6%, transparent 14%);
-  pointer-events: none;
-}
-.desk-cover img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 1px;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.16);
-}
-.desk-cover-type {
-  display: block;
-  width: 62%;
-  height: 2px;
-  margin: 11px 0 0;
-  border-radius: 2px;
-  background: currentColor;
-  opacity: 0.55;
-  box-shadow: 0 5px 0 -0.5px currentColor;
-}
-@media (hover: hover) and (pointer: fine) {
-  a.desk-tile:hover .desk-cover {
-    transform: rotate(-2.5deg) translateY(-2px);
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 1px rgb(0 0 0 / 0.08), 6px 14px 22px -10px rgb(40 30 20 / 0.6);
-  }
-}
-
 /* How it works: plain tiles, not links. */
 .desk-tile.is-step {
   box-shadow: none;
@@ -1586,19 +1566,21 @@ a.desk-tile:focus-visible {
     height: auto;
     min-height: 0;
   }
-  .desk-tile.is-book {
-    padding-block: 12px;
-  }
-  .desk-cover {
-    width: 52px;
-    height: 74px;
-    padding: 5px 5px 0 7px;
-  }
-  .desk-cover-type {
-    margin-top: 8px;
-  }
   .desk-tile.is-room {
     display: none;
+  }
+  /* Steps read as a short list: the number beside its title. */
+  .desk-tile.is-step {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 13px 16px 14px;
+  }
+  .desk-tile.is-step .desk-step-n {
+    grid-row: span 2;
+    padding-top: 3px;
+  }
+  .desk-tile.is-step > p:first-of-type {
+    margin-top: 0;
   }
   .desk-tile.is-review {
     flex-direction: column;
