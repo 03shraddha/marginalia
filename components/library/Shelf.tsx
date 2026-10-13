@@ -6,7 +6,9 @@ import { Glyph, Spine } from "./Book";
 
 const PAD = 28;
 const GAP = 3;
-const GROUP_GAP = 38;
+const GROUP_GAP = 36;
+/** The least room between one label and the next run's, on the same shelf. */
+const LABEL_GAP = 18;
 const AREA = 268; // the space a book stands in
 const PLANK = 16;
 const PITCH = AREA + PLANK + 52;
@@ -19,43 +21,99 @@ const warm = (b: Book) => {
 
 type Pos = { x: number; y: number; row: number };
 
-/** About how wide a shelf label is: its words, its icon, its count, its padding. */
-const labelWidth = (l: { label: string; icon?: string; count: number }) => l.label.length * 6.6 + (l.icon ? 22 : 0) + 30;
+/** Text widths in the label's face (12.5px, medium), measured once each. */
+const widths = new Map<string, number>();
+let ctx: CanvasRenderingContext2D | null = null;
+function textWidth(s: string) {
+  const hit = widths.get(s);
+  if (hit !== undefined) return hit;
+  ctx ??= document.createElement("canvas").getContext("2d");
+  if (!ctx) return s.length * 6.8;
+  ctx.font = `500 12.5px ${getComputedStyle(document.body).fontFamily}`;
+  const w = ctx.measureText(s).width;
+  widths.set(s, w);
+  return w;
+}
+
+/** How wide a shelf label is, as drawn: its icon, its words, its count, and its padding. */
+const labelWidth = (l: { label: string; icon?: string; count: number }) => (l.icon ? 21 : 0) + textWidth(l.label) + 6 + textWidth(String(l.count)) + 17;
+
+type Label = { key: string; label: string; icon?: TopicKey | TagKey; x: number; row: number; count: number };
 
 /**
  * Where every book stands: left to right along a plank, a gap between runs
- * of a topic (or a decade, or a length), a new shelf when one is full. The
- * books are placed absolutely, so a new sort or filter slides each one to
- * its new spot instead of re-flowing.
+ * of a topic (or a month, or a length), a new shelf when one is full. Each
+ * run's label is centred under it, and runs stand far enough apart for their
+ * labels never to meet. The books are placed absolutely, so a new sort or
+ * filter slides each one to its new spot instead of re-flowing.
  */
 function shelve(books: Book[], width: number, sort: Sort) {
   const pos = new Map<string, Pos>();
-  const labels: { key: string; label: string; icon?: TopicKey | TagKey; x: number; row: number; count: number }[] = [];
+  const labels: Label[] = [];
   const ends: number[] = [];
-  let x = PAD, row = 0, group = "";
   const inner = Math.max(200, width);
+  const right = inner - PAD;
+
+  // Consecutive books of one group make a run.
+  const runs: { g: ReturnType<typeof groupOf>; books: Book[] }[] = [];
   for (const b of books) {
-    const { w, h } = lookOf(b);
     const g = groupOf(b, sort);
-    const fresh = g && g.key !== group;
-    if (fresh && x > PAD) {
-      x += GROUP_GAP;
-      // Room for the previous run's label, when the run itself is narrower than its label.
-      const prev = labels[labels.length - 1];
-      if (prev && prev.row === row) x = Math.max(x, prev.x + labelWidth(prev) + 12);
-    }
-    if (x + w > inner - PAD && x > PAD) {
-      ends[row] = x;
-      row++;
-      x = PAD;
-    }
-    pos.set(b.id, { x, y: row * PITCH + AREA - h, row });
-    if (fresh) labels.push({ key: g.key, label: g.label, icon: g.icon, x, row, count: 0 });
-    if (g) labels[labels.length - 1].count++;
-    group = g?.key ?? "";
-    x += w + GAP;
+    const last = runs[runs.length - 1];
+    if (last && (last.g?.key ?? null) === (g?.key ?? null)) last.books.push(b);
+    else runs.push({ g, books: [b] });
   }
-  ends[row] = x;
+
+  let row = 0;
+  let edge = PAD; // the right edge of the last book on this shelf
+  let labelEdge = -Infinity; // the right edge of the last label on this shelf
+  let used = false;
+  const wrap = () => {
+    ends[row] = edge;
+    row++;
+    edge = PAD;
+    labelEdge = -Infinity;
+    used = false;
+  };
+
+  for (const run of runs) {
+    const ws = run.books.map((b) => lookOf(b).w);
+    const runW = ws.reduce((n, w) => n + w, 0) + GAP * (ws.length - 1);
+    const lw = run.g ? labelWidth({ label: run.g.label, icon: run.g.icon, count: run.books.length }) : 0;
+    let x = PAD;
+    if (used) {
+      x = edge + GROUP_GAP;
+      if (run.g) x = Math.max(x, labelEdge + LABEL_GAP + lw / 2 - Math.min(runW, right - x) / 2);
+      if (x + ws[0] > right) {
+        wrap();
+        x = PAD;
+      }
+    }
+    // The label goes under the part of the run on its first shelf.
+    const segRow = row;
+    const segStart = x;
+    let segEnd = -1;
+    run.books.forEach((b, i) => {
+      if (used && x + ws[i] > right) {
+        if (segEnd < 0) segEnd = edge;
+        wrap();
+        x = PAD;
+      }
+      pos.set(b.id, { x, y: row * PITCH + AREA - lookOf(b).h, row });
+      edge = x + ws[i];
+      x = edge + GAP;
+      used = true;
+    });
+    if (segEnd < 0) segEnd = edge;
+    if (run.g) {
+      const before = labels.length && labels[labels.length - 1].row === segRow ? labels[labels.length - 1] : null;
+      let left = (segStart + segEnd) / 2 - lw / 2;
+      if (before) left = Math.max(left, before.x + labelWidth(before) + LABEL_GAP);
+      left = Math.max(2, Math.min(inner - lw, left));
+      labels.push({ key: run.g.key, label: run.g.label, icon: run.g.icon, x: left, row: segRow, count: run.books.length });
+      if (row === segRow) labelEdge = left + lw;
+    }
+  }
+  ends[row] = edge;
   return { pos, labels, rows: row + 1, ends };
 }
 
@@ -139,12 +197,12 @@ export function Shelf({
       ))}
 
       {labels.map((l) => {
-        const style = { transform: `translate(${l.x}px, ${l.row * PITCH + AREA + PLANK + 10}px)` };
+        const style = { transform: `translate(${l.x}px, ${l.row * PITCH + AREA + PLANK + 8}px)` };
         const body = (
           <>
-            {l.icon && <Glyph k={l.icon} size={16} className="mr-1" />}
+            {l.icon && <Glyph k={l.icon} size={16} className="mr-[5px]" />}
             {l.label}
-            <span className="ml-1.5 tabular-nums text-ink-4">{l.count}</span>
+            <span className="plank-n">{l.count}</span>
           </>
         );
         return onLabel ? (

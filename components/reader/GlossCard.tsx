@@ -1,7 +1,7 @@
 "use client";
 
 import { Show, SignInButton } from "@clerk/nextjs";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowUp, Check, ChevronsDownUp, Copy, CornerDownRight, RotateCcw, Square, Trash2 } from "lucide-react";
 import { ACTIONS } from "@/lib/actions";
 import { followUp, openKeyMenu, retry, stopGloss } from "@/lib/ask";
@@ -21,7 +21,10 @@ type Props = {
   mini?: boolean;
   /** "margin" cards are absolutely placed; "sheet" and "list" flow normally. */
   variant: "margin" | "sheet" | "list";
+  /** Where a margin card stands; unknown until the margin is laid out, and hidden till then. */
   top?: number;
+  /** A margin card's first placement: it appears in its place instead of gliding there from the top. */
+  fresh?: boolean;
   onActivate: () => void;
 };
 
@@ -62,6 +65,18 @@ function KeyButton() {
   );
 }
 
+/**
+ * A card in the margin column: moved to its place along the column, gliding
+ * when the layout changes, but put straight in its place the first time.
+ */
+export function marginStyle(top: number | undefined, fresh: boolean): CSSProperties {
+  return {
+    transform: `translateY(${Math.round(top ?? 0)}px)`,
+    ...(top === undefined ? { visibility: "hidden" } : null),
+    ...(fresh ? { transition: "none" } : null),
+  };
+}
+
 function TurnBody({ t }: { t: Turn }) {
   if (t.error && !t.content)
     return (
@@ -86,7 +101,7 @@ function TurnBody({ t }: { t: Turn }) {
   );
 }
 
-export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ gloss, active, hover, entering, mini = false, variant, top, onActivate }, ref) {
+export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ gloss, active, hover, entering, mini = false, variant, top, fresh = false, onActivate }, ref) {
   const { ix, jumpToBlock } = useReader();
   const removeGloss = useStore((s) => s.removeGloss);
   const setUI = useStore((s) => s.setUI);
@@ -129,7 +144,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
     } catch {}
   };
 
-  const style = variant === "margin" ? { transform: `translateY(${Math.round(top ?? 0)}px)` } : undefined;
+  const style = variant === "margin" ? marginStyle(top, fresh) : undefined;
   const follow = Math.floor((gloss.turns.length - 1) / 2);
   const where = n !== undefined ? `\u00b6${n}${nEnd && nEnd !== n ? `-${nEnd}` : ""}` : null;
 

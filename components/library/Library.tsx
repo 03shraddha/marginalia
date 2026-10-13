@@ -3,7 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
-import { ChevronLeft, LayoutGrid, Library as LibraryIcon, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, Library as LibraryIcon, Search, X } from "lucide-react";
 import { TopBar } from "@/components/ui/TopBar";
 import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
 import { forgetCover, paintAll } from "@/lib/covers";
@@ -82,6 +82,15 @@ export function Library() {
 
   // Signed in, the shelf is checked every few seconds while it's open, so an agent's saves arrive as you look.
   useEffect(() => watchShelf(), []);
+
+  // The top bar frosts over once the page moves under it.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 2);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
 
   // Anything that lands on the shelf while you look (an import, a sync from your agent) drops in.
   useEffect(() => {
@@ -258,14 +267,14 @@ export function Library() {
       if (!n) return null;
       return (
         <Chip key={t.key} on={tag === t.key} onClick={() => setTag(tag === t.key ? null : t.key)}>
-          <Glyph k={t.key} size={19} /> {t.label} <span className="lib-n">{n}</span>
+          <Glyph k={t.key} size={18} /> {t.label} <span className="lib-n">{n}</span>
         </Chip>
       );
     });
 
   return (
     <div className={`library relative z-[1] min-h-dvh transition-[opacity,filter] duration-300 ${leaving ? "opacity-0 blur-[2px]" : ""}`}>
-      <div className="lib-top">
+      <div className="lib-top" data-scrolled={scrolled || undefined}>
         <TopBar here="library" onLibrary={() => go({ view: topic ? "topics" : view })} />
       </div>
 
@@ -273,38 +282,38 @@ export function Library() {
         {!T && (
           <section className="lib-hero">
             <div className="lib-hero-row">
-            <div className="min-w-0">
-            <p className="lib-eyebrow">
-              <LibraryIcon size={14} /> Library
-            </p>
-            <h1 className="lib-title">{first ? `${first}'s library` : "Your library"}</h1>
-            {hydrated && (
-              <p className="lib-stats">
-                <span>
-                  <b>{stats.count}</b> {stats.count === 1 ? "text" : "texts"}
-                </span>
-                {stats.topics > 0 && (
-                  <span>
-                    <b>{stats.topics}</b> {stats.topics === 1 ? "topic" : "topics"}
-                  </span>
-                )}
-                <span>
-                  <b>{stats.hours}</b> {stats.hours === 1 ? "hour" : "hours"} of reading
-                </span>
-                {stats.reading > 0 && (
-                  <span>
-                    <b>{stats.reading}</b> in progress
-                  </span>
-                )}
-                {stats.read > 0 && (
-                  <span>
-                    <b>{stats.read}</b> read
-                  </span>
-                )}
-              </p>
-            )}
-            </div>
-            <AddButton onClick={() => setAdding("agent")} />
+              <div className="min-w-0">
+                <h1 className="lib-title">{first ? `${first}'s library` : "Your library"}</h1>
+                {/* Its height is kept while the shelf is read, so the tools below never jump. */}
+                <p className="lib-stats">
+                  {hydrated && (
+                    <>
+                      <span>
+                        <b>{stats.count}</b> {stats.count === 1 ? "text" : "texts"}
+                      </span>
+                      {stats.topics > 0 && (
+                        <span>
+                          <b>{stats.topics}</b> {stats.topics === 1 ? "topic" : "topics"}
+                        </span>
+                      )}
+                      <span>
+                        <b>{stats.hours}</b> {stats.hours === 1 ? "hour" : "hours"} of reading
+                      </span>
+                      {stats.reading > 0 && (
+                        <span>
+                          <b>{stats.reading}</b> in progress
+                        </span>
+                      )}
+                      {stats.read > 0 && (
+                        <span>
+                          <b>{stats.read}</b> read
+                        </span>
+                      )}
+                    </>
+                  )}
+                </p>
+              </div>
+              <AddButton onClick={() => setAdding("agent")} />
             </div>
             {fromAgent.length > 0 && (
               <button type="button" className="lib-news" onClick={() => (setTag("agent"), setOnly(null), go({ view: "shelf" }))}>
@@ -340,18 +349,18 @@ export function Library() {
         )}
 
         {view === "shelf" && !T && (
-          <div className="lib-chips no-scrollbar" role="group" aria-label="Filter">
+          <ChipRow label="Filter">
             <Chip on={!only && !tag} onClick={() => (setOnly(null), setTag(null))}>
               All <span className="lib-n">{books.length}</span>
             </Chip>
             {topics.map(({ topic: t, books: bs }) => (
               <Chip key={t.key} on={only === t.key} color={t.shades[0]} onClick={() => setOnly(only === t.key ? null : t.key)}>
-                <Glyph k={t.key} size={19} /> {t.name} <span className="lib-n">{bs.length}</span>
+                <Glyph k={t.key} size={18} /> {t.name} <span className="lib-n">{bs.length}</span>
               </Chip>
             ))}
-            {TAGS.some((t) => books.some(t.test)) && <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-rule" />}
+            {TAGS.some((t) => books.some(t.test)) && <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 self-center bg-rule-strong" />}
             {tagChips(books)}
-          </div>
+          </ChipRow>
         )}
 
         <ViewTransition key={screen} enter="lib-enter" exit="lib-exit" default="none">
@@ -445,6 +454,50 @@ function bylineOf(x: { author?: string; source?: string; origin?: string }): str
   const src = x.source?.split(",")[0].trim();
   if (src) return src.replace(/^www\./, "").replace(/\.(pdf|txt|md|markdown)$/i, "").replace(/\.(com|org|net|io|ai|dev|co|edu|blog|app)(\.[a-z]{2})?$/i, "");
   return x.origin === "paste" ? "Pasted text" : x.origin === "file" ? "A file" : "Saved";
+}
+
+/**
+ * Filters on one line, however many topics there are: the row scrolls, fades
+ * at an edge with more beyond it, and offers an arrow there to page along.
+ */
+function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ l: false, r: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const read = () =>
+      setEdges((e) => {
+        const l = el.scrollLeft > 2;
+        const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+        return e.l === l && e.r === r ? e : { l, r };
+      });
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    const mo = new MutationObserver(read);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    el.addEventListener("scroll", read, { passive: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      el.removeEventListener("scroll", read);
+    };
+  }, []);
+  const page = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * Math.max(200, ref.current.clientWidth * 0.6), behavior: "smooth" });
+  return (
+    <div className="lib-chip-row" data-l={edges.l || undefined} data-r={edges.r || undefined}>
+      <div ref={ref} className="lib-chips no-scrollbar" role="group" aria-label={label}>
+        {children}
+      </div>
+      <button type="button" className="lib-chip-page is-l" aria-label="Scroll filters left" tabIndex={-1} onClick={() => page(-1)}>
+        <ChevronLeft size={15} />
+      </button>
+      <button type="button" className="lib-chip-page is-r" aria-label="Scroll filters right" tabIndex={-1} onClick={() => page(1)}>
+        <ChevronRight size={15} />
+      </button>
+    </div>
+  );
 }
 
 function Chip({ on, color, onClick, children }: { on: boolean; color?: string; onClick: () => void; children: React.ReactNode }) {

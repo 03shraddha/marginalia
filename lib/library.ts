@@ -129,7 +129,7 @@ export function rng(seed: number) {
   };
 }
 
-export type SpineStyle = "bands" | "label" | "caps" | "foil";
+export type SpineStyle = "bands" | "label" | "sans" | "foil";
 
 export type Look = {
   color: string;
@@ -142,7 +142,7 @@ export type Look = {
   hue: number;
 };
 
-const STYLES: SpineStyle[] = ["bands", "label", "caps", "foil"];
+const STYLES: SpineStyle[] = ["bands", "label", "sans", "foil"];
 
 function luminance(hex: string) {
   const n = parseInt(hex.slice(1), 16);

@@ -16,14 +16,17 @@ const lastName = (a: string) => a.split(/&|,| and /)[0].trim().split(/\s+/).slic
 export const Spine = memo(function Spine({ book, look = lookOf(book) }: { book: Book; look?: Look }) {
   const { w, h, color, fg, style } = look;
   const t = TOPIC[book.topic];
-  const narrow = w < 44;
   const wide = w >= 52;
   const by = lastName(book.author);
+  // The author across the foot, as large as fits; on a spine too slim for the
+  // whole name, it runs down after the title instead of being cut off.
+  const bySize = Math.min(11, w * 0.22, (w - 12) / Math.max(1, by.length * 0.56));
+  const narrow = w < 44 || bySize < 8;
   // Fit the title down the spine: shrink a long one, within reason, before it is cut short.
-  const per = style === "caps" ? 0.8 : style === "foil" ? 0.46 : 0.5;
+  const per = style === "sans" ? 0.54 : 0.5;
   const room = h - (style === "label" ? 92 : style === "bands" ? 96 : 70);
-  const chars = book.title.length + (narrow ? by.length * 1.3 + 2 : 0);
-  const base = Math.max(10.5, Math.min(15.5, w * 0.36)) * (style === "caps" ? 0.74 : 1);
+  const chars = book.title.length + (narrow ? by.length * 0.8 + 2 : 0);
+  const base = Math.max(10.5, Math.min(15.5, w * 0.36)) * (style === "sans" ? 0.86 : 1);
   const size = Math.max(9, Math.min(base, (room * (wide ? 2 : 1)) / (chars * per)));
   const reading = book.pct > 0 && book.pct < 1;
   return (
@@ -41,7 +44,7 @@ export const Spine = memo(function Spine({ book, look = lookOf(book) }: { book: 
         </>
       )}
       {style === "foil" && <span className="spine-orn">{book.favorite ? "★" : "◆"}</span>}
-      {style === "caps" && <Glyph k={t.key} size={15} className="spine-emoji" />}
+      {style === "sans" && <Glyph k={t.key} size={15} className="spine-emoji" />}
       <span className={`spine-title-wrap ${style === "label" ? "is-label" : ""}`}>
         <span className="spine-title" style={{ fontSize: size }}>
           {book.title}
@@ -49,7 +52,7 @@ export const Spine = memo(function Spine({ book, look = lookOf(book) }: { book: 
         </span>
       </span>
       {!narrow && (
-        <span className="spine-author" style={{ fontSize: Math.max(7.5, Math.min(10.5, w * 0.2, (w - 8) / (by.length * 0.78))) }}>
+        <span className="spine-author" style={{ fontSize: bySize }}>
           {by}
         </span>
       )}

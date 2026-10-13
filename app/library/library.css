@@ -11,17 +11,22 @@
 
 /* ---------- top bar, title, tools ---------- */
 
+/* The bar is part of the page at the top; scrolled, it frosts over what passes under it. */
 .lib-top {
   position: sticky;
   top: 0;
   z-index: 30;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.lib-top[data-scrolled] {
   background: color-mix(in oklab, var(--bg) 86%, transparent);
+  box-shadow: 0 1px 0 var(--rule);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .lib-hero {
-  padding: clamp(28px, 6vh, 64px) 0 26px;
+  padding: clamp(24px, 5vh, 52px) 0 24px;
 }
 .lib-hero-row {
   display: flex;
@@ -35,49 +40,79 @@
 
 .lib-add {
   display: inline-flex;
+  height: 56px;
+  flex-shrink: 0;
   align-items: center;
-  gap: 12px;
-  padding: 8px 18px 8px 9px;
+  gap: 16px;
+  padding: 0 10px 0 13px;
   border-radius: 999px;
   border: 1px solid var(--rule-strong);
   background: var(--bg-raised);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 6px 18px -10px rgb(0 0 0 / 0.25);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 6px 18px -10px rgb(0 0 0 / 0.22);
   color: var(--ink);
   animation: rise 0.6s 0.15s var(--ease-out) both;
-  transition: transform 0.16s var(--ease-out), border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.16s var(--ease-out), border-color 0.25s ease, box-shadow 0.3s var(--ease-out);
 }
 .lib-add:active {
-  transform: scale(0.97);
-}
-@media (hover: hover) and (pointer: fine) {
-  .lib-add:hover {
-    border-color: color-mix(in oklab, var(--ink) 30%, var(--rule-strong));
-    box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 10px 24px -12px rgb(0 0 0 / 0.35);
-  }
-  .lib-add:hover .mark-disc:nth-child(1) {
-    transform: translateX(-3px) rotate(-6deg);
-  }
-  .lib-add:hover .mark-disc:nth-child(3) {
-    transform: translateX(3px) rotate(6deg);
-  }
+  transform: scale(0.98);
 }
 .lib-add-title {
   display: block;
   font-size: 14.5px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .lib-add-sub {
   display: block;
   margin-top: 1px;
   font-size: 12.5px;
+  line-height: 1.3;
   color: var(--ink-3);
 }
+.lib-add-plus {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bg-sunk);
+  color: var(--ink-2);
+  transition: background-color 0.25s ease, color 0.25s ease, transform 0.45s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-add:hover {
+    border-color: color-mix(in oklab, var(--ink) 26%, var(--rule-strong));
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 12px 26px -12px rgb(0 0 0 / 0.32);
+  }
+  .lib-add:hover .lib-add-plus {
+    background: var(--ink);
+    color: var(--bg);
+    transform: rotate(90deg);
+  }
+  /* Grok holds its place; Claude and ChatGPT fan out to its right. */
+  .lib-add:hover .mark-disc:nth-child(2) {
+    transform: translateX(4px);
+  }
+  .lib-add:hover .mark-disc:nth-child(3) {
+    transform: translateX(8px);
+  }
+}
 .lib-add.is-compact {
+  height: 40px;
   margin-left: auto;
-  gap: 9px;
-  padding: 5px 14px 5px 6px;
+  gap: 12px;
+  padding: 0 15px 0 7px;
   animation: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-add.is-compact:hover .mark-disc:nth-child(2) {
+    transform: translateX(2px);
+  }
+  .lib-add.is-compact:hover .mark-disc:nth-child(3) {
+    transform: translateX(4px);
+  }
 }
 .lib-add.is-compact .lib-add-title {
   font-size: 13.5px;
@@ -86,13 +121,18 @@
   .lib-add:not(.is-compact) {
     width: 100%;
   }
+  .lib-add:not(.is-compact) .lib-add-plus {
+    margin-left: auto;
+  }
 }
 
 .mark-stack {
   display: inline-flex;
   flex-shrink: 0;
+  isolation: isolate;
 }
 .mark-disc {
+  position: relative;
   display: grid;
   width: var(--mark);
   height: var(--mark);
@@ -101,39 +141,30 @@
   background: var(--bg);
   color: var(--ink);
   box-shadow: 0 0 0 2px var(--bg-raised), 0 0 0 2.5px var(--rule-strong);
-  transition: transform 0.2s var(--ease-out);
+  transition: transform 0.4s var(--ease-out);
 }
 .mark-disc + .mark-disc {
   margin-left: calc(var(--mark) * -0.28);
 }
-.lib-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--ink-3);
-  animation: rise 0.6s var(--ease-out) both;
-}
 .lib-title {
-  margin-top: 10px;
   font-family: var(--font-serif);
-  font-size: clamp(44px, 7.4vw, 86px);
+  font-size: clamp(42px, 6vw, 72px);
   font-weight: 420;
-  line-height: 0.95;
-  letter-spacing: -0.032em;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
   color: var(--ink);
   font-variation-settings: "opsz" 72;
-  animation: rise 0.7s 0.05s var(--ease-out) both;
+  animation: rise 0.7s var(--ease-out) both;
 }
 .lib-stats {
-  margin-top: 16px;
   display: flex;
+  min-height: 21px;
   flex-wrap: wrap;
   gap: 4px 0;
+  margin-top: 14px;
   font-size: 14px;
   color: var(--ink-3);
-  animation: rise 0.7s 0.12s var(--ease-out) both;
+  animation: rise 0.7s 0.08s var(--ease-out) both;
 }
 .lib-stats > span:not(:last-child)::after {
   content: "·";
@@ -342,6 +373,74 @@
   padding: 0;
   animation: none;
 }
+
+/* The shelf's filters: one line that scrolls, fading where there is more. */
+.lib-chip-row {
+  position: relative;
+  margin: 14px -16px 0;
+  animation: rise 0.7s 0.2s var(--ease-out) both;
+}
+.lib-chip-row .lib-chips {
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 2px 16px 4px;
+  animation: none;
+}
+@media (min-width: 640px) {
+  .lib-chip-row {
+    margin: 16px 0 0;
+  }
+  .lib-chip-row .lib-chips {
+    padding: 2px 0 4px;
+  }
+}
+.lib-chip-row[data-r] .lib-chips {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 80px), transparent);
+}
+.lib-chip-row[data-l] .lib-chips {
+  mask-image: linear-gradient(90deg, transparent, #000 80px);
+}
+.lib-chip-row[data-l][data-r] .lib-chips {
+  mask-image: linear-gradient(90deg, transparent, #000 80px, #000 calc(100% - 80px), transparent);
+}
+.lib-chip-page {
+  position: absolute;
+  top: calc(50% - 1px);
+  z-index: 1;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.88);
+  transition: opacity 0.2s ease, transform 0.3s var(--ease-out), color 0.2s ease;
+}
+.lib-chip-page.is-l {
+  left: 0;
+}
+.lib-chip-page.is-r {
+  right: 0;
+}
+.lib-chip-row[data-l]:hover .lib-chip-page.is-l,
+.lib-chip-row[data-r]:hover .lib-chip-page.is-r {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%);
+}
+.lib-chip-page:hover {
+  color: var(--ink);
+}
+@media (hover: none) {
+  .lib-chip-page {
+    display: none;
+  }
+}
 .lib-hint {
   margin-top: 8px;
   text-align: center;
@@ -401,25 +500,33 @@
   }
 }
 
+/* A run's name under the plank, centred under its books, as a library shelf
+   is labelled: quiet type, no box. */
 .plank-label {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 5px;
-  border: 1px solid var(--rule-strong);
-  background: var(--bg-raised);
-  font-size: 11.5px;
+  height: 26px;
+  padding: 0 9px 0 8px;
+  border-radius: 999px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--ink-3);
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-  transition: transform 0.75s var(--lib-ease-in-out), border-color 0.2s ease, color 0.2s ease;
+  transition: transform 0.75s var(--lib-ease-in-out), background-color 0.2s ease, color 0.2s ease;
   animation: fade 0.5s 0.4s both;
 }
+.plank-n {
+  margin-left: 6px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-4);
+}
 button.plank-label:hover {
-  border-color: var(--ink-3);
+  background: var(--bg-sunk);
   color: var(--ink);
+}
+button.plank-label:hover .plank-n {
+  color: var(--ink-3);
 }
 
 .bookend {
@@ -530,17 +637,26 @@ button.plank-label:hover {
   border-radius: 2px;
   outline: none;
 }
+/* Reached for, a book rises out of the row on a soft spring and its shadow
+   lengthens; let go, it settles back without a bounce. */
 .bk .spine {
-  transition: transform 0.22s var(--ease-out), box-shadow 0.22s ease;
+  transition: transform 0.32s var(--ease-out), box-shadow 0.32s var(--ease-out), filter 0.32s ease;
 }
 @media (hover: hover) and (pointer: fine) {
   .bk:hover .spine {
-    transform: translateY(-12px);
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 4px 6px 12px -6px rgb(0 0 0 / 0.45);
+    transform: translateY(-14px);
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12), 5px 10px 16px -8px rgb(0 0 0 / 0.42);
+    filter: brightness(1.04);
+    transition-duration: 0.42s, 0.42s, 0.3s;
+    transition-timing-function: var(--ease-spring), var(--ease-out), ease;
   }
 }
+.bk:active .spine {
+  transform: translateY(-8px) scale(0.985);
+  transition-duration: 0.12s;
+}
 .bk:focus-visible .spine {
-  transform: translateY(-12px);
+  transform: translateY(-14px);
   outline: 2px solid var(--rubric);
   outline-offset: 3px;
 }
@@ -586,8 +702,8 @@ button.plank-label:hover {
   white-space: nowrap;
   text-overflow: ellipsis;
   line-height: 1.12;
-  font-weight: 500;
-  letter-spacing: 0.005em;
+  font-weight: 460;
+  letter-spacing: 0.004em;
 }
 .spine.is-wide .spine-title {
   white-space: normal;
@@ -609,14 +725,15 @@ button.plank-label:hover {
 .spine-title-wrap.is-label + .spine-author {
   margin-top: auto;
 }
-.spine[data-style="caps"] .spine-title {
+/* A grotesque face for some, set the way the title is written: no capitals shouting, no wide tracking. */
+.spine[data-style="sans"] .spine-title {
   font-family: var(--font-sans);
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
+/* Foil: the title stamped in gold, upright. */
 .spine[data-style="foil"] .spine-title {
-  font-style: italic;
+  font-weight: 480;
   color: #ecd391;
 }
 .spine[data-style="foil"][data-light] .spine-title {
@@ -662,23 +779,21 @@ button.plank-label:hover {
   position: relative;
   max-width: 100%;
   overflow: hidden;
-  padding: 0 2px 9px;
+  padding: 0 4px 10px;
   font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-  opacity: 0.82;
+  opacity: 0.8;
 }
 .spine-by {
-  margin-inline-start: 0.9em;
+  margin-inline-start: 0.8em;
   font-family: var(--font-sans);
-  font-size: 0.72em;
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.78;
+  font-size: 0.78em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.76;
 }
 .spine[data-style="bands"] .spine-author {
   padding-bottom: 42px;
@@ -774,14 +889,13 @@ button.plank-label:hover {
 .cover-kicker {
   display: flex;
   align-items: center;
-  gap: 2.6cqw;
+  gap: 2.4cqw;
   font-family: var(--font-sans);
-  font-size: 3.7cqw;
-  font-weight: 600;
+  font-size: 4.2cqw;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.75;
+  letter-spacing: 0.01em;
+  opacity: 0.78;
 }
 .cover-title {
   margin-top: 4.5cqw;
@@ -798,10 +912,11 @@ button.plank-label:hover {
 }
 .cover-author {
   margin-top: 3.6cqw;
-  font-family: var(--font-serif);
-  font-size: 4.8cqw;
-  font-style: italic;
-  opacity: 0.85;
+  font-family: var(--font-sans);
+  font-size: 4.6cqw;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.82;
 }
 .cover-hinge {
   position: absolute;
@@ -978,8 +1093,8 @@ button.plank-label:hover {
   background: color-mix(in oklab, var(--bg) 70%, transparent);
   backdrop-filter: blur(10px) saturate(0.9);
   -webkit-backdrop-filter: blur(10px) saturate(0.9);
-  animation: fade 0.5s var(--ease-out) both;
-  transition: opacity 0.6s 0.55s var(--ease-out);
+  animation: fade 0.45s var(--ease-out) both;
+  transition: opacity 0.5s 0.42s var(--ease-out);
 }
 .ob-stage[data-phase="out"] .ob-backdrop {
   opacity: 0;
@@ -1075,21 +1190,54 @@ button.plank-label:hover {
 
 .ob-kicker {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--ink-3);
+  justify-content: space-between;
+  gap: 8px;
 }
+/* The topic, as a chip that is also the way to move the book to another. */
 .ob-chip {
-  padding: 3px 9px 3px 7px;
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px 0 7px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--c) 14%, transparent);
+  background: color-mix(in oklab, var(--c) 13%, transparent);
   color: color-mix(in oklab, var(--c) 78%, var(--ink));
+  font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.ob-chip:hover {
+  background: color-mix(in oklab, var(--c) 20%, transparent);
+}
+.ob-chip:focus-within {
+  outline: 2px solid var(--rubric);
+  outline-offset: 2px;
+}
+.ob-chip select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.ob-chip-caret {
+  margin-left: -1px;
+  opacity: 0.6;
+}
+.ob-tools {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  margin-right: -6px;
 }
 .ob-title {
-  margin-top: 14px;
+  margin-top: 18px;
   font-family: var(--font-serif);
   font-size: 27px;
   font-weight: 450;
@@ -1129,20 +1277,23 @@ button.plank-label:hover {
   outline: none;
 }
 .ob-author {
-  margin-top: 8px;
-  font-family: var(--font-serif);
-  font-size: 16px;
-  font-style: italic;
+  margin-top: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
   color: var(--ink-2);
 }
-.ob-rule {
+.ob-meta {
   display: block;
-  margin: 12px 0 8px;
-  font-size: 14px;
-  color: var(--ink-4);
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 .ob-dek {
   display: -webkit-box;
+  margin-top: 18px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
@@ -1249,53 +1400,73 @@ button.plank-label:hover {
   border-radius: 3px 6px 6px 3px;
   box-shadow: 0 34px 60px -30px rgb(0 0 0 / 0.55);
 }
-/* The inside of the front board: patterned endpaper and a bookplate. */
+/* The inside of the front board: a quiet endpaper, and a bookplate pasted on it. */
 .ob-cover-inside {
   display: grid;
   place-items: center;
   transform: rotateY(180deg);
   border-radius: 6px 3px 3px 6px;
   border: 5px solid var(--c);
-  background-color: color-mix(in oklab, var(--c2) 26%, #f6efe0);
+  background-color: color-mix(in oklab, var(--c2) 18%, #f6f0e3);
   background-image:
-    radial-gradient(color-mix(in oklab, var(--c) 34%, transparent) 1.3px, transparent 1.8px),
-    radial-gradient(color-mix(in oklab, var(--c) 18%, transparent) 1.3px, transparent 1.8px);
-  background-size: 16px 16px;
-  background-position: 0 0, 8px 8px;
-  box-shadow: inset -14px 0 18px -14px rgb(0 0 0 / 0.3), 0 34px 60px -30px rgb(0 0 0 / 0.5);
+    radial-gradient(color-mix(in oklab, var(--c) 20%, transparent) 1px, transparent 1.4px),
+    radial-gradient(color-mix(in oklab, var(--c) 11%, transparent) 1px, transparent 1.4px);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+  box-shadow: inset -16px 0 22px -16px rgb(0 0 0 / 0.28), 0 34px 60px -30px rgb(0 0 0 / 0.5);
 }
 .ex-libris {
-  width: 74%;
-  padding: 20px 16px 16px;
-  background: #fbf7ee;
+  display: flex;
+  width: 70%;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 18px 18px;
+  border-radius: 2px;
+  background: #fbf8f1;
   color: #2a2520;
   text-align: center;
-  transform: rotate(-1.4deg);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.16), inset 0 0 0 4px #fbf7ee, inset 0 0 0 5px rgb(0 0 0 / 0.1), 0 10px 20px -12px rgb(0 0 0 / 0.35);
-}
-.ex-head {
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.34em;
-  text-transform: uppercase;
-  color: #74685a;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.12),
+    inset 0 0 0 5px #fbf8f1,
+    inset 0 0 0 6px rgb(0 0 0 / 0.08),
+    0 1px 1px rgb(0 0 0 / 0.06),
+    0 12px 24px -14px rgb(0 0 0 / 0.38);
 }
 .ex-art {
-  height: 70px;
-  margin: 10px 0 8px;
+  display: grid;
+  height: 62px;
+  place-items: center;
+}
+.ex-art .glyph {
+  margin: 0 auto;
+}
+.ex-head {
+  margin-top: 12px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: #8a7f71;
 }
 .ex-name {
+  margin-top: 3px;
+  max-width: 100%;
   font-family: var(--font-serif);
-  font-size: 23px;
-  font-style: italic;
-  line-height: 1.1;
+  font-size: 22px;
+  font-weight: 450;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.ex-rule {
+  display: block;
+  width: 28px;
+  height: 1px;
+  margin: 12px 0 10px;
+  background: rgb(0 0 0 / 0.16);
 }
 .ex-meta {
-  margin-top: 8px;
-  font-size: 10.5px;
-  color: #82776a;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: #9a8f81;
 }
 
 /* ---------- moving between views ---------- */
@@ -1399,74 +1570,30 @@ button.plank-label:hover {
 
 /* ---------- the open book's shelf controls ---------- */
 
-.ob-shelf {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-}
-.ob-move {
-  position: relative;
-  display: inline-flex;
-  min-width: 0;
-  flex: 1;
-  height: 34px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--rule);
-  font-size: 13px;
-  color: var(--ink-2);
-  transition: border-color 0.2s ease;
-}
-.ob-move:hover {
-  border-color: var(--rule-strong);
-}
-.ob-move select {
-  min-width: 0;
-  flex: 1;
-  appearance: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  outline: none;
-  cursor: pointer;
-}
 .ob-icon {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   place-items: center;
   border-radius: 999px;
-  border: 1px solid var(--rule);
   color: var(--ink-3);
-  transition: color 0.2s ease, border-color 0.2s ease, transform 0.15s var(--ease-out);
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s var(--ease-out);
 }
 .ob-icon:hover {
   color: var(--ink);
-  border-color: var(--rule-strong);
+  background: var(--bg-sunk);
 }
 .ob-icon:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 .ob-icon[aria-pressed="true"] {
   color: #c99a1d;
-  border-color: color-mix(in oklab, #c99a1d 40%, var(--rule));
 }
 .ob-tags > span.is-word {
   border-style: dashed;
   color: var(--ink-3);
 }
-.ex-art .glyph {
-  margin: 0 auto;
-}
-.ex-art {
-  display: grid;
-  place-items: center;
-}
-
 /* ---------- news from your agent ---------- */
 
 .lib-news {

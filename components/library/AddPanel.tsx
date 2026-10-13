@@ -3,7 +3,7 @@
 import { SignInButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BookOpen, BookmarkPlus, Check, Copy, Loader2, Trash2, X } from "lucide-react";
+import { BookOpen, BookmarkPlus, Check, Copy, Loader2, Plus, Trash2, X } from "lucide-react";
 import { importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { normalizeUrl } from "@/lib/links";
 import { useStore } from "@/lib/store";
@@ -57,15 +57,24 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
   );
 }
 
-/** What opens the panel: plain about adding articles, with the agents that can do it for you. */
+/**
+ * What opens the panel: plain about adding articles, with the agents that can
+ * do it for you. On hover the marks fan out to the right from Grok, which
+ * holds its place, and the plus turns.
+ */
 export function AddButton({ onClick, compact }: { onClick: () => void; compact?: boolean }) {
   return (
     <button type="button" onClick={onClick} className={`lib-add${compact ? " is-compact" : ""}`}>
-      <MarkStack size={compact ? 22 : 28} />
+      <MarkStack size={compact ? 22 : 26} />
       <span className="min-w-0 text-left">
         <span className="lib-add-title">Add articles</span>
-        {!compact && <span className="lib-add-sub">Connect Grok Bot, Claude or ChatGPT, or paste links</span>}
+        {!compact && <span className="lib-add-sub">Connect an agent, or paste links</span>}
       </span>
+      {!compact && (
+        <span className="lib-add-plus" aria-hidden>
+          <Plus size={15} strokeWidth={2.2} />
+        </span>
+      )}
     </button>
   );
 }

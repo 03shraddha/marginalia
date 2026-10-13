@@ -236,23 +236,25 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
       <TopBar />
 
-      {/* One column: the headline and the link bar, then a quiet space that is yours once you have highlights. */}
-      <main className="relative flex-1 pb-24 pt-[clamp(40px,9vh,112px)] max-lg:pb-10">
-        <Hero>
-          <ImportBar
-            ref={inputRef}
-            url={url}
-            setUrl={setUrl}
-            busy={busy}
-            error={error}
-            errorNeedsKey={errorNeedsKey}
-            onSubmit={fromUrl}
-            onSave={(u) => fromUrl(u, true)}
-            onPickFile={() => fileRef.current?.click()}
-            onPasteText={() => setPasteOpen(true)}
-          />
-          <LibraryLine saved={saved} />
-        </Hero>
+      {/* One screen: the headline and the link bar centred in the room above, and the desk at the foot. */}
+      <main className="relative flex flex-1 flex-col pb-[clamp(20px,4vh,44px)]">
+        <div className="flex flex-1 flex-col justify-center pb-[clamp(16px,3vh,36px)] pt-[clamp(28px,8vh,96px)]">
+          <Hero>
+            <ImportBar
+              ref={inputRef}
+              url={url}
+              setUrl={setUrl}
+              busy={busy}
+              error={error}
+              errorNeedsKey={errorNeedsKey}
+              onSubmit={fromUrl}
+              onSave={(u) => fromUrl(u, true)}
+              onPickFile={() => fileRef.current?.click()}
+              onPasteText={() => setPasteOpen(true)}
+            />
+            <LibraryLine saved={saved} />
+          </Hero>
+        </div>
         <HomeBelow signedIn={signedIn} />
       </main>
 
