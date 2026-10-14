@@ -12,7 +12,7 @@ import { hashToken, looksLikeToken } from "./agent";
 import { normalizeUrl } from "./links";
 import { blockText, textToArticle, wordCount, type Article } from "./article";
 import { shelfOf, shelveForUser, tokenUser, type ShelfRow } from "./db";
-import { fetchArticle, notAnArticle } from "./fetch-article";
+import { arxivFullText, fetchArticle, notAnArticle } from "./fetch-article";
 import { TOPIC, TOPICS, isTopic, yearOf, type TopicKey } from "./library";
 import { chargeFree, checkFreeUser } from "./quota";
 import { allow } from "./ratelimit";
@@ -207,7 +207,10 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
     if (budget <= 0) return { url, status: "failed", reason: `The daily limit of ${PER_DAY} saves is reached. Try again tomorrow.` };
     budget--;
 
-    const r = await fetchArticle(url, { pdf: true });
+    // An arXiv abstract page holds only the abstract, and an agent can't save the PDF: arXiv's HTML rendering is the whole paper.
+    const html = arxivFullText(url, "html");
+    let r = html ? await fetchArticle(html) : null;
+    if (!r?.ok) r = await fetchArticle(url, { pdf: true });
     if (!r.ok) return { url, status: "failed", reason: r.error };
     if ("pdf" in r) return { url, status: "failed", reason: "This link is a PDF. Agents can't save PDFs yet; open it in Gloss to read it." };
     const a = r.article;

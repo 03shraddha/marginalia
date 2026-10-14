@@ -11,8 +11,8 @@ import { Answer } from "./Answer";
 import { fmtCost, useReader } from "./context";
 
 /**
- * The brief: a two-sentence gist, the load-bearing claims with citations, and
- * a map of the text's movements. The map also labels the rail and the top bar.
+ * The brief: a two-sentence gist, the load-bearing claims with citations,
+ * what to keep in mind before relying on them, and a map of the text's movements. The map also labels the rail and the top bar.
  */
 export function Brief() {
   const { ix, jumpTo } = useReader();
@@ -70,6 +70,7 @@ export function Brief() {
   }
 
   const { data, usage, modelKey } = brief;
+  const caveats = data.caveats ?? [];
   return (
     <section aria-label="Gloss" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
       <button
@@ -81,6 +82,7 @@ export function Brief() {
         <span className="text-[13.5px] font-medium text-ink">Gloss</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
+          {caveats.length > 0 && ` \u00b7 ${caveats.length} ${caveats.length === 1 ? "caveat" : "caveats"}`}
         </span>
         <ChevronDown size={16} className={`ml-auto text-ink-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -103,6 +105,22 @@ export function Brief() {
                   </li>
                 ))}
               </ol>
+            </>
+          )}
+
+          {caveats.length > 0 && (
+            <>
+              <h3 className="mb-2.5 mt-6 text-[12.5px] font-medium text-ink-3">Keep in mind</h3>
+              <ul className="space-y-2.5">
+                {caveats.map((c, i) => (
+                  <li key={i} className="rise grid grid-cols-[1.4rem_minmax(0,1fr)] text-[14.5px] leading-[1.5] text-ink-2" style={{ animationDuration: "0.5s", animationDelay: `${200 + i * 60}ms` }}>
+                    <span aria-hidden className="mt-[0.6em] size-[5px] rounded-full bg-rubric/70" />
+                    <span className="gloss-body !text-[14.5px]">
+                      <Answer text={c.cite ? `${c.text} [¶${c.cite}]` : c.text} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </>
           )}
 
@@ -181,7 +199,7 @@ function TextShape({ ix, scanning = false, className = "" }: { ix: DocIndex; sca
 
 /** The brief takes a few seconds: say what is happening, and sketch the shape that is coming. */
 function BriefLoading({ ix }: { ix: DocIndex }) {
-  const steps = [`Reading all ${ix.words.toLocaleString()} words`, "Weighing the key claims", "Mapping the sections"];
+  const steps = [`Reading all ${ix.words.toLocaleString()} words`, "Weighing the key claims", "Checking them against the evidence", "Mapping the sections"];
   const [step, setStep] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setStep((i) => Math.min(i + 1, steps.length - 1)), 2600);

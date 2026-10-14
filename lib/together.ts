@@ -167,6 +167,8 @@ export async function completeJSON<T>(req: {
   apiKey?: string;
   maxTokens?: number;
   signal?: AbortSignal;
+  /** Let the model reason before it answers, for checking a text against itself. Its thinking spends from maxTokens. */
+  thinking?: boolean;
 }): Promise<{ ok: true; data: T; usage: Usage } | { ok: false; error: string }> {
   const model: ModelEntry = MODELS[req.model];
   const apiKey = req.apiKey?.trim() || process.env.TOGETHER_API_KEY;
@@ -182,7 +184,7 @@ export async function completeJSON<T>(req: {
         model: model.id,
         temperature: 0.3,
         max_tokens: req.maxTokens ?? 1400,
-        chat_template_kwargs: { enable_thinking: false },
+        chat_template_kwargs: { enable_thinking: Boolean(req.thinking) },
         response_format: { type: "json_object" },
         messages: req.messages,
       }),

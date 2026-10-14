@@ -44,6 +44,8 @@ export type Article = {
 export type BriefData = {
   gist: string;
   claims: { text: string; cite: number }[];
+  /** What to keep in mind before relying on it. Briefs written before caveats existed have none. */
+  caveats?: { text: string; cite: number }[];
   sections: { title: string; start: number }[];
 };
 

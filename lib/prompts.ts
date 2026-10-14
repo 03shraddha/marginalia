@@ -123,10 +123,23 @@ ${list}
 How to use them: they are outside the text, so say so. Cite a web result inline as [1] or [2], next to the claim it supports, and keep [¶n] for what the text itself says. Only cite what a result actually states. Prefer recent, primary sources; if the results disagree or do not settle the question, say that plainly.`;
 }
 
+/**
+ * The brief. A reader takes it as a verdict on the text, so it reports what
+ * the evidence shows rather than the text's own headline: a paper's abstract
+ * can round its results one way and its tables another.
+ */
 export const BRIEF_TASK = `Read the whole text and return JSON only, with this shape:
 {
   "gist": "two sentences: what this text argues and why it matters",
   "claims": [{ "text": "one sentence", "cite": 12 }],
+  "caveats": [{ "text": "one sentence", "cite": 40 }],
   "sections": [{ "title": "2 to 5 words", "start": 1 }]
 }
-Rules: 3 to 5 claims, each citing the single paragraph that best supports it. 4 to 8 sections that cover the text in order: "start" is the first paragraph number of each section, ascending, and the first section starts at the first paragraph. Section titles are sentence case and specific to this text. Never use em dashes or en dashes.`;
+Rules:
+- 3 to 5 claims, each citing the single paragraph that best supports it. Together they carry the text's load-bearing ideas in its own order: what it argues and how it gets there, then what its evidence shows. No more than two claims are results.
+- Numbers come from the text's evidence (its tables and data), never from a sentence that sums them up (an abstract, introduction, conclusion, or prose that restates a table), and cite the paragraph that holds them. Check every summary figure against the table it summarizes before you repeat it: when they disagree, use what the table shows and add a caveat that the summary says otherwise. Prefer figures the table reports outright, like "89.8% against 92.3%", over averages or ranges you would have to work out.
+- Make every comparison exactly as strong as the evidence. Give the numbers instead of words like "matches", "approaches" or "outperforms", and say where it falls short or loses.
+- The gist claims no more than the claims do.
+- 1 to 3 caveats: what a careful reader should keep in mind before relying on this text. Look for the limits of its scope (which data, models, settings, people or cases it covers, and what it never tests), its standing (a preprint not yet peer reviewed, an opinion piece, a single study), what the author concedes, and any place its headline goes beyond its own evidence. Each caveat must be true of this text and cite the paragraph that shows it, or 0 when it is about something the text leaves out. An empty list only when nothing applies.
+- 4 to 8 sections that cover the text in order: "start" is the first paragraph number of each section, ascending, and the first section starts at the first paragraph. Section titles are sentence case and specific to this text.
+- Never use em dashes or en dashes.`;

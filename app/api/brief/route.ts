@@ -33,6 +33,11 @@ export async function POST(req: Request) {
     model,
     apiKey,
     signal: req.signal,
+    // Thinking first: checking a text's headline figures against its own tables is arithmetic, and without it the
+    // model repeats the abstract. About 10 s instead of 3 on a 14k-token paper, and half a cent more. The thinking
+    // spends from max_tokens (up to 7k on that paper), so the budget is generous.
+    thinking: true,
+    maxTokens: 16000,
     messages: [
       { role: "system", content: systemFor(doc) },
       { role: "user", content: BRIEF_TASK },
@@ -49,12 +54,15 @@ export async function POST(req: Request) {
   const d = result.data;
   // The shared system prompt asks glosses to ==mark== their answer; a brief has no use for it.
   const clean = (t: string) => undash(t).replace(/==/g, "");
+  const cited = (list: unknown, max: number) =>
+    (Array.isArray(list) ? (list as { text?: unknown; cite?: unknown }[]) : [])
+      .filter((c): c is { text: string; cite?: unknown } => Boolean(c) && typeof c.text === "string" && c.text.trim().length > 0)
+      .map((c) => ({ text: clean(c.text), cite: valid.has(Number(c.cite)) ? Number(c.cite) : 0 }))
+      .slice(0, max);
   const brief: BriefData = {
     gist: clean(String(d.gist ?? "")),
-    claims: (Array.isArray(d.claims) ? d.claims : [])
-      .filter((c) => c && typeof c.text === "string")
-      .map((c) => ({ text: clean(c.text), cite: valid.has(Number(c.cite)) ? Number(c.cite) : 0 }))
-      .slice(0, 6),
+    claims: cited(d.claims, 6),
+    caveats: cited(d.caveats, 4),
     sections: (Array.isArray(d.sections) ? d.sections : [])
       .filter((s) => s && typeof s.title === "string" && valid.has(Number(s.start)))
       .map((s) => ({ title: clean(s.title), start: Number(s.start) }))

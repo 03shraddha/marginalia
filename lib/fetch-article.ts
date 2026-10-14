@@ -119,6 +119,27 @@ export function notAnArticle(url: string): "social" | "video" | null {
   return SOCIAL.test(at) ? "social" : VIDEO.test(at) ? "video" : null;
 }
 
+/** arXiv ids: new style (2610.07469v2) and old style (cs/9605103, math.GT/0309136). */
+const ARXIV = /^(?:www\.|export\.)?arxiv\.org\/(?:abs|pdf)\/((?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?)(?:\.pdf)?\/?$/;
+
+/**
+ * The full text of an arXiv paper, for a link to its abstract page: that page
+ * holds only the abstract, so a reader that can take a PDF gets the PDF, and
+ * one that can't (an agent) gets arXiv's HTML rendering of the paper.
+ */
+export function arxivFullText(url: string, as: "pdf" | "html"): string | null {
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`);
+  } catch {
+    return null;
+  }
+  const m = ARXIV.exec(`${u.hostname}${u.pathname}`);
+  if (!m) return null;
+  if (as === "pdf") return u.pathname.startsWith("/abs/") ? `https://arxiv.org/pdf/${m[1]}` : null;
+  return `https://arxiv.org/html/${m[1]}`;
+}
+
 export type FetchResult =
   | { ok: true; article: Article }
   | { ok: true; pdf: ArrayBuffer; name: string }
@@ -126,7 +147,7 @@ export type FetchResult =
 
 /** `pdf`: the caller can read a PDF itself, so a PDF link comes back as the file instead of an error. */
 export async function fetchArticle(raw: string, opts: { pdf?: boolean } = {}): Promise<FetchResult> {
-  const checked = await safeUrl(raw.trim());
+  const checked = await safeUrl((opts.pdf && arxivFullText(raw, "pdf")) || raw.trim());
   if (typeof checked === "string") return { ok: false, error: checked, status: 400 };
   const kind = notAnArticle(checked.toString());
   if (kind === "social") return { ok: false, error: "That's a post, not an article. Open the link it shares, or copy the post and use Paste text.", status: 422 };

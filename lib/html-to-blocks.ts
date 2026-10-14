@@ -106,7 +106,8 @@ function tableOf(table: El): { rows: string[][]; head: boolean } | null {
   for (const tr of trs.slice(0, MAX_ROWS)) {
     const cells = Array.from(tr.childNodes).filter((c) => c.nodeType === 1 && /^T[HD]$/i.test(c.tagName ?? ""));
     if (rows.length === 0) head = cells.length > 0 && cells.every((c) => c.tagName!.toUpperCase() === "TH");
-    const row = cells.slice(0, MAX_COLS).map((c) => clean(c.textContent));
+    // A merged cell is repeated across its columns, so a header over three columns still sits over each of them.
+    const row = cells.flatMap((c) => Array(Math.min(MAX_COLS, Math.max(1, Number(c.getAttribute?.("colspan")) || 1))).fill(clean(c.textContent))).slice(0, MAX_COLS);
     if (row.some(Boolean)) rows.push(row);
   }
   const cols = Math.max(0, ...rows.map((r) => r.length));
@@ -205,6 +206,12 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
     blocks.push({ id: `b${++i}`, type: "figure", runs: caption, src: im.src, ...(im.alt ? { alt: im.alt } : {}) });
   };
 
+  const table = (el: El) => {
+    const t = tableOf(el);
+    if (t) blocks.push({ id: `b${++i}`, type: "table", runs: [], rows: t.rows, ...(t.head ? { head: true } : {}) });
+    return Boolean(t);
+  };
+
   const visit = (node: El) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType !== 1 || !child.tagName) {
@@ -232,9 +239,7 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
         continue;
       }
       if (tag === "TABLE") {
-        const t = tableOf(child);
-        if (t) blocks.push({ id: `b${++i}`, type: "table", runs: [], rows: t.rows, ...(t.head ? { head: true } : {}) });
-        else visit(child);
+        if (!table(child)) visit(child);
         continue;
       }
       if (SKIP.has(tag)) continue;
@@ -263,6 +268,8 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
         if (text.trim().length > 0) blocks.push({ id: `b${++i}`, type, runs });
         // Images inside a paragraph (often its only content) stand on their own after it.
         for (const img of descendants(child, "IMG")) figure(img);
+        // So do data tables: Readability turns a div that only wraps one (arXiv's HTML papers) into a paragraph.
+        for (const t of descendants(child, "TABLE")) table(t);
         continue;
       }
       visit(child);
