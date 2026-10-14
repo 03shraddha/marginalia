@@ -41,7 +41,7 @@ export type OpenHighlight = { id: string; anchor: Anchor; at: number; note?: boo
 export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; openHighlight: OpenHighlight | null }) {
   const { ix } = useReader();
   const [lens, setLens] = useState<LensState | null>(null);
-  const [pos, setPos] = useState<{ x: number; y: number; below: boolean; arrow: number } | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number; below: boolean; arrow: number; docked: boolean } | null>(null);
   const [draft, setDraft] = useState("");
   const [copied, setCopied] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -158,6 +158,14 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     const centerX = rects.length > 1 ? (Math.min(...rects.map((r) => r.left)) + Math.max(...rects.map((r) => r.right))) / 2 : (first.left + first.right) / 2;
     const anchorX = rects.length > 1 ? first.left + Math.min(40, first.width / 2) : centerX;
     const coarse = window.matchMedia("(pointer: coarse)").matches;
+    // On touch, a live selection brings the system's own menu, which sits above or below the
+    // text depending on the OS version. So the lens docks at the foot of the screen instead.
+    if (coarse && l.mode === "actions" && !l.highlightId) {
+      const vv = window.visualViewport;
+      const x = Math.max(12, (vw - w) / 2);
+      setPos({ x, y: (vv ? vv.offsetTop + vv.height : window.innerHeight) - h - 16, below: false, arrow: 0, docked: true });
+      return;
+    }
     let below = coarse || first.top - h - 12 < 64;
     let y = below ? lastR.bottom + 12 : first.top - h - 12;
     if (below && y + h > window.innerHeight - 8) {
@@ -168,7 +176,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     const x = Math.max(12, Math.min(vw - w - 12, ideal));
     lastX.current = ideal;
     const arrowAt = below ? (lastR.left + lastR.right) / 2 : anchorX;
-    setPos({ x, y, below, arrow: Math.max(16, Math.min(w - 16, arrowAt - x)) });
+    setPos({ x, y, below, arrow: Math.max(16, Math.min(w - 16, arrowAt - x)), docked: false });
   }, []);
 
   useLayoutEffect(() => {
@@ -185,6 +193,17 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
       window.removeEventListener("resize", on);
     };
   }, [lens, place]);
+
+  // Docked, the lens takes the place of the composer, which steps aside until it closes.
+  const docked = !!pos?.docked;
+  useEffect(() => {
+    if (!docked) return;
+    const root = document.documentElement;
+    root.dataset.lensDocked = "";
+    return () => {
+      delete root.dataset.lensDocked;
+    };
+  }, [docked]);
 
   const toAsk = useCallback(
     (initial = "") => {
@@ -517,7 +536,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
             )}
           </form>
         )}
-        {pos && (
+        {pos && !pos.docked && (
           <span
             aria-hidden
             className="absolute size-2.5 rotate-45 bg-lens"

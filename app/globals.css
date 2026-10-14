@@ -1018,6 +1018,17 @@ mark.key .cite {
   transform-origin: var(--origin, bottom center);
 }
 
+/* On touch the lens docks where the composer sits, so the composer steps aside. */
+.composer {
+  transition:
+    opacity 0.18s var(--ease-out),
+    visibility 0.18s;
+}
+[data-lens-docked] .composer {
+  opacity: 0;
+  visibility: hidden;
+}
+
 /* The lens: one row of plain words, captions on hover, the rest one click away. */
 .lens-btn {
   display: inline-flex;
