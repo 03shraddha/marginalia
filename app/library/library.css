@@ -2017,9 +2017,14 @@ button.starter-card:active {
     background-position: 140% 0;
   }
 }
+.arr-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
 .arr-show {
   display: inline-flex;
-  margin-top: 12px;
   padding: 6px 14px;
   border-radius: 999px;
   background: var(--ink);
@@ -2030,6 +2035,23 @@ button.starter-card:active {
   transition: transform 0.15s var(--ease-out);
 }
 .arr-show:active {
+  transform: scale(0.97);
+}
+.arr-undo {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 500;
+  animation: arr-line 0.35s var(--ease-out) both;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s var(--ease-out);
+}
+.arr-undo:hover {
+  background: var(--bg-sunk);
+  color: var(--ink);
+}
+.arr-undo:active {
   transform: scale(0.97);
 }
 .arr-confetti {

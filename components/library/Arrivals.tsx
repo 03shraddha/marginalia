@@ -24,8 +24,21 @@ const SHOWN = 6;
  * Texts landing on the shelf while you look, from your agent or your own
  * hands: a card at the bottom of the page that fills with their covers as
  * they arrive, with a burst of confetti in their topics' inks for each batch.
+ * Once the run is over, the whole batch can come straight back off.
  */
-export function Arrivals({ wave, books, onShow, onClose }: { wave: Wave; books: Book[]; onShow: () => void; onClose: () => void }) {
+export function Arrivals({
+  wave,
+  books,
+  onShow,
+  onRemove,
+  onClose,
+}: {
+  wave: Wave;
+  books: Book[];
+  onShow: () => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(0);
 
@@ -102,9 +115,14 @@ export function Arrivals({ wave, books, onShow, onClose }: { wave: Wave; books: 
       </div>
 
       {wave.done ? (
-        <button type="button" onClick={onShow} className="arr-show">
-          Show {n === 1 ? "it" : "them"} on the shelf
-        </button>
+        <div className="arr-actions">
+          <button type="button" onClick={onShow} className="arr-show">
+            Show {n === 1 ? "it" : "them"} on the shelf
+          </button>
+          <button type="button" onClick={onRemove} className="arr-undo">
+            Remove {n === 1 ? "it" : "them"}
+          </button>
+        </div>
       ) : (
         <span className="arr-bar" aria-hidden />
       )}

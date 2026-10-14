@@ -441,6 +441,14 @@ export function Library() {
             setSort("recent");
             go({ view: "shelf" });
           }}
+          onRemove={() => {
+            closeWave();
+            if (open && wave.ids.includes(open.id)) setOpen(null);
+            for (const id of wave.ids) {
+              removeFromLibrary(id);
+              void forgetCover(id);
+            }
+          }}
         />
       )}
       {adding && <AddPanel tab={adding} onTab={setAdding} onClose={() => setAdding(null)} signedIn={Boolean(isSignedIn)} />}
