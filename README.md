@@ -18,7 +18,7 @@
 
 ## Cloning & running
 
-1. Clone the repo: `git clone https://github.com/Luffixos/gloss`
+1. Clone the repo: `git clone https://github.com/Nutlope/gloss`
 2. Create a `.env.local` file (use `.env.example` for reference) and add your API keys:
    - **[Together AI API key](https://togetherai.link/?utm_source=gloss&utm_medium=referral&utm_campaign=example-app)**: `TOGETHER_API_KEY=`
    - **Database URL** from [Neon](https://neon.tech): `DATABASE_URL=`
