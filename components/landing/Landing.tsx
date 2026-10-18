@@ -3,7 +3,6 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TopBar } from "@/components/ui/TopBar";
 import { wordCount, type Article } from "@/lib/article";
 import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { hideSample, useLibraryPrefs } from "@/lib/library-prefs";
@@ -11,14 +10,28 @@ import { normalizeUrl } from "@/lib/links";
 import { SAMPLES } from "@/lib/samples";
 import { applySettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
-import { Hero } from "./Hero";
-import { HomeBelow } from "./HomeBelow";
+import { SAMPLE_SHELF } from "@/lib/classics";
+import { tidyTitle } from "@/lib/article";
+import { ArrowUpRight, Check } from "lucide-react";
+import Link from "next/link";
+import { Dock, type DockText } from "./Dock";
+import { Editorial } from "./Editorial";
 import { ImportBar, type Busy } from "./ImportBar";
+import { ImportSheet } from "./ImportSheet";
+import { DEMO, LiveDemo } from "./LiveDemo";
+import { MenuBar, type Menu } from "./MenuBar";
+import { NAME, SARVAM_URL } from "./name";
 import { PasteSheet } from "./PasteSheet";
-import { LibraryLine, type Saved } from "./LibraryLine";
 import { ShelfSheet, type ShelfItem } from "./ShelfSheet";
 
-/** One screen: a headline that shows what it does, a place to paste, and your shelf. */
+type Saved = { id: string; title: string };
+
+/**
+ * The landing: a Mac desktop on a watercolor wash. One window holds a live
+ * paragraph to ask about; the Dock holds the samples and "+"; the toolbar
+ * holds the address field. Below the fold, how it works. On a phone, the
+ * same pieces as a stack of cards with the address field at the foot.
+ */
 export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boolean }) {
   const router = useRouter();
   // Known on the server at load, so a signed-in reader never sees the demo flash; then live, for a sign-in from this page.
@@ -38,6 +51,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
   const [error, setError] = useState<string | null>(null);
   const [errorNeedsKey, setErrorNeedsKey] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [dragging, setDragging] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -232,14 +246,101 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     return [...mine, ...samples].sort((a, b) => reading(b) - reading(a) || b.touched - a.touched);
   }, [library, progress, glosses, hydrated, hiddenSamples]);
 
-  return (
-    <div className={`landing relative z-[1] flex min-h-dvh flex-col transition-[opacity,filter,transform] duration-300 ease-[var(--ease-out)] ${leaving ? "scale-[0.995] opacity-0 blur-[2px]" : ""}`}>
-      <TopBar />
+  // The Dock: what you are in the middle of first, then the samples.
+  const dockTexts: DockText[] = useMemo(() => {
+    const reading = items.filter((x) => !x.sample && x.pct > 0 && x.pct < 1).slice(0, 2);
+    const samples = SAMPLES.filter((a) => !hiddenSamples.includes(a.id));
+    return [
+      ...reading.map((x) => ({ id: x.id, title: tidyTitle(x.title), byline: x.byline, reading: true })),
+      ...samples.map((a) => {
+        const pct = hydrated ? progress[a.id]?.pct ?? 0 : 0;
+        return { id: a.id, title: tidyTitle(a.title), byline: [a.author, a.published].filter(Boolean).join(", "), cover: SAMPLE_SHELF[a.id]?.cover, reading: pct > 0 && pct < 1 };
+      }),
+    ];
+  }, [items, hiddenSamples, hydrated, progress]);
 
-      {/* One screen: the headline and the link bar centred in the room above, and the desk at the foot. */}
-      <main className="relative flex flex-1 flex-col pb-[clamp(20px,4vh,44px)]">
-        <div className="flex flex-1 flex-col justify-center pb-[clamp(16px,3vh,36px)] pt-[clamp(28px,8vh,96px)]">
-          <Hero>
+  const current = useMemo(() => items.find((x) => x.pct > 0 && x.pct < 1) ?? null, [items]);
+  const setUI = useStore((s) => s.setUI);
+  const focusAddress = useCallback(() => inputRef.current?.focus(), []);
+  const pickFile = useCallback(() => fileRef.current?.click(), []);
+  const toHow = useCallback(() => document.getElementById("how")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), []);
+
+  const menus: Menu[] = [
+    {
+      label: NAME,
+      bold: true,
+      items: [{ label: `About ${NAME}`, run: toHow }, "sep", { label: "Your Library", href: "/library" }, { label: "Sarvam AI", href: SARVAM_URL, external: true }],
+    },
+    {
+      label: "File",
+      items: [
+        { label: "Open Link…", kbd: "/", run: focusAddress },
+        { label: "Open PDF…", run: pickFile },
+        { label: "Paste Text…", run: () => setPasteOpen(true) },
+        "sep",
+        { label: "Open Library", href: "/library" },
+      ],
+    },
+    {
+      label: "Edit",
+      items: [
+        { label: "Paste a Link Anywhere", kbd: "⌘V", disabled: true },
+        { label: "Ask About the Highlight", run: () => document.querySelector<HTMLElement>(".mg-sel")?.focus() },
+      ],
+    },
+    {
+      label: "View",
+      items: [
+        { label: "Shelf", kbd: "S", run: () => setUI({ shelf: "texts" }) },
+        { label: "Highlights", run: () => setUI({ shelf: "highlights" }) },
+      ],
+    },
+    { label: "Help", items: [{ label: "How It Works", run: toHow }, { label: "Read the Sample", href: `/read/${DEMO.id}` }] },
+  ];
+
+  const status = saved ? (
+    <span className="mg-winstatus-note" key={saved.id}>
+      <Check size={13} aria-hidden /> Saved {tidyTitle(saved.title)} to your library. <Link href="/library">Open</Link>
+    </span>
+  ) : current ? (
+    <button type="button" className="mg-winstatus-note" onClick={() => go(current.id)}>
+      Continue {tidyTitle(current.title)} · {Math.round(current.pct * 100)}%
+    </button>
+  ) : (
+    <span className="mg-winstatus-note">{signedIn ? "Your highlights sync to every device." : "Highlights stay in this browser until you sign in."}</span>
+  );
+
+  return (
+    <div className={`mg${leaving ? " is-leaving" : ""}`}>
+      <Watercolor />
+
+      <section className="mg-desktop" aria-label={`${NAME} desktop`}>
+        <MenuBar menus={menus} />
+
+        <h1 className="mg-mhead">
+          Read anything with a scholar <em>in the margin.</em>
+        </h1>
+
+        <div className="mg-window" role="group" aria-label={`${DEMO.book}: ${DEMO.title}`}>
+          <div className="mg-titlebar">
+            <span className="mg-lights" aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+            <p className="mg-wintitle">
+              {DEMO.title} <span>· {DEMO.book}</span>
+            </p>
+          </div>
+          <div className="mg-toolbar">
+            <span className="mg-navbtns" aria-hidden>
+              <svg viewBox="0 0 16 16" width="16" height="16">
+                <path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg viewBox="0 0 16 16" width="16" height="16">
+                <path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
             <ImportBar
               ref={inputRef}
               url={url}
@@ -249,14 +350,47 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
               errorNeedsKey={errorNeedsKey}
               onSubmit={fromUrl}
               onSave={(u) => fromUrl(u, true)}
-              onPickFile={() => fileRef.current?.click()}
-              onPasteText={() => setPasteOpen(true)}
+              onPickFile={pickFile}
             />
-            <LibraryLine saved={saved} />
-          </Hero>
+            <button type="button" className="mg-toolbtn" onClick={() => setPasteOpen(true)}>
+              Paste text
+            </button>
+          </div>
+          <div className="mg-winbody">
+            <LiveDemo />
+          </div>
+          <div className="mg-winstatus">
+            {status}
+            <span className="mg-winstatus-hint">
+              Press <kbd>/</kbd> to paste a link, <kbd>S</kbd> for your shelf
+            </span>
+          </div>
         </div>
-        <HomeBelow signedIn={signedIn} />
-      </main>
+
+        <div className="mg-msamples">
+          <p>Or open a classic</p>
+          <ul>
+            {dockTexts
+              .filter((t) => t.cover)
+              .map((t) => (
+                <li key={t.id}>
+                  <button type="button" onClick={() => go(t.id)}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={t.cover} alt="" draggable={false} />
+                    <span>{t.title}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+          <Link href="/library" className="mg-textlink">
+            Your library <ArrowUpRight size={14} aria-hidden />
+          </Link>
+        </div>
+
+        <Dock texts={dockTexts} onOpen={(id) => go(id)} onAdd={() => setSheetOpen(true)} />
+      </section>
+
+      <Editorial />
 
       <ShelfSheet
         items={items}
@@ -269,23 +403,50 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
         ref={fileRef}
         type="file"
         accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
-        className="hidden"
+        hidden
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) fromFile(f);
           e.target.value = "";
         }}
       />
+      <ImportSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onUrl={(u) => fromUrl(u)} onPickFile={pickFile} onPasteText={() => setPasteOpen(true)} />
       <PasteSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onRead={fromText} />
 
       {dragging && (
-        <div className="pointer-events-none fixed inset-0 z-[90] grid place-items-center bg-bg/80 backdrop-blur-sm" style={{ animation: "fade 0.15s" }}>
-          <div className="rounded-[28px] border-[1.5px] border-dashed border-[var(--rubric)] px-16 py-14 text-center">
-            <p className="font-serif text-[40px] leading-none text-ink">Drop to read</p>
-            <p className="mt-3 text-[14px] text-ink-3">PDF, .txt or .md</p>
+        <div className="mg-dropzone">
+          <div>
+            <p>Drop to read</p>
+            <small>PDF, .txt or .md</small>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The wallpaper: washes of pink, peach, butter, sage and sky, their edges
+ * roughened by turbulence, under a grain of paper. No image files.
+ */
+function Watercolor() {
+  return (
+    <div className="mg-wash" aria-hidden>
+      <svg className="mg-wash-defs" width="0" height="0" focusable="false">
+        <filter id="mg-bleed" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="4" seed="7" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="90" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+      <div className="mg-bloom">
+        <i className="b1" />
+        <i className="b2" />
+        <i className="b3" />
+        <i className="b4" />
+        <i className="b5" />
+        <i className="b6" />
+      </div>
+      <div className="mg-grain" />
     </div>
   );
 }
