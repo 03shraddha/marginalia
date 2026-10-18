@@ -6,12 +6,13 @@ import { validateKey } from "@/lib/ask";
 import { BRAND } from "@/lib/brand";
 import { Popover, barBtn } from "./Popover";
 
+// The storage key keeps its old name, so keys saved before the move to Sarvam still load.
 const STORAGE_KEY = "together:api-key";
 
 /** Today's free use of the shared key, as the share still unspent (0 to 1). */
 type Free = { left: number; signedIn: boolean };
 
-/** Bring your own Together key. Stored in this browser only. A little reading a day is free without one. */
+/** Bring your own Sarvam key. Stored in this browser only. A little reading a day is free without one. */
 export function KeyMenu() {
   const [key, setKey] = useState("");
   const [house, setHouse] = useState<boolean | null>(null);
@@ -39,8 +40,8 @@ export function KeyMenu() {
 
   return (
     <Popover
-      label="Together API key"
-      tip={key ? "Using your Together key" : "Add your Together key"}
+      label="Sarvam API key"
+      tip={key ? "Using your Sarvam key" : "Add your Sarvam key"}
       width={320}
       triggerClass={barBtn}
       openOn="gloss:key"
@@ -85,8 +86,8 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
 
   return (
     <div>
-      <p className="text-[13.5px] font-medium text-ink">Your Together API key</p>
-      <p className="mt-1 text-[12.5px] leading-snug text-ink-3">
+      <p className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Your Sarvam API key</p>
+      <p className="mt-1 text-[13px] leading-snug text-ink-3">
         {current
           ? "Answers and reading aloud use your key, with no daily limit."
           : house && free
@@ -99,8 +100,8 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
             <span>Free today</span>
             <span className="tabular-nums">{free.left > 0 ? `${Math.max(1, Math.round(free.left * 100))}% left` : "Used up"}</span>
           </div>
-          <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-rule" aria-hidden>
-            <span className="block h-full rounded-full bg-[var(--rubric)] transition-[width] duration-500" style={{ width: `${Math.round(free.left * 100)}%` }} />
+          <span className="mt-1.5 block h-[4px] overflow-hidden rounded-full bg-fill" aria-hidden>
+            <span className="block h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${Math.round(free.left * 100)}%` }} />
           </span>
         </div>
       )}
@@ -113,17 +114,17 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
           setState("idle");
         }}
         onKeyDown={(e) => e.key === "Enter" && save()}
-        placeholder="tgp_v1_..."
+        placeholder="Paste your API key"
         autoComplete="off"
         spellCheck={false}
-        aria-label="Together API key"
-        className="mt-3 h-9 w-full rounded-lg border border-rule bg-bg px-3 text-[13px] tracking-wide text-ink outline-none focus-visible:outline-none placeholder:text-ink-4 focus:border-rule-strong"
+        aria-label="Sarvam API key"
+        className="field mt-3 h-9 w-full px-3 text-[13px] tracking-wide focus-visible:outline-none"
       />
-      {state === "bad" && <p className="mt-2 text-[12.5px] text-rubric-text">Together rejected that key. Check it and try again.</p>}
+      {state === "bad" && <p className="mt-2 text-[12.5px] text-rubric-text">Sarvam rejected that key. Check it and try again.</p>}
       <p className="mt-2 text-[11.5px] leading-snug text-ink-4">Sent with your requests only. Stored in this browser, never on a server, never logged.</p>
       <div className="mt-3 flex items-center justify-between">
-        <a href={BRAND.keysUrl} target="_blank" rel="noopener noreferrer" className="text-[12.5px] text-rubric-text underline decoration-rule-strong underline-offset-4">
-          Get a key on Together
+        <a href={BRAND.keysUrl} target="_blank" rel="noopener noreferrer" className="link-accent text-[13px]">
+          Get a key on Sarvam
         </a>
         <div className="flex gap-1.5">
           {current && (
@@ -136,7 +137,7 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
                 } catch {}
                 onSave("");
               }}
-              className="h-8 rounded-lg px-3 text-[12.5px] font-medium text-ink-2 hover:bg-sunk"
+              className="btn-gray h-8 px-3.5 text-[13px]"
             >
               Clear
             </button>
@@ -145,7 +146,7 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
             type="button"
             onClick={save}
             disabled={state === "checking"}
-            className="h-8 rounded-lg bg-ink px-3.5 text-[12.5px] font-medium text-bg disabled:opacity-60"
+            className="btn-accent h-8 px-4 text-[13px]"
           >
             {state === "checking" ? "Checking" : "Save"}
           </button>

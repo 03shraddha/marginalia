@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Atkinson_Hyperlegible_Next, Literata, Newsreader, Schibsted_Grotesk } from "next/font/google";
+import { Atkinson_Hyperlegible_Next, Literata, Newsreader } from "next/font/google";
 import { BOOT_SCRIPT } from "@/lib/settings";
 import "./globals.css";
 import { Tooltips } from "@/components/ui/Tooltips";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SyncAgent } from "@/components/account/SyncAgent";
-import { OG_IMAGE, SITE_URL } from "@/lib/brand";
+import { BRAND, OG_IMAGE, SITE_URL } from "@/lib/brand";
 
 const serif = Newsreader({
   subsets: ["latin", "latin-ext"],
@@ -16,11 +16,7 @@ const serif = Newsreader({
   display: "swap",
 });
 
-const sans = Schibsted_Grotesk({
-  subsets: ["latin"],
-  variable: "--nf-sans",
-  display: "swap",
-});
+// UI chrome uses the system face (San Francisco on Apple devices): see --font-ui in globals.css.
 
 // Optional reading faces: declared here, fetched only when a reader picks them.
 const book = Literata({
@@ -45,24 +41,26 @@ const DESCRIPTION = "Highlight any line and ask it anything. An open model write
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "Gloss", template: "%s" },
+  title: { default: BRAND.name, template: "%s" },
   description: DESCRIPTION,
-  applicationName: "Gloss",
-  openGraph: { type: "website", siteName: "Gloss", title: "Gloss", description: DESCRIPTION, url: "/", images: [OG_IMAGE] },
-  twitter: { card: "summary_large_image", title: "Gloss", description: DESCRIPTION, images: [OG_IMAGE.url] },
+  applicationName: BRAND.name,
+  openGraph: { type: "website", siteName: BRAND.name, title: BRAND.name, description: DESCRIPTION, url: "/", images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", title: BRAND.name, description: DESCRIPTION, images: [OG_IMAGE.url] },
 };
 
 export const viewport: Viewport = {
+  // Edge to edge on phones; bars pad themselves with the safe-area insets.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f6f3ec" },
-    { media: "(prefers-color-scheme: dark)", color: "#151412" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1c1e" },
   ],
 };
 
 /** Clerk's sign-in and account screens, in the page's own ink and paper, in every theme. */
 const CLERK_APPEARANCE = {
   variables: {
-    colorPrimary: "var(--ink)",
+    colorPrimary: "var(--accent)",
     colorBackground: "var(--bg-raised)",
     colorForeground: "var(--ink)",
     colorMutedForeground: "var(--ink-3)",
@@ -70,14 +68,14 @@ const CLERK_APPEARANCE = {
     colorInputForeground: "var(--ink)",
     colorBorder: "var(--rule-strong)",
     colorNeutral: "var(--ink)",
-    fontFamily: "var(--font-sans)",
+    fontFamily: "var(--font-ui)",
     borderRadius: "12px",
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable} ${book.variable} ${legible.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${serif.variable} ${book.variable} ${legible.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>

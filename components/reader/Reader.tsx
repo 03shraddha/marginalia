@@ -81,7 +81,7 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
           <GlossWordmark />
           <p className="mt-6 font-serif text-[26px] text-ink">This text is not on this device.</p>
           <p className="mt-2 text-[14px] text-ink-3">Imported texts live in the browser that imported them, or in your account when you are signed in.</p>
-          <Link href="/" className="mt-6 inline-flex h-10 items-center rounded-full bg-ink px-5 text-[14px] font-medium text-bg">
+          <Link href="/" className="btn-accent mt-6 h-11 px-5 text-[15px]">
             Back to the library
           </Link>
         </div>
@@ -520,7 +520,7 @@ function ReaderInner({ article }: { article: Article }) {
                       href={article.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rule px-3.5 text-[13px] font-medium text-ink-2 transition-[border-color,color,transform] hover:border-rule-strong hover:text-ink active:scale-[0.97]"
+                      className="btn-tinted h-9 shrink-0 px-4 text-[13px]"
                     >
                       Original <ArrowUpRight size={14} strokeWidth={2} />
                     </a>
@@ -558,16 +558,16 @@ function ReaderInner({ article }: { article: Article }) {
                 {article.source && <p>From {article.source}.</p>}
                 <p className="mt-1">
                   Glosses are powered by DeepSeek V4.1 Flash, served by{" "}
-                  <a href={BRAND.togetherUrl} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
-                    Together AI
+                  <a href={BRAND.sarvamUrl} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
+                    Sarvam
                   </a>
                   .
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setUI({ notebookOpen: true })} className="h-9 rounded-full border border-rule px-4 text-[13px] font-medium text-ink-2 hover:border-rule-strong hover:text-ink">
+                  <button type="button" onClick={() => setUI({ notebookOpen: true })} className="btn-tinted h-9 px-4 text-[13px]">
                     Open your notebook
                   </button>
-                  <Link href="/" className="inline-flex h-9 items-center rounded-full border border-rule px-4 text-[13px] font-medium text-ink-2 hover:border-rule-strong hover:text-ink">
+                  <Link href="/" className="btn-gray h-9 px-4 text-[13px]">
                     Back to the library
                   </Link>
                 </div>
@@ -584,7 +584,7 @@ function ReaderInner({ article }: { article: Article }) {
         {focusMode && (
           <p
             role="status"
-            className="focus-hint pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+32px)] left-1/2 z-40 whitespace-nowrap rounded-full bg-lens px-4 py-2 text-[13px] text-lens-fg shadow-pop"
+            className="focus-hint material pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+32px)] left-1/2 z-40 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-medium text-lens-fg"
           >
             {window.matchMedia("(pointer: coarse)").matches ? "Focus mode. Scroll up for the menu." : "Focus mode. Press F or Esc to leave."}
           </p>
@@ -607,7 +607,7 @@ function ReaderInner({ article }: { article: Article }) {
                 window.scrollTo({ top: 0, behavior: "smooth" });
                 setToast(null);
               }}
-              className="font-medium underline decoration-lens-mute underline-offset-4"
+              className="link-accent font-semibold"
             >
               Start over
             </button>
@@ -642,13 +642,14 @@ function GlossSheet() {
   if (!g || notebookOpen) return null;
   return (
     <div
-      className="sheet scroll-thin fixed inset-x-0 bottom-0 z-[52] mx-auto max-h-[64dvh] max-w-[680px] overflow-y-auto rounded-t-[20px] border border-b-0 border-rule bg-raised pb-[max(12px,env(safe-area-inset-bottom))] shadow-pop"
-      style={{ animation: "sheet-up 0.38s var(--ease-out)" }}
+      className="sheet scroll-thin fixed inset-x-0 bottom-0 z-[52] mx-auto max-h-[70dvh] max-w-[680px] overflow-y-auto pb-[max(12px,env(safe-area-inset-bottom))]"
     >
-      <div className="sticky top-0 z-10 flex items-center justify-center bg-raised/95 pb-1 pt-2.5 backdrop-blur">
-        <span className="h-1 w-9 rounded-full bg-rule-strong" aria-hidden />
-        <button type="button" aria-label="Close" onClick={() => setUI({ activeGloss: null })} className="absolute right-3 top-2 grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-sunk">
-          <X size={16} />
+      <div className="sticky top-0 z-10 flex h-11 items-start justify-center pt-[6px]">
+        <span className="grabber" aria-hidden />
+        <button type="button" aria-label="Close" onClick={() => setUI({ activeGloss: null })} className="absolute right-2 top-1.5 grid size-11 place-items-center rounded-full text-ink-3">
+          <span className="grid size-[30px] place-items-center rounded-full bg-fill">
+            <X size={15} strokeWidth={2.4} />
+          </span>
         </button>
       </div>
       <div className="px-3">

@@ -83,7 +83,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
     <header
       className={`fixed inset-x-0 top-0 z-40 h-[var(--topbar-h)] transition-[transform,background-color,border-color] duration-300 ease-[var(--ease-out)] ${
         tucked ? "-translate-y-full" : ""
-      } ${scrolled ? "border-b border-rule bg-bg/85 backdrop-blur-md" : "border-b border-transparent"}`}
+      } ${scrolled ? "vibrancy" : ""}`}
     >
       <div className="mx-auto flex h-full max-w-[1440px] items-center gap-4 px-4 sm:px-6">
         <Lockup />
@@ -94,19 +94,19 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="min-w-0 truncate rounded-full px-2.5 py-1.5 font-serif text-[16px] leading-none text-ink transition-colors hover:bg-sunk"
+              className="min-w-0 truncate rounded-[8px] px-2.5 py-1.5 text-[13.5px] font-semibold leading-none text-ink transition-colors hover:bg-fill"
               data-tip="Back to the top"
             >
               {ix.article.title}
             </button>
             {section && (
               <>
-                <span className="h-3.5 w-px shrink-0 bg-rule-strong" aria-hidden />
+                <span className="h-3.5 w-[0.5px] shrink-0 bg-rule-strong" aria-hidden />
                 <button
                   type="button"
                   onClick={() => jumpTo(section.start, { flash: false })}
                   data-tip="Go to the start of this part"
-                  className="min-w-0 truncate rounded-full px-2 py-1.5 leading-none text-ink-3 hover:bg-sunk hover:text-ink"
+                  className="min-w-0 truncate rounded-[8px] px-2 py-1.5 leading-none text-ink-3 hover:bg-fill hover:text-ink"
                 >
                   {section.title}
                 </button>
@@ -115,10 +115,10 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
           </div>
         </div>
 
-        <nav aria-label="Reader tools" className="flex items-center gap-1">
+        <nav aria-label="Reader tools" className="flex items-center gap-0.5">
           <span className="hidden sm:block">
             <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="Keyboard shortcuts" data-tip="Shortcuts" data-tip-kbd="?">
-              <Keyboard size={17} strokeWidth={1.8} />
+              <Keyboard size={17} strokeWidth={1.7} />
             </button>
           </span>
           <ListenButton from={listenFrom} />
@@ -126,7 +126,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
           <KeyMenu />
           <button
             type="button"
-            className={`${barBtn} !px-3 ${notebookOpen ? "bg-sunk text-ink" : ""}`}
+            className={`${barBtn} !px-2.5 ${notebookOpen ? "!bg-fill text-ink" : ""}`}
             onClick={() => setUI({ notebookOpen: !notebookOpen })}
             aria-pressed={notebookOpen}
             aria-label="Notebook"
@@ -136,13 +136,13 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
             <NotebookPen size={16} strokeWidth={1.8} />
             <span className="hidden sm:inline">Notebook</span>
             {count > 0 && (
-              <span className="min-w-[18px] rounded-full bg-[var(--rubric)] px-1.5 text-center text-[11px] font-semibold leading-[18px] tabular-nums text-white">{count}</span>
+              <span className="min-w-[18px] rounded-full bg-accent px-1.5 text-center text-[11px] font-semibold leading-[18px] tabular-nums text-white">{count}</span>
             )}
           </button>
           <Account />
         </nav>
       </div>
-      <span ref={barRef} aria-hidden className="absolute inset-x-0 -bottom-px h-[2px] origin-left bg-[var(--rubric)] opacity-80" style={{ transform: "scaleX(0)" }} />
+      <span ref={barRef} aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-accent opacity-90" style={{ transform: "scaleX(0)" }} />
     </header>
   );
 }

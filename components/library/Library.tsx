@@ -22,6 +22,7 @@ import { BookOpen, type Origin } from "./BookOpen";
 import { Shelf } from "./Shelf";
 import { Starter } from "./Starter";
 import { TopicGrid, TopicPage } from "./Topics";
+import { BRAND } from "@/lib/brand";
 
 type View = "shelf" | "topics";
 
@@ -242,7 +243,7 @@ export function Library() {
 
   const openBook = open ? books.find((b) => b.id === open.id) ?? null : null;
   const first = user?.firstName;
-  const owner = user?.fullName || first || "A Gloss reader";
+  const owner = user?.fullName || first || `A ${BRAND.name} reader`;
   const T = topic ? TOPIC[topic] : null;
   const topicBooks = useMemo(() => (topic ? books.filter((b) => b.topic === topic).sort((a, b) => b.added - a.added).filter(match) : []), [topic, books, match]);
   const screen = topic ? `topic-${topic}` : view;

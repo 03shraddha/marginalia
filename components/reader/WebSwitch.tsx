@@ -18,7 +18,7 @@ export function WebSwitch({ tone = "plain" }: { tone?: "plain" | "lens" }) {
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => setSettings({ search: !on })}
       className={`flex h-7 shrink-0 items-center gap-1 rounded-[8px] px-2 text-[11.5px] font-medium transition-colors ${
-        on ? (lens ? "bg-lens-fg text-lens" : "bg-pill text-ink shadow-[0_1px_2px_rgb(0_0_0/0.1)] ring-1 ring-rule") : lens ? "text-lens-mute hover:text-lens-fg" : "text-ink-3 hover:bg-sunk hover:text-ink"
+        on ? "bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] text-accent" : lens ? "text-lens-mute hover:bg-lens-hover hover:text-lens-fg" : "text-ink-3 hover:bg-fill hover:text-ink"
       }`}
     >
       <Globe size={13} strokeWidth={2} aria-hidden />

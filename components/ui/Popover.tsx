@@ -65,19 +65,26 @@ export function Popover({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className={`${triggerClass} ${open ? "bg-sunk text-ink" : ""}`}
+        className={`${triggerClass} ${open ? "!bg-fill text-ink" : ""}`}
       >
         {trigger}
       </button>
       {open && (
-        <div
-          role="dialog"
-          aria-label={label}
-          className={`pop absolute top-[calc(100%+8px)] z-[60] p-4 ${align === "right" ? "right-0" : "left-0"}`}
-          style={{ width, ["--origin" as string]: align === "right" ? "top right" : "top left" }}
-        >
-          {children(() => setOpen(false))}
-        </div>
+        <>
+          {/* Phones only: the dimmed page behind the sheet. A tap on it closes the sheet. */}
+          <div aria-hidden className="sheet-scrim" onClick={() => setOpen(false)} />
+          <div
+            role="dialog"
+            aria-label={label}
+            className={`pop is-menu absolute top-[calc(100%+8px)] z-[60] p-4 ${align === "right" ? "right-0" : "left-0"}`}
+            style={{ width, ["--origin" as string]: align === "right" ? "top right" : "top left" }}
+          >
+            <div className="pop-grabber" aria-hidden>
+              <span className="grabber" />
+            </div>
+            {children(() => setOpen(false))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -85,4 +92,4 @@ export function Popover({
 
 /** Every nav control: same height, same center line, same hover. */
 export const barBtn =
-  "inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[13.5px] font-medium leading-none text-ink-2 transition-[background-color,color,transform] duration-150 hover:bg-sunk hover:text-ink active:scale-[0.94]";
+  "bar-btn inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-[8px] px-2 text-[13px] font-medium leading-none text-ink-2 transition-[background-color,color,transform] duration-150 hover:bg-fill hover:text-ink active:scale-[0.94]";

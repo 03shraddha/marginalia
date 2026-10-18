@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { TTS_MAX_CHARS } from "@/lib/voice";
 import { barBtn } from "@/components/ui/Popover";
 import { useReader } from "./context";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Read aloud. The text is spoken a passage at a time from where you are, each
@@ -144,7 +145,7 @@ export function startListening(ix: DocIndex, fromBlock: string | null) {
   stopListening();
   // Reading aloud always uses the reader's own key: say so before anything is fetched.
   if (!readApiKey()) {
-    useListen.setState({ status: "error", needKey: true, error: "Reading aloud uses your own Together key." });
+    useListen.setState({ status: "error", needKey: true, error: "Reading aloud uses your own Sarvam key." });
     return;
   }
   const blocks = ix.article.blocks;
@@ -174,7 +175,7 @@ export function startListening(ix: DocIndex, fromBlock: string | null) {
     if (RATES.includes(r)) useListen.setState({ rate: r });
   } catch {}
   if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: ix.article.title, artist: ix.article.author ?? ix.article.source ?? "Gloss" });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: ix.article.title, artist: ix.article.author ?? ix.article.source ?? BRAND.name });
     navigator.mediaSession.setActionHandler("play", () => toggleListening());
     navigator.mediaSession.setActionHandler("pause", () => toggleListening());
   }
