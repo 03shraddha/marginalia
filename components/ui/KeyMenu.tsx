@@ -88,9 +88,9 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
       <p className="text-[13.5px] font-medium text-ink">Your Together API key</p>
       <p className="mt-1 text-[12.5px] leading-snug text-ink-3">
         {current
-          ? "Answers and reading aloud use your key, with no daily limit."
+          ? "Answers use your key, with no daily limit."
           : house && free
-            ? `Free use resets each day${free.signedIn ? "" : ", and signing in doubles it"}. After that, answers need your key. Reading aloud always does.`
+            ? `Free use resets each day${free.signedIn ? "" : ", and signing in doubles it"}. After that, answers need your key.`
             : "Add your key to start asking."}
       </p>
       {!current && house && free && (
