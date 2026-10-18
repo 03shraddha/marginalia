@@ -8,6 +8,7 @@ import { importFromUrl, keep } from "@/lib/import";
 import { useStore } from "@/lib/store";
 import type { AddTab } from "./AddPanel";
 import { MarkStack } from "./AgentMarks";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Under a shelf that is still nearly empty: three ways to fill it. A dozen
@@ -66,7 +67,7 @@ export function Starter({ count, signedIn, onAdd }: { count: number; signedIn: b
           <Link2 size={20} />
         </span>
         <span className="starter-title">Save your own links</span>
-        <span className="starter-body">Paste one or many. Gloss reads each one in and sorts it onto a topic.</span>
+        <span className="starter-body">Paste one or many. {BRAND.name} reads each one in and sorts it onto a topic.</span>
       </button>
       <button type="button" className="starter-card" onClick={() => onAdd("agent")}>
         <span className="starter-icon is-agent">

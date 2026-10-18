@@ -18,7 +18,7 @@ export function Peek({ peek }: { peek: { n: number; rect: DOMRect } | null }) {
   const style = below ? { left, top: peek.rect.bottom + 8 } : { left, bottom: window.innerHeight - peek.rect.top + 8 };
   return (
     <div className="pop pointer-events-none fixed z-[70] p-4" style={{ ...style, width: w, ["--origin" as string]: below ? "top center" : "bottom center" }} role="tooltip">
-      <p className="mb-1.5 text-[11.5px] font-semibold tabular-nums text-rubric-text">¶{peek.n}</p>
+      <p className="mb-1.5 text-[11.5px] font-semibold tabular-nums text-accent">¶{peek.n}</p>
       <p className="line-clamp-6 font-serif text-[15px] leading-[1.5] text-ink">{text}</p>
       <p className="mt-2 text-[11.5px] text-ink-4">Click to jump there</p>
     </div>
@@ -49,15 +49,15 @@ export function Shortcuts() {
   }, [open, setUI]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-ink/20 p-4 backdrop-blur-[2px]" onClick={() => setUI({ shortcutsOpen: false })} style={{ animation: "fade 0.2s" }}>
-      <div role="dialog" aria-label="Keyboard shortcuts" className="pop w-full max-w-[420px] p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/25 p-4" onClick={() => setUI({ shortcutsOpen: false })} style={{ animation: "fade 0.2s" }}>
+      <div role="dialog" aria-label="Keyboard shortcuts" className="pop w-full max-w-[420px] !rounded-[18px] p-6" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-serif text-[22px] leading-none text-ink">Keys</h2>
-          <button type="button" aria-label="Close" data-tip="Close" data-tip-kbd="Esc" onClick={() => setUI({ shortcutsOpen: false })} className="grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-sunk">
+          <h2 className="text-[20px] font-bold leading-none tracking-[-0.02em] text-ink">Keyboard Shortcuts</h2>
+          <button type="button" aria-label="Close" data-tip="Close" data-tip-kbd="Esc" onClick={() => setUI({ shortcutsOpen: false })} className="grid size-[30px] place-items-center rounded-full bg-fill text-ink-3 hover:text-ink">
             <X size={16} />
           </button>
         </div>
-        <dl className="divide-y divide-rule">
+        <dl className="group-list px-3">
           {KEYS.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between gap-4 py-2.5">
               <dt className="flex gap-1">
@@ -79,11 +79,11 @@ export function Toast({ children, onClose }: { children: React.ReactNode; onClos
   return (
     <div
       role="status"
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+84px)] left-1/2 z-[55] flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-[18px] bg-lens py-1.5 pl-4 pr-1.5 text-[13px] leading-snug text-lens-fg shadow-pop sm:bottom-[96px] sm:rounded-full"
+      className="material fixed bottom-[calc(env(safe-area-inset-bottom)+84px)] left-1/2 z-[55] flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-[18px] py-1.5 pl-4 pr-1.5 text-[13px] leading-snug text-lens-fg sm:bottom-[96px] sm:rounded-full"
       style={{ animation: "rise 0.45s var(--ease-spring) both" }}
     >
       {children}
-      <button type="button" aria-label="Dismiss" onClick={onClose} className="grid size-7 place-items-center rounded-full text-lens-mute hover:bg-lens-hover hover:text-lens-fg">
+      <button type="button" aria-label="Dismiss" onClick={onClose} className="grid size-7 place-items-center rounded-full bg-lens-hover text-lens-mute hover:text-lens-fg max-sm:size-9">
         <X size={14} />
       </button>
     </div>

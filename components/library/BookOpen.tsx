@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ArrowRight, ArrowUpRight, ChevronDown, PencilLine, Star, Trash2 } from "lucide-react";
 import { fmtMinutes, hash, hostOf, lookOf, tagsOf, TOPIC, TOPICS, type Book, type TopicKey } from "@/lib/library";
 import { Cover, Glyph, Spine } from "./Book";
+import { BRAND } from "@/lib/brand";
 
 export type Origin = { el: HTMLElement; kind: "spine" | "cover" };
 
@@ -275,7 +276,7 @@ export function BookOpen({
                         <Glyph k="agent" size={15} /> Shelved by your agent
                       </span>
                     )}
-                    {book.sample && <span className="is-word">a sample from Gloss</span>}
+                    {book.sample && <span className="is-word">a sample from {BRAND.name}</span>}
                     {book.tags.map((x) => (
                       <span key={x} className="is-word">
                         {x}

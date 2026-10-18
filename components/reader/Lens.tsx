@@ -332,12 +332,12 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
         if (tag !== "INPUT" && tag !== "TEXTAREA") e.preventDefault();
       }}
     >
-      <div className="relative rounded-[14px] bg-lens p-1 text-lens-fg shadow-pop ring-1 ring-black/5">
+      <div className="material relative rounded-[12px] p-1 text-lens-fg">
         {lens.mode === "actions" && existing?.note && (
           <button
             type="button"
             onClick={toNote}
-            className="mb-1 block w-full max-w-[min(420px,calc(100vw-32px))] rounded-[10px] px-3 pb-2 pt-1.5 text-left font-serif text-[14.5px] leading-[1.45] text-lens-fg/90 transition-colors hover:bg-lens-hover"
+            className="mb-1 block w-full max-w-[min(420px,calc(100vw-32px))] rounded-[8px] px-3 pb-2 pt-1.5 text-left font-serif text-[14.5px] leading-[1.45] text-lens-fg/90 transition-colors hover:bg-lens-hover"
           >
             <span className="line-clamp-3 whitespace-pre-line">{existing.note}</span>
           </button>
@@ -380,7 +380,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 aria-label="Keep note"
                 data-tip="Keep"
                 data-tip-kbd={"\u21b5"}
-                className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-[var(--rubric)] text-white transition-transform active:scale-90"
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-white transition-transform active:scale-90"
               >
                 <Check size={15} strokeWidth={2.4} />
               </button>
@@ -522,7 +522,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 aria-label="Ask"
                 data-tip="Ask"
                 data-tip-kbd={"\u21b5"}
-                className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[var(--rubric)] text-white transition-[opacity,transform] active:scale-90 disabled:opacity-30"
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white transition-[opacity,transform] active:scale-90 disabled:opacity-30"
               >
                 <ArrowUp size={16} strokeWidth={2.4} />
               </button>
@@ -544,16 +544,9 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
             )}
           </form>
         )}
-        {pos && !pos.docked && (
-          <span
-            aria-hidden
-            className="absolute size-2.5 rotate-45 bg-lens"
-            style={{ left: pos.arrow - 5, ...(pos.below ? { top: -4 } : { bottom: -4 }) }}
-          />
-        )}
 
         {menu && lens.mode === "actions" && (
-          <div role="menu" aria-label="More actions" className={`lens-menu absolute right-0 ${outside} w-[264px] rounded-[14px] bg-lens p-1 text-lens-fg shadow-pop ring-1 ring-black/5`}>
+          <div role="menu" aria-label="More actions" className={`lens-menu absolute right-0 ${outside} w-[264px] material rounded-[12px] p-[5px] text-lens-fg`}>
             {more.map((a, i) => {
               const Icon = ICONS[a]!;
               return (
@@ -562,7 +555,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                   type="button"
                   role="menuitem"
                   onClick={() => run(a)}
-                  className="lens-item group flex w-full items-start gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-lens-hover"
+                  className="lens-item group flex w-full items-start gap-3 rounded-[6px] px-2.5 py-[7px] text-left"
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <Icon size={16} strokeWidth={1.9} className="mt-[1px] shrink-0 text-lens-mute transition-colors group-hover:text-[var(--rubric)]" aria-hidden />
@@ -581,7 +574,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 void copy();
                 setTimeout(() => setMenu(false), 700);
               }}
-              className="lens-item group flex w-full items-start gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-lens-hover"
+              className="lens-item group flex w-full items-start gap-3 rounded-[6px] px-2.5 py-[7px] text-left"
               style={{ animationDelay: `${more.length * 30}ms` }}
             >
               {copied ? (

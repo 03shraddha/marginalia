@@ -65,13 +65,15 @@ export function Notebook() {
   return (
     <aside
       aria-label="Notebook"
-      className="fixed bottom-2.5 left-2.5 right-2.5 top-[calc(var(--topbar-h)+6px)] z-[45] flex flex-col overflow-hidden rounded-[18px] border border-rule bg-raised shadow-pop sm:left-auto sm:w-[420px]"
-      style={{ animation: "sheet-in 0.38s var(--ease-out)" }}
+      className="notebook fixed bottom-2.5 right-2.5 top-[calc(var(--topbar-h)+6px)] z-[45] flex w-[420px] flex-col overflow-hidden"
     >
-      <header className={`shrink-0 border-b px-5 pb-3.5 pt-4 transition-colors duration-200 ${scrolled ? "border-rule" : "border-transparent"}`}>
+      <div className="notebook-grabber" aria-hidden>
+        <span className="grabber" />
+      </div>
+      <header className={`shrink-0 px-5 pb-3.5 pt-4 transition-shadow duration-200 max-sm:pt-1 ${scrolled ? "shadow-[inset_0_-0.5px_0_var(--hairline)]" : ""}`}>
         <div className="flex items-center gap-1">
           <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-[23px] font-[420] leading-none tracking-[-0.015em] text-ink [font-variation-settings:'opsz'_36]">Notebook</h2>
+            <h2 className="text-[22px] font-bold leading-none tracking-[-0.022em] text-ink">Notebook</h2>
             <p className="mt-1.5 text-[12.5px] leading-none text-ink-3">{summary || "Empty for now"}</p>
           </div>
           <HeadBtn
@@ -101,14 +103,14 @@ export function Notebook() {
           >
             <Download size={16} />
           </HeadBtn>
-          <span aria-hidden className="mx-1 h-4 w-px bg-rule" />
+          <span aria-hidden className="mx-1 h-4 w-[0.5px] bg-rule-strong" />
           <HeadBtn label="Close notebook" onClick={() => setUI({ notebookOpen: false })}>
             <X size={17} />
           </HeadBtn>
         </div>
 
         {both && (
-          <div role="tablist" aria-label="Show" className="mt-4 grid grid-cols-3 rounded-[10px] bg-sunk p-[3px]">
+          <div role="tablist" aria-label="Show" className="seg mt-4 grid-cols-3">
             {(
               [
                 ["all", "All", entries.length],
@@ -122,9 +124,7 @@ export function Notebook() {
                 role="tab"
                 aria-selected={filter === k}
                 onClick={() => setFilter(k)}
-                className={`flex h-7 items-center justify-center gap-1.5 rounded-[8px] text-[12.5px] font-medium transition-colors ${
-                  filter === k ? "bg-pill text-ink shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-ink-3 hover:text-ink"
-                }`}
+                className="seg-btn"
               >
                 {label}
                 <span className="tabular-nums text-ink-4">{count}</span>
@@ -176,7 +176,7 @@ function HeadBtn({ label, onClick, disabled, children }: { label: string; onClic
       data-tip={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:pointer-events-none disabled:opacity-35"
+      className="grid size-9 place-items-center rounded-full text-accent transition-colors hover:bg-fill disabled:pointer-events-none disabled:text-ink-4 max-sm:size-11"
     >
       {children}
     </button>
@@ -214,7 +214,7 @@ function GlossEntry({ g }: { g: Gloss }) {
   };
 
   return (
-    <article className="group relative rounded-[14px] border border-rule bg-bg px-4 pb-4 pt-3.5 transition-colors hover:border-rule-strong">
+    <article className="group relative rounded-[14px] bg-raised px-4 pb-4 pt-3.5 shadow-[var(--shadow-card)] transition-shadow">
       <button type="button" onClick={go} className="block w-full pr-7 text-left">
         <Meta n={n} label={label} at={g.createdAt} />
         {g.anchor && (

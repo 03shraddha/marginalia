@@ -28,12 +28,12 @@ export function Brief() {
       <button
         type="button"
         onClick={() => fetchBrief(ix)}
-        className="group mt-6 flex w-full items-center gap-5 rounded-[16px] border border-rule bg-raised/60 py-4 pl-5 pr-4 text-left transition-[border-color,background-color,transform,box-shadow] duration-200 hover:border-rule-strong hover:bg-raised hover:shadow-card active:scale-[0.995]"
+        className="group mt-6 flex w-full items-center gap-5 rounded-[16px] bg-raised py-4 pl-5 pr-4 text-left shadow-[var(--shadow-card)] transition-[transform,box-shadow] duration-200 hover:shadow-[var(--shadow-pop)] active:scale-[0.99]"
       >
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 font-serif text-[19px] leading-none tracking-[-0.01em] text-ink [font-variation-settings:'opsz'_24]">
+          <span className="flex items-center gap-1.5 text-[17px] font-semibold leading-none tracking-[-0.02em] text-ink">
             Gloss this text
-            <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-rubric-text" aria-hidden />
+            <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-accent" aria-hidden />
           </span>
           <span className="mt-1.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
         </span>
@@ -50,19 +50,19 @@ export function Brief() {
         <p className="text-rubric-text">{brief.error}</p>
         {brief.needKey && (
           <>
-            <button type="button" onClick={openKeyMenu} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
-              Add your Together key
+            <button type="button" onClick={openKeyMenu} className="link-accent font-semibold">
+              Add your Sarvam key
             </button>
             <Show when="signed-out">
               <SignInButton mode="modal">
-                <button type="button" className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+                <button type="button" className="link-accent font-semibold">
                   Sign in
                 </button>
               </SignInButton>
             </Show>
           </>
         )}
-        <button type="button" onClick={() => fetchBrief(ix)} className="font-medium text-ink underline decoration-rule-strong underline-offset-4">
+        <button type="button" onClick={() => fetchBrief(ix)} className="link-accent font-semibold">
           Try again
         </button>
       </div>
@@ -72,14 +72,14 @@ export function Brief() {
   const { data, usage, modelKey } = brief;
   const caveats = data.caveats ?? [];
   return (
-    <section aria-label="Gloss" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
+    <section aria-label="Gloss" className="mt-6 rounded-[16px] bg-raised px-5 shadow-[var(--shadow-card)]">
       <button
         type="button"
         onClick={() => setUI({ briefOpen: !open })}
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        <span className="text-[13.5px] font-medium text-ink">Gloss</span>
+        <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Gloss</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
           {caveats.length > 0 && ` \u00b7 ${caveats.length} ${caveats.length === 1 ? "caveat" : "caveats"}`}
@@ -87,7 +87,7 @@ export function Brief() {
         <ChevronDown size={16} className={`ml-auto text-ink-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="rise border-t border-rule pb-5 pt-4" style={{ animationDuration: "0.45s" }}>
+        <div className="rise border-t-[0.5px] border-rule-strong pb-5 pt-4" style={{ animationDuration: "0.45s" }}>
           <div className="gloss-body !text-[16px] !leading-[1.6] text-pretty">
             <Answer text={data.gist} />
           </div>

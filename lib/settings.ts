@@ -65,7 +65,7 @@ export const THEMES: { key: Settings["theme"]; label: string; bg: string; fg: st
   { key: "paper", label: "Paper", bg: "#f6f3ec", fg: "#1d1b18", dark: false },
   { key: "sepia", label: "Sepia", bg: "#f1e6cf", fg: "#33281b", dark: false },
   { key: "snow", label: "Snow", bg: "#ffffff", fg: "#141518", dark: false },
-  { key: "night", label: "Night", bg: "#151412", fg: "#e9e3d6", dark: true },
+  { key: "night", label: "Night", bg: "#1c1c1e", fg: "#f2f2f7", dark: true },
   { key: "ink", label: "Ink", bg: "#0f1319", fg: "#e3e8f0", dark: true },
 ];
 

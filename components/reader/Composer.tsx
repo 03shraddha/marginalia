@@ -42,7 +42,7 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => ask(s)}
-              className="rounded-full border border-rule bg-raised/95 px-3 py-1.5 text-[12.5px] text-ink-2 shadow-card backdrop-blur transition-colors hover:border-rule-strong hover:text-ink"
+              className="material rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ink-2 transition-colors hover:text-ink max-sm:min-h-[36px]"
             >
               {s}
             </button>
@@ -54,8 +54,8 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           e.preventDefault();
           ask(q);
         }}
-        className={`pointer-events-auto mx-auto flex max-w-[34rem] items-center gap-2 rounded-[16px] border bg-raised/92 py-1.5 pl-4 pr-1.5 shadow-pop backdrop-blur-md transition-[border-color,max-width] duration-300 ease-[var(--ease-out)] ${
-          focused ? "max-w-[38rem] border-rule-strong" : "border-rule"
+        className={`material pointer-events-auto mx-auto flex max-w-[34rem] items-center gap-2 rounded-full py-1.5 pl-5 pr-1.5 transition-[box-shadow,max-width] duration-300 ease-[var(--ease-out)] ${
+          focused ? "max-w-[38rem] !shadow-[0_0_0_3.5px_color-mix(in_srgb,var(--accent)_40%,transparent),var(--shadow-pop)]" : ""
         }`}
       >
         <input
@@ -72,7 +72,7 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           }}
           placeholder="Ask about the whole text"
           aria-label="Ask anything about the whole text"
-          className="h-9 min-w-0 flex-1 bg-transparent text-[14.5px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-3"
+          className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-3 max-sm:h-11"
         />
         {!focused && !q && <kbd className="hidden sm:inline">/</kbd>}
         <VoiceAsk
@@ -88,7 +88,7 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           aria-label="Ask"
           data-tip="Ask"
           data-tip-kbd={"\u21b5"}
-          className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-ink text-bg transition-opacity disabled:opacity-25"
+          className="btn-accent size-9 shrink-0 max-sm:size-11"
         >
           <ArrowUp size={17} strokeWidth={2.3} />
         </button>

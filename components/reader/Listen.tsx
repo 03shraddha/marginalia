@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { DEFAULT_LANG, DEFAULT_VOICE, isVoice, isVoiceLang, TTS_MAX_CHARS, VOICE_LANGS, VOICES, type VoiceId, type VoiceLang } from "@/lib/voice";
 import { barBtn } from "@/components/ui/Popover";
 import { useReader } from "./context";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Read aloud. The text is spoken a passage at a time from where you are, each
@@ -215,7 +216,7 @@ export function startListening(ix: DocIndex, fromBlock: string | null) {
     if (isVoiceLang(v.lang)) useListen.setState({ lang: v.lang });
   } catch {}
   if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: ix.article.title, artist: ix.article.author ?? ix.article.source ?? "Gloss" });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: ix.article.title, artist: ix.article.author ?? ix.article.source ?? BRAND.name });
     navigator.mediaSession.setActionHandler("play", () => toggleListening());
     navigator.mediaSession.setActionHandler("pause", () => toggleListening());
   }

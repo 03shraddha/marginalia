@@ -50,13 +50,13 @@ function KeyButton() {
       <button
         type="button"
         onClick={openKeyMenu}
-        className="inline-flex h-8 items-center rounded-full bg-ink px-3.5 text-[12.5px] font-medium text-bg transition-transform active:scale-[0.97]"
+        className="btn-accent h-8 px-3.5 text-[13px]"
       >
-        Add your Together key
+        Add your Sarvam key
       </button>
       <Show when="signed-out">
         <SignInButton mode="modal">
-          <button type="button" className="inline-flex h-8 items-center rounded-full border border-rule px-3.5 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-rule-strong hover:text-ink">
+          <button type="button" className="btn-gray h-8 px-3.5 text-[13px]">
             Sign in
           </button>
         </SignInButton>
@@ -196,7 +196,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       data-gloss={gloss.id}
       aria-label={`${label} note${n ? ` on paragraph ${n}` : ""}`}
       className={[
-        variant === "margin" ? "gloss" : "gloss !relative !transform-none",
+        variant === "margin" ? "gloss" : "gloss is-flat !relative !transform-none",
         active ? "is-active" : "",
         hover ? "is-hover" : "",
         entering ? "is-entering" : "",
@@ -206,7 +206,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       onMouseLeave={() => setUI({ hoverGloss: null })}
     >
       <header className="mb-2 flex h-5 items-center gap-2 text-[12px] leading-none">
-        <span className="font-semibold text-rubric-text">{label}</span>
+        <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-rubric-text">{label}</span>
         {where && (
           <button
             type="button"
@@ -232,7 +232,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               e.stopPropagation();
               setUI({ activeGloss: null });
             }}
-            className="-mr-1.5 ml-auto grid size-6 place-items-center rounded-md text-ink-4 transition-colors hover:bg-sunk hover:text-ink"
+            className="-mr-1.5 ml-auto grid size-6 place-items-center rounded-full text-ink-4 transition-colors hover:bg-fill hover:text-ink"
           >
             <ChevronsDownUp size={14} />
           </button>
@@ -240,9 +240,9 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       </header>
 
       {gloss.anchor && gloss.action !== "ask" && (
-        <p className="mb-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-2.5 font-serif text-[15px] leading-snug text-ink-3">{gloss.anchor.quote}</p>
+        <p className="mb-2.5 line-clamp-2 rounded-[8px] bg-fill px-2.5 py-1.5 font-serif text-[15px] leading-snug text-ink-2">{gloss.anchor.quote}</p>
       )}
-      {gloss.question && <p className="mb-1.5 text-[14px] font-medium leading-snug text-ink">{gloss.question}</p>}
+      {gloss.question && <p className="mb-1.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-ink">{gloss.question}</p>}
 
       <div className="gloss-body">
         <TurnBody t={first} />
@@ -250,7 +250,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
 
       {gloss.turns.slice(1).map((t, i) =>
         t.role === "user" ? (
-          <p key={i} className="mt-3.5 flex gap-1.5 border-t border-rule pt-3 text-[13.5px] font-medium leading-snug text-ink">
+          <p key={i} className="mt-3.5 flex gap-1.5 border-t-[0.5px] border-rule-strong pt-3 text-[14px] font-semibold leading-snug text-ink">
             <CornerDownRight size={14} className="mt-[2px] shrink-0 text-ink-4" aria-hidden />
             {t.content}
           </p>
@@ -292,7 +292,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
             )}
           </footer>
           <form
-            className="mt-2.5 flex items-center gap-1.5 rounded-[10px] border border-rule bg-bg px-2.5 transition-colors focus-within:border-rule-strong"
+            className="field mt-2.5 flex items-center gap-1.5 !rounded-full pl-3.5 pr-1"
             onSubmit={(e) => {
               e.preventDefault();
               submit();
@@ -311,7 +311,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               }}
               placeholder="Ask a follow-up"
               aria-label="Ask a follow-up"
-              className="h-9 min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-4"
+              className="h-9 min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-3 max-sm:h-11"
             />
             <button
               type="submit"
@@ -319,7 +319,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               aria-label="Send follow-up"
               data-tip="Send"
               data-tip-kbd={"\u21b5"}
-              className="grid size-6 place-items-center rounded-md bg-ink text-bg transition-opacity disabled:opacity-20"
+              className="btn-accent size-7 max-sm:size-9"
             >
               <ArrowUp size={14} strokeWidth={2.4} />
             </button>
@@ -348,7 +348,7 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
         e.stopPropagation();
         onClick();
       }}
-      className="grid size-7 place-items-center rounded-md text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
+      className="grid size-7 place-items-center rounded-full text-ink-3 transition-colors hover:bg-fill hover:text-accent max-sm:size-11"
     >
       {children}
     </button>
