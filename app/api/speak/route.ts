@@ -1,16 +1,15 @@
-import { needKey } from "@/lib/quota";
-import { APP_UA } from "@/lib/together";
-import { TTS_MAX_CHARS, TTS_MODEL, TTS_URL, TTS_VOICE } from "@/lib/voice";
+import { allow, clientId } from "@/lib/ratelimit";
+import { DEFAULT_LANG, DEFAULT_VOICE, isVoice, isVoiceLang, TTS_MAX_CHARS, TTS_MODEL, TTS_URL } from "@/lib/voice";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * One passage, spoken. The audio streams straight through from Together as
- * MP3, so playback can begin before the whole clip exists.
+ * One passage, spoken by Sarvam Bulbul on the app's own key. The MP3 streams
+ * straight through, so playback can begin before the whole clip exists.
  */
 export async function POST(req: Request) {
-  let body: { text?: string; apiKey?: string };
+  let body: { text?: string; voice?: string; lang?: string };
   try {
     body = await req.json();
   } catch {
@@ -19,19 +18,25 @@ export async function POST(req: Request) {
   const text = (body.text ?? "").trim();
   if (!text) return Response.json({ error: "Nothing to read." }, { status: 400 });
   if (text.length > TTS_MAX_CHARS + 200) return Response.json({ error: "That passage is too long to read in one go." }, { status: 413 });
+  const speaker = isVoice(body.voice) ? body.voice : DEFAULT_VOICE;
+  const language_code = isVoiceLang(body.lang) ? body.lang : DEFAULT_LANG;
 
-  const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-  // Reading aloud is never on the shared key: a minute of voice costs more than a day of free answers.
-  const apiKey = body.apiKey?.trim() || headerKey || undefined;
-  if (!apiKey) return needKey(null, "Reading aloud uses your own Together API key. Add it to listen.");
+  const apiKey = process.env.SARVAM_API_KEY;
+  if (!apiKey) return Response.json({ error: "Reading aloud is not set up on this server." }, { status: 503 });
+
+  // A clip is a paragraph or so, fetched two ahead of the voice: generous for one reader, a ceiling for a script.
+  const who = clientId(req);
+  if (!allow(`speak:${who}`, 40, 60_000) || !allow(`speak-day:${who}`, 1500, 86_400_000)) {
+    return Response.json({ error: "Too much reading aloud for now. Wait a minute, then try again." }, { status: 429 });
+  }
 
   let res: Response;
   try {
     res = await fetch(TTS_URL, {
       method: "POST",
       signal: req.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "User-Agent": APP_UA },
-      body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: "mp3" }),
+      headers: { "Content-Type": "application/json", "api-subscription-key": apiKey },
+      body: JSON.stringify({ model: TTS_MODEL, speaker, language_code, text, output_audio_codec: "mp3", enable_preprocessing: true }),
     });
   } catch {
     return Response.json({ error: "Could not reach the voice. Check your connection." }, { status: 502 });
@@ -42,8 +47,8 @@ export async function POST(req: Request) {
       const j = (await res.json()) as { error?: { message?: string } | string };
       msg = typeof j.error === "string" ? j.error : j.error?.message ?? msg;
     } catch {}
-    if (res.status === 401) msg = "Together rejected that API key. Check it and try again.";
-    return Response.json({ error: msg }, { status: res.status === 401 || res.status === 429 ? res.status : 502 });
+    if (res.status === 401 || res.status === 403) msg = "The voice service rejected the server's key.";
+    return Response.json({ error: msg }, { status: res.status === 429 ? 429 : 502 });
   }
   return new Response(res.body, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
 }
