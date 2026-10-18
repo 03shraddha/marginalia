@@ -140,11 +140,10 @@ function ReaderInner({ article }: { article: Article }) {
 
   // Without a margin the answer is a sheet that would cover the key prompt: put it down first.
   useEffect(() => {
-    if (wide) return;
     const lower = () => setUI({ activeGloss: null });
     window.addEventListener("gloss:key", lower);
     return () => window.removeEventListener("gloss:key", lower);
-  }, [wide, setUI]);
+  }, [setUI]);
 
   // Reset per-article UI when the article changes.
   useEffect(() => {
@@ -578,7 +577,7 @@ function ReaderInner({ article }: { article: Article }) {
             </div>
 
             <div className="rg-gutter" aria-hidden />
-            <div className="rg-margin min-w-0">{wide && <Margin glosses={glosses} notes={notes} articleEl={articleEl} gutter={gutter} onOpenNote={openNote} />}</div>
+            <div className="rg-margin min-w-0">{wide && <Margin glosses={[]} notes={notes} articleEl={articleEl} gutter={gutter} onOpenNote={openNote} />}</div>
           </div>
         </main>
 
@@ -597,7 +596,7 @@ function ReaderInner({ article }: { article: Article }) {
         <Notebook />
         <Peek peek={peek} />
         <Shortcuts />
-        {!wide && <GlossSheet />}
+        <GlossSheet />
 
         {toast?.kind === "resume" && (
           <Toast onClose={() => setToast(null)}>
@@ -632,7 +631,7 @@ function ReaderInner({ article }: { article: Article }) {
 
 const EMPTY: Mark[] = [];
 
-/** Under 1080px there is no margin, so the active gloss rises as a sheet. */
+/** The active gloss rises as a bottom sheet, like on an iPhone. */
 function GlossSheet() {
   const { ix } = useReader();
   const glosses = useGlosses(ix.article.id);
@@ -643,7 +642,7 @@ function GlossSheet() {
   if (!g || notebookOpen) return null;
   return (
     <div
-      className="sheet scroll-thin fixed inset-x-0 bottom-0 z-[52] mx-auto max-h-[70dvh] max-w-[680px] overflow-y-auto pb-[max(12px,env(safe-area-inset-bottom))]"
+      className="sheet scroll-thin fixed inset-x-0 bottom-0 z-[52] mx-auto max-h-[58dvh] max-w-[680px] overflow-y-auto pb-[max(12px,env(safe-area-inset-bottom))]"
     >
       <div className="sticky top-0 z-10 flex h-11 items-start justify-center pt-[6px]">
         <span className="grabber" aria-hidden />

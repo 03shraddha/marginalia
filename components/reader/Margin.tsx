@@ -165,7 +165,7 @@ export function Margin({
 
   return (
     <div ref={colRef} className="relative" style={{ minHeight: layout.height + 40 }}>
-      {glosses.length === 0 && notes.length === 0 && <EmptyMargin top={layout.hintTop} />}
+      {/* Answers rise as a sheet now, so the margin shows only the reader's notes. */}
 
       <svg className="pointer-events-none absolute top-0 overflow-visible" style={{ left: -gutter, width: gutter, height: Math.max(1, layout.height) }} aria-hidden>
         {lead.map((id) => {
