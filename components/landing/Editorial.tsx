@@ -36,14 +36,14 @@ export function Editorial() {
 
       <div className="mg-speedline">
         <p className="mg-speed-big">
-          &lt;1<span>s</span>
+          ~1<span>s</span>
         </p>
         <p className="mg-speed-copy">
-          <strong>to the first word.</strong> Answers stream from {MODEL_LINE}, so the note starts to appear while your eyes are still on the line.
+          <strong>to the first word, most of the time.</strong> Answers stream from {MODEL_LINE}, so the note starts to appear while you are still on the line.
         </p>
       </div>
 
-      <h3 className="mg-subhead">Coming to {NAME}</h3>
+      <h3 className="mg-subhead">Also in {NAME}</h3>
       <ul className="mg-soon">
         {SOON.map(({ tone, Icon, title, body }) => (
           <li key={title} className={`mg-pcard is-${tone} is-wide`}>
