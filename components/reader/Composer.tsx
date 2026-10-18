@@ -6,6 +6,7 @@ import { ARTICLE_QUESTIONS } from "@/lib/actions";
 import { startGloss } from "@/lib/ask";
 import { useReader } from "./context";
 import { WebSwitch } from "./WebSwitch";
+import { VoiceAsk } from "./VoiceAsk";
 
 export type ComposerHandle = { focus: () => void };
 
@@ -74,6 +75,12 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           className="h-9 min-w-0 flex-1 bg-transparent text-[14.5px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-3"
         />
         {!focused && !q && <kbd className="hidden sm:inline">/</kbd>}
+        <VoiceAsk
+          onText={(t) => {
+            setQ((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t));
+            inputRef.current?.focus();
+          }}
+        />
         <WebSwitch />
         <button
           type="submit"

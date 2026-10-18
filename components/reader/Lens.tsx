@@ -9,6 +9,7 @@ import { startGloss } from "@/lib/ask";
 import { uid, useStore, type Anchor } from "@/lib/store";
 import { useReader } from "./context";
 import { WebSwitch } from "./WebSwitch";
+import { VoiceAsk } from "./VoiceAsk";
 
 type LensState = {
   anchor: Anchor;
@@ -506,6 +507,13 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                 placeholder={short ? "Ask about this word" : "Ask about this passage"}
                 aria-label="Your question about the selected passage"
                 className="h-8 min-w-0 flex-1 bg-transparent text-[14px] text-lens-fg outline-none focus-visible:outline-none placeholder:text-lens-mute"
+              />
+              <VoiceAsk
+                tone="lens"
+                onText={(t) => {
+                  setDraft((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t));
+                  inputRef.current?.focus();
+                }}
               />
               <WebSwitch tone="lens" />
               <button

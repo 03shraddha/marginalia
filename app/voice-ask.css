@@ -1,0 +1,114 @@
+/* Ask by voice: the mic button in the question boxes (components/reader/VoiceAsk.tsx). */
+
+.voice-ask {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  --va-fg: var(--ink-3);
+  --va-fg-hover: var(--ink);
+  --va-hover-bg: var(--bg-sunk);
+  --va-live: #e5484d;
+}
+
+.voice-ask--lens {
+  --va-fg: var(--lens-mute);
+  --va-fg-hover: var(--lens-fg);
+  --va-hover-bg: var(--lens-hover);
+}
+
+.voice-ask__btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--va-fg);
+  transition: color 0.15s, background-color 0.15s, transform 0.15s;
+}
+.voice-ask__btn:hover:not(:disabled) {
+  color: var(--va-fg-hover);
+  background: var(--va-hover-bg);
+}
+.voice-ask__btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.voice-ask__btn:disabled {
+  cursor: default;
+}
+.voice-ask[data-phase="recording"] .voice-ask__btn {
+  color: #fff;
+  background: var(--va-live);
+}
+
+.voice-ask__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--va-fg-hover);
+  white-space: nowrap;
+}
+.voice-ask__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--va-live);
+  animation: voice-ask-pulse 1.2s ease-in-out infinite;
+}
+.voice-ask__hint {
+  color: var(--va-fg);
+  font-size: 11px;
+}
+@media (max-width: 480px) {
+  .voice-ask__hint {
+    display: none;
+  }
+}
+
+.voice-ask__spin {
+  animation: voice-ask-spin 0.9s linear infinite;
+}
+
+.voice-ask__error {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 40;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow: var(--shadow-card);
+  animation: rise 0.25s var(--ease-out) both;
+}
+
+@keyframes voice-ask-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(229 72 77 / 0.5);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 5px rgb(229 72 77 / 0);
+  }
+}
+@keyframes voice-ask-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-ask__dot,
+  .voice-ask__spin {
+    animation-duration: 2.4s;
+  }
+}
