@@ -5,7 +5,7 @@
  */
 
 import { TOPIC, type TopicKey } from "./library";
-import { APP_UA } from "./together";
+import { APP_UA } from "./llm";
 
 const MODEL = "black-forest-labs/FLUX.2-dev";
 const SIZE = 640;
@@ -16,8 +16,9 @@ const SIZE = 640;
 export const COVER_USD = 0.02;
 
 export async function paintCover(req: { scene: string; topic: TopicKey; apiKey?: string; signal?: AbortSignal }): Promise<{ ok: true; jpeg: Uint8Array } | { ok: false; error: string }> {
-  const apiKey = req.apiKey?.trim() || process.env.TOGETHER_API_KEY;
-  if (!apiKey) return { ok: false, error: "No Together API key." };
+  // Covers paint on Gloss's Together key only. A reader's own key is a Sarvam key and never goes to Together.
+  const apiKey = process.env.TOGETHER_API_KEY;
+  if (!apiKey) return { ok: false, error: "Cover painting is not set up on this server." };
   const prompt = `Editorial risograph print. ${req.scene.replace(/\.?$/, ".")} Two-colour palette of ${TOPIC[req.topic].inks} ink on warm cream paper filling the whole image, grain and halftone texture, mid-century book-cover illustration, wordless, no lettering, no border.`;
   let res: Response;
   try {

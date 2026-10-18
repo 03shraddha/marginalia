@@ -1,16 +1,60 @@
 /**
- * Together AI client. Server-side only. Raw fetch, OpenAI-compatible SSE.
+ * Sarvam v2 chat completions client. Server-side only. Raw fetch, OpenAI-compatible SSE.
  *
- * Things learned the hard way, kept on purpose:
- * 1. A named User-Agent. Together's WAF has 403'd the default undici agent.
- * 2. stream_options.include_usage, so the cost receipt is real, not a guess.
- * 3. Errors come back as JSON: surface error.message, not the raw body.
- * 4. enable_thinking:false keeps reasoners from spending the budget thinking.
- *    Verified per model on 2026-10-08 with the full sample article (11k tokens).
+ * Latency on deepseekv4.1-flash, measured 2026-10-18 on the Walden sample
+ * (about 5k prompt tokens): ~0.5s to first token with thinking off, 1.2-1.7s
+ * with it on (the default when omitted is "max" effort). So:
+ * 1. enable_thinking:false on every streamed answer. It is the biggest lever.
+ *    Sarvam's docs also warn that response_format with thinking on can
+ *    return content:null, so JSON calls that think drop response_format.
+ * 2. Node's fetch pools keep-alive sockets; warm() opens one before the first
+ *    question so it does not pay for DNS and TLS.
+ * 3. The system message holds only the text (see prompts.ts), so the prefix
+ *    cache serves every follow-up on the same article.
+ * 4. stream_options.include_usage, so the cost receipt is real, not a guess.
+ * 5. Errors come back as JSON: surface error.message, not the raw body.
  */
 
+export const SARVAM_URL = "https://api.sarvam.ai/v2/chat/completions";
+/** Still used for the image and vision models that only Together serves (covers, scanned PDF pages). */
 export const TOGETHER_URL = "https://api.together.xyz/v1/chat/completions";
 export const APP_UA = "Gloss/0.1";
+
+export const sarvamKey = (own?: string) => own?.trim() || process.env.SARVAM_API_KEY || "";
+
+const headers = (apiKey: string) => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${apiKey}`,
+  "api-subscription-key": apiKey,
+  "User-Agent": APP_UA,
+});
+
+let warmedAt = 0;
+/** Opens a pooled connection to Sarvam ahead of the first question. Cheap, and at most once a minute. */
+export function warm() {
+  const key = process.env.SARVAM_API_KEY;
+  if (!key || Date.now() - warmedAt < 60_000) return;
+  warmedAt = Date.now();
+  fetch("https://api.sarvam.ai/v2/models", { headers: headers(key), signal: AbortSignal.timeout(5_000) })
+    .then((r) => r.body?.cancel())
+    .catch(() => {});
+}
+warm();
+
+/** sarvam-105b can repeat a tool call's arguments ("{...}{...}"). Keep the first object. */
+function firstJSON(args: string): string {
+  const t = args.trim();
+  try {
+    JSON.parse(t);
+    return t;
+  } catch {}
+  let depth = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === "{") depth++;
+    else if (t[i] === "}" && --depth === 0) return t.slice(0, i + 1);
+  }
+  return t;
+}
 
 import { MODELS, costFor, type ModelEntry, type ModelKey, type StreamEvent, type Usage } from "./models";
 
@@ -42,9 +86,9 @@ function errorMessage(status: number, body: string): string {
   } catch {
     /* not JSON */
   }
-  if (status === 401) return "Together rejected that API key. Check it and try again.";
-  if (status === 429) return "Together is rate limiting this key. Wait a moment, or use your own key.";
-  return `Together API ${status}: ${msg}`;
+  if (status === 401 || status === 403) return "Sarvam rejected that API key. Check it and try again.";
+  if (status === 429) return "Sarvam is rate limiting this key. Wait a moment, or use your own key.";
+  return `Sarvam API ${status}: ${msg}`;
 }
 
 export async function* streamChat(req: {
@@ -60,9 +104,9 @@ export async function* streamChat(req: {
   toolChoice?: "auto" | "none";
 }): AsyncGenerator<StreamEvent> {
   const model: ModelEntry = MODELS[req.model];
-  const apiKey = req.apiKey?.trim() || process.env.TOGETHER_API_KEY;
+  const apiKey = sarvamKey(req.apiKey);
   if (!apiKey) {
-    yield { type: "error", text: "No Together API key. Set TOGETHER_API_KEY, or add your own key." };
+    yield { type: "error", text: "No Sarvam API key. Set SARVAM_API_KEY, or add your own key." };
     return;
   }
 
@@ -70,14 +114,10 @@ export async function* streamChat(req: {
 
   let res: Response;
   try {
-    res = await fetch(TOGETHER_URL, {
+    res = await fetch(SARVAM_URL, {
       method: "POST",
       signal: req.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "User-Agent": APP_UA,
-      },
+      headers: headers(apiKey),
       body: JSON.stringify({
         model: model.id,
         stream: true,
@@ -91,7 +131,7 @@ export async function* streamChat(req: {
     });
   } catch (e) {
     if (req.signal?.aborted) return;
-    yield { type: "error", text: `Could not reach Together: ${String(e)}` };
+    yield { type: "error", text: `Could not reach Sarvam: ${String(e)}` };
     return;
   }
 
@@ -109,7 +149,7 @@ export async function* streamChat(req: {
   const calls: { id: string; name: string; args: string }[] = [];
 
   const finish = (): StreamEvent => {
-    if (calls[0]?.name) return { type: "tool", id: calls[0].id || "call_0", name: calls[0].name, args: calls[0].args };
+    if (calls[0]?.name) return { type: "tool", id: calls[0].id || "call_0", name: calls[0].name, args: firstJSON(calls[0].args) };
     return !sawContent && sawReasoning ? { type: "error", text: `${model.label} answered only in its reasoning. Try again.` } : { type: "done" };
   };
 
@@ -171,26 +211,27 @@ export async function completeJSON<T>(req: {
   thinking?: boolean;
 }): Promise<{ ok: true; data: T; usage: Usage } | { ok: false; error: string }> {
   const model: ModelEntry = MODELS[req.model];
-  const apiKey = req.apiKey?.trim() || process.env.TOGETHER_API_KEY;
-  if (!apiKey) return { ok: false, error: "No Together API key. Set TOGETHER_API_KEY, or add your own key." };
+  const apiKey = sarvamKey(req.apiKey);
+  if (!apiKey) return { ok: false, error: "No Sarvam API key. Set SARVAM_API_KEY, or add your own key." };
 
   let res: Response;
   try {
-    res = await fetch(TOGETHER_URL, {
+    res = await fetch(SARVAM_URL, {
       method: "POST",
       signal: req.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "User-Agent": APP_UA },
+      headers: headers(apiKey),
       body: JSON.stringify({
         model: model.id,
         temperature: 0.3,
         max_tokens: req.maxTokens ?? 1400,
         chat_template_kwargs: { enable_thinking: Boolean(req.thinking) },
-        response_format: { type: "json_object" },
+        // With thinking on, Sarvam can return content:null for response_format. The parser below finds the {...} either way.
+        ...(req.thinking ? {} : { response_format: { type: "json_object" } }),
         messages: req.messages,
       }),
     });
   } catch (e) {
-    return { ok: false, error: `Could not reach Together: ${String(e)}` };
+    return { ok: false, error: `Could not reach Sarvam: ${String(e)}` };
   }
   const body = await res.text();
   if (!res.ok) return { ok: false, error: errorMessage(res.status, body) };

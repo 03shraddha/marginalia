@@ -1,5 +1,5 @@
 import { needKey } from "@/lib/quota";
-import { APP_UA } from "@/lib/together";
+import { APP_UA } from "@/lib/llm";
 import { TTS_MAX_CHARS, TTS_MODEL, TTS_URL, TTS_VOICE } from "@/lib/voice";
 
 export const runtime = "nodejs";

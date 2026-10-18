@@ -1,6 +1,6 @@
 /**
  * The model allow-list and wire types. Safe to import on the client: no keys,
- * no fetches. lib/together.ts does the network side.
+ * no fetches. lib/llm.ts does the network side.
  */
 
 export type ModelEntry = {
@@ -14,29 +14,27 @@ export type ModelEntry = {
 };
 
 /**
- * The allow-list. Route and UI both read it. Bake-off 2026-10-09: 3 sample
- * texts x 8 tasks on the real prompts, answers scored blind by a judge.
- *   V4.1 Flash  0.23s to first token, $0.0006 an answer, 7.3/10, best in 11 of 24
- *   V4 Pro      0.58s, $0.0052, 6.5/10
- *   Kimi K3     0.86s, $0.0096, 6.3/10 (best gloss summaries, weak on Related)
- *   GLM-5.3     0.36s at reasoning_effort low, $0.0048, 6.3/10, 3 of the 4 factual errors
- * GLM-5.3 ignores every thinking-off flag (default effort: a 60s summary).
- * Also left out: Qwen3.8 (prints its reasoning into content with thinking off).
+ * The allow-list. Route and UI both read it. Served by Sarvam's v2 chat
+ * completions endpoint (beta, whitelisted per key).
  *
- * Flash won on quality as well as speed and cost, so it answers everything:
- * there was a "Deep" choice (V4 Pro, then Kimi K3) and it was dropped
- * 2026-10-09. Older answers and settings may still name "pro"; anything that
- * looks a model up goes through modelOf(), which falls back to Flash.
+ * DeepSeek V4.1 Flash, the same model the Together build used, so the prompts
+ * and the 2026-10-09 bake-off still hold. Thinking stays off (see llm.ts):
+ * with it on, Flash defaults to "max" effort and spends seconds before a word.
+ *
+ * Prices are Sarvam's (docs.sarvam.ai pricing, 2026-10-18): ₹25 in, ₹0.5
+ * cached, ₹105 out per 1M tokens, converted at ₹88 to the dollar for the
+ * free-allowance maths in quota.ts.
  */
+const INR = 1 / 88;
 export const MODELS = {
   flash: {
-    id: "deepseek-ai/DeepSeek-V4.1-Flash",
+    id: "deepseekv4.1-flash",
     label: "DeepSeek V4.1 Flash",
     short: "Quick",
-    blurb: "Answers in about half a second. Best for most questions.",
-    inPerM: 0.3,
-    cachedPerM: 0.006,
-    outPerM: 1.2,
+    blurb: "Answers in well under a second. Best for most questions.",
+    inPerM: 25 * INR,
+    cachedPerM: 0.5 * INR,
+    outPerM: 105 * INR,
   },
 } as const satisfies Record<string, ModelEntry>;
 

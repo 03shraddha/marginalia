@@ -23,14 +23,14 @@ export async function POST(req: Request) {
   const scene = typeof body.scene === "string" ? body.scene.slice(0, 300).trim() : "";
   if (!id || !scene || !isTopic(body.topic)) return Response.json({ error: "id, scene and topic are required." }, { status: 400 });
 
+  if (!process.env.TOGETHER_API_KEY) return Response.json({ error: "Cover painting is not set up on this server." }, { status: 503 });
   const apiKey = body.apiKey?.trim() || undefined;
   let free: Awaited<ReturnType<typeof checkFree>> | null = null;
   if (!apiKey) {
-    if (!process.env.TOGETHER_API_KEY) return needKey(null);
     free = await checkFree(req, 12);
     if (!free.ok) return needKey(free);
   }
-  const r = await paintCover({ scene, topic: body.topic, apiKey, signal: req.signal });
+  const r = await paintCover({ scene, topic: body.topic, signal: req.signal });
   if (!r.ok) return Response.json({ error: r.error }, { status: 502 });
   if (free) await chargeFree(free.subject, COVER_USD);
 

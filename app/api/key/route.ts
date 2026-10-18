@@ -1,5 +1,5 @@
 import { peekFree } from "@/lib/quota";
-import { APP_UA } from "@/lib/together";
+import { APP_UA } from "@/lib/llm";
 
 export const runtime = "nodejs";
 
@@ -12,8 +12,8 @@ export async function POST(req: Request) {
   const key = body.apiKey?.trim();
   if (!key) return Response.json({ ok: false });
   try {
-    const res = await fetch("https://api.together.xyz/v1/models", {
-      headers: { Authorization: `Bearer ${key}`, "User-Agent": APP_UA },
+    const res = await fetch("https://api.sarvam.ai/v2/models", {
+      headers: { Authorization: `Bearer ${key}`, "api-subscription-key": key, "User-Agent": APP_UA },
       signal: AbortSignal.timeout(10_000),
     });
     return Response.json({ ok: res.ok });
@@ -24,6 +24,6 @@ export async function POST(req: Request) {
 
 /** Whether there is a shared key, and how much of today's free allowance is left on it. */
 export async function GET(req: Request) {
-  const house = Boolean(process.env.TOGETHER_API_KEY);
+  const house = Boolean(process.env.SARVAM_API_KEY);
   return Response.json({ house, free: house ? await peekFree(req) : null });
 }

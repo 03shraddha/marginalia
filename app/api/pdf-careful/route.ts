@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { parseCarefully, type Tier } from "@/lib/llamaparse";
-import { APP_UA } from "@/lib/together";
+import { APP_UA } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -9,7 +9,7 @@ export const maxDuration = 300;
 /**
  * "Read it more carefully": a PDF read again by LlamaParse, for layouts the
  * free reader gets wrong. It runs on Gloss's LlamaParse key, but only for
- * readers who have added their own Together key; they get a daily page cap.
+ * readers who have added their own Sarvam key; they get a daily page cap.
  */
 // Agentic scored 8.1/10 against cost_effective's 6.9 in scripts/pdf-eval, at $0.0125 a page against $0.0037.
 const TIER: Tier = "agentic";
@@ -19,14 +19,14 @@ const MAX_PAGES = 60;
 const PAGES_PER_DAY = 200;
 const USD_PER_CREDIT = 0.00125;
 
-/** Keys checked recently, so a reader's second PDF does not wait on Together again. */
+/** Keys checked recently, so a reader's second PDF does not wait on Sarvam again. */
 const goodKeys = new Map<string, number>();
 
-async function togetherKeyWorks(key: string): Promise<boolean> {
+async function sarvamKeyWorks(key: string): Promise<boolean> {
   const id = hash(key);
   if ((goodKeys.get(id) ?? 0) > Date.now()) return true;
   try {
-    const res = await fetch("https://api.together.xyz/v1/models", { headers: { Authorization: `Bearer ${key}`, "User-Agent": APP_UA }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetch("https://api.sarvam.ai/v2/models", { headers: { Authorization: `Bearer ${key}`, "api-subscription-key": key, "User-Agent": APP_UA }, signal: AbortSignal.timeout(10_000) });
     if (res.ok) goodKeys.set(id, Date.now() + 3_600_000);
     return res.ok;
   } catch {
@@ -62,7 +62,7 @@ async function record(subject: string, pages: number, usd: number) {
 
 export async function POST(req: Request) {
   const key = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-  if (!key) return Response.json({ error: "Reading carefully needs your Together key. Add it from the key button.", code: "need_key" }, { status: 401 });
+  if (!key) return Response.json({ error: "Reading carefully needs your Sarvam key. Add it from the key button.", code: "need_key" }, { status: 401 });
   if (Number(req.headers.get("content-length") ?? 0) > MAX_BYTES + 10_000) return tooLarge();
 
   let file: File | null = null;
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (!file) return Response.json({ error: "Send the PDF as a file." }, { status: 400 });
   if (file.size > MAX_BYTES) return tooLarge();
 
-  if (!(await togetherKeyWorks(key))) return Response.json({ error: "Together did not accept your key. Check it in the key menu.", code: "need_key" }, { status: 401 });
+  if (!(await sarvamKeyWorks(key))) return Response.json({ error: "Sarvam did not accept your key. Check it in the key menu.", code: "need_key" }, { status: 401 });
 
   const subject = `careful:${hash(key)}`;
   const used = await pagesToday(subject);

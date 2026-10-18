@@ -1,5 +1,5 @@
 import { chargeFree, checkFree, needKey } from "@/lib/quota";
-import { APP_UA, TOGETHER_URL } from "@/lib/together";
+import { APP_UA, TOGETHER_URL } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -59,9 +59,11 @@ export async function POST(req: Request) {
 
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   const own = body.apiKey?.trim() || headerKey || undefined;
+  // Page OCR runs on Gloss's Together key (Sarvam serves no vision OCR model on v2).
+  // A reader's own key is a Sarvam key: it lifts the free cap, it is never sent to Together.
+  if (!process.env.TOGETHER_API_KEY) return Response.json({ error: "Reading scanned pages is not set up on this server." }, { status: 503 });
   let free: Awaited<ReturnType<typeof checkFree>> | null = null;
   if (!own) {
-    if (!process.env.TOGETHER_API_KEY) return needKey(null);
     free = await checkFree(req, 90);
     if (!free.ok) return needKey(free);
   }
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
     res = await fetch(TOGETHER_URL, {
       method: "POST",
       signal: req.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${own ?? process.env.TOGETHER_API_KEY}`, "User-Agent": APP_UA },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`, "User-Agent": APP_UA },
       body: JSON.stringify({
         model,
         stream: true, // Qwen3.8 Flash only answers as a stream
