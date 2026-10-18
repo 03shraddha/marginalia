@@ -22,6 +22,9 @@ export const APP_UA = "Marginalia/0.1";
 
 export const sarvamKey = (own?: string) => own?.trim() || process.env.SARVAM_API_KEY || "";
 
+/** The reader's own key, from the x-sarvam-key request header. Read it, never log or echo it. */
+export const requestKey = (req: Request): string | undefined => req.headers.get("x-sarvam-key")?.trim() || undefined;
+
 const headers = (apiKey: string) => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${apiKey}`,
@@ -86,9 +89,9 @@ function errorMessage(status: number, body: string): string {
   } catch {
     /* not JSON */
   }
-  if (status === 401 || status === 403) return "Sarvam rejected that API key. Check it and try again.";
-  if (status === 429) return "Sarvam is rate limiting this key. Wait a moment, or use your own key.";
-  return `Sarvam API ${status}: ${msg}`;
+  if (status === 401 || status === 403) return "That API key was rejected. Check it and try again.";
+  if (status === 429) return "The model is rate limiting this key. Wait a moment, or use your own key.";
+  return `Model API ${status}: ${msg}`;
 }
 
 export async function* streamChat(req: {
@@ -131,7 +134,7 @@ export async function* streamChat(req: {
     });
   } catch (e) {
     if (req.signal?.aborted) return;
-    yield { type: "error", text: `Could not reach Sarvam: ${String(e)}` };
+    yield { type: "error", text: `Could not reach the model. Try again.` };
     return;
   }
 
@@ -231,7 +234,7 @@ export async function completeJSON<T>(req: {
       }),
     });
   } catch (e) {
-    return { ok: false, error: `Could not reach Sarvam: ${String(e)}` };
+    return { ok: false, error: `Could not reach the model. Try again.` };
   }
   const body = await res.text();
   if (!res.ok) return { ok: false, error: errorMessage(res.status, body) };

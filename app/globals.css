@@ -8,19 +8,19 @@
 /* Light grounds. Each sets its own neutrals; the pen colour is layered on top. */
 :root,
 [data-theme="paper"] {
-  --bg: #f6f3ec;
+  --bg: #ffffff;
   --bg-raised: #ffffff;
-  --bg-sunk: #ede8dd;
-  --ink: #1d1b18;
-  --ink-2: #4b463f;
-  --ink-3: #857e72;
-  --ink-4: #aba394;
-  --rule: #e5dfd2;
-  --rule-strong: #d3cab8;
-  --hl: rgb(242 196 56 / 0.46);
-  --hl-strong: rgb(242 196 56 / 0.7);
-  --bg-pill: #fffdf9;
-  --grain-opacity: 0.045;
+  --bg-sunk: #fafafa;
+  --ink: #1a1a1a;
+  --ink-2: #4d4d4d;
+  --ink-3: #888888;
+  --ink-4: #b5b5b5;
+  --rule: #e8e8e8;
+  --rule-strong: #dadada;
+  --hl: rgb(255 235 120 / 0.7);
+  --hl-strong: rgb(255 220 80 / 0.9);
+  --bg-pill: #ffffff;
+  --grain-opacity: 0;
   --good: #3f7d4e;
   --rubric: var(--pen-l);
   --rubric-text: var(--pen-l-text);
@@ -109,10 +109,10 @@
 /* Pens: the colour the model writes in. One light and one dark tone each. */
 :root,
 [data-pen="vermilion"] {
-  --pen-l: #c1401b;
-  --pen-l-text: #a9361a;
-  --pen-d: #ef7a50;
-  --pen-d-text: #f28b65;
+  --pen-l: #6fa3f0;
+  --pen-l-text: #2f65c4;
+  --pen-d: #86a8ff;
+  --pen-d-text: #9bb7ff;
 }
 [data-pen="cobalt"] {
   --pen-l: #2c58c9;
@@ -135,27 +135,27 @@
 
 /* Apple materials and controls. Light values first; the dark grounds override them. */
 :root {
-  --accent: #007aff;
-  --accent-text: #0066d6;
+  --accent: #1a1a1a;
+  --accent-text: #1a1a1a;
   --on-accent: #ffffff;
-  --switch-on: #34c759;
-  --fill: rgb(120 120 128 / 0.12);
-  --fill-2: rgb(120 120 128 / 0.2);
-  --hairline: rgb(0 0 0 / 0.12);
-  --bar-bg: color-mix(in srgb, var(--bg) 72%, transparent);
-  --material: rgb(252 252 252 / 0.82);
-  --material-thick: rgb(250 250 250 / 0.92);
-  --material-border: rgb(0 0 0 / 0.1);
+  --switch-on: #1a1a1a;
+  --fill: rgb(0 0 0 / 0.05);
+  --fill-2: rgb(0 0 0 / 0.09);
+  --hairline: #e8e8e8;
+  --bar-bg: color-mix(in srgb, var(--bg) 88%, transparent);
+  --material: #ffffff;
+  --material-thick: #ffffff;
+  --material-border: #e8e8e8;
   --lens-bg: var(--material);
   --lens-fg: #1d1d1f;
   --lens-mute: rgb(60 60 67 / 0.6);
   --lens-hover: rgb(0 0 0 / 0.06);
-  --shadow-pop: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.08), 0 14px 36px rgb(0 0 0 / 0.18);
-  --shadow-card: 0 0 0 0.5px rgb(0 0 0 / 0.05), 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 14px rgb(0 0 0 / 0.06);
-  --shadow-sheet: 0 -1px 0 rgb(0 0 0 / 0.04), 0 -10px 40px rgb(0 0 0 / 0.16);
+  --shadow-pop: 0 0 0 1px #e8e8e8, 0 8px 28px rgb(0 0 0 / 0.07);
+  --shadow-card: 0 0 0 1px #e8e8e8;
+  --shadow-sheet: 0 -1px 0 #e8e8e8, 0 -8px 30px rgb(0 0 0 / 0.07);
   --radius-control: 10px;
-  --radius-card: 16px;
-  --radius-sheet: 20px;
+  --radius-card: 14px;
+  --radius-sheet: 18px;
 }
 
 [data-theme="night"],
@@ -189,18 +189,18 @@
   --rubric-key: color-mix(in oklab, var(--rubric) var(--key-a, 13%), transparent);
   --selection: color-mix(in oklab, var(--rubric) 18%, transparent);
   --font-serif: var(--nf-serif), "Iowan Old Style", Georgia, serif;
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-ui: var(--nf-inter), "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: var(--nf-inter), "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-sans: var(--font-ui);
   --font-book: var(--nf-book), "Iowan Old Style", Georgia, serif;
   --font-legible: var(--nf-legible), var(--font-ui);
   /* highlighter inks; alpha per ground */
-  --mk-yellow: #f2c438;
-  --mk-green: #7cc66f;
-  --mk-blue: #6aa8f0;
-  --mk-pink: #f084ac;
-  --hl-a: 46%;
-  --hl-a-strong: 70%;
+  --mk-yellow: #ffeb78;
+  --mk-green: #c8a0ff;
+  --mk-blue: #8cbeff;
+  --mk-pink: #ffb48c;
+  --hl-a: 60%;
+  --hl-a-strong: 85%;
   --read-size: 20px;
   --leading: 1.64;
   --measure-k: 32;
@@ -409,7 +409,7 @@ kbd,
 [data-face="sans"] .prose-read .blk[data-type="h3"],
 [data-face="legible"] .prose-read .blk[data-type="h2"],
 [data-face="legible"] .prose-read .blk[data-type="h3"] {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 }
 
 /* Justified like a printed page, with hyphens so the spacing stays even. */
@@ -524,30 +524,6 @@ kbd,
   text-decoration-color: var(--rule-strong);
   text-underline-offset: 0.2em;
   text-decoration-thickness: 1px;
-}
-
-/* A rubricated initial: the coloured capital of a manuscript, two lines deep. */
-.prose-read .blk.is-first .blk-text::first-letter {
-  float: left;
-  font-size: 3.45em;
-  line-height: 0.84;
-  padding: 0.07em 0.05em 0 0;
-  color: var(--rubric);
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-variation-settings: "opsz" 72;
-}
-
-@supports (initial-letter: 2) or (-webkit-initial-letter: 2) {
-  .prose-read .blk.is-first .blk-text::first-letter {
-    float: none;
-    font-size: inherit;
-    line-height: inherit;
-    padding: 0;
-    -webkit-initial-letter: 2;
-    initial-letter: 2;
-    margin-right: 0.12em;
-  }
 }
 
 /* ---------- paragraph numbers: the shared address system ---------- */
@@ -1975,8 +1951,8 @@ a.desk-tile:focus-visible {
   top: 0;
   display: block;
   padding: 8px 12px 9px 14px;
-  border-left: 3px solid color-mix(in oklab, var(--note-c) 80%, transparent);
-  border-radius: 4px 12px 12px 4px;
+  background: color-mix(in oklab, var(--note-c) 14%, transparent);
+  border-radius: 14px;
   text-align: left;
   font-family: var(--font-serif);
   font-size: 15px;
@@ -2181,13 +2157,14 @@ a.desk-tile:focus-visible {
   justify-content: center;
   gap: 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-text);
-  font-weight: 600;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
+  font-weight: 500;
   transition: background-color 0.15s, transform 0.2s var(--ease-out);
 }
 .btn-tinted:hover {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  background: var(--bg-sunk);
 }
 .btn-tinted:active {
   transform: scale(0.96);

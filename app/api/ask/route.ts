@@ -1,5 +1,5 @@
 import { buildMessages, isLengthKey, webBlock, type DocPayload, type ThreadPayload } from "@/lib/prompts";
-import { DEFAULT_MODEL, isModelKey, streamChat, type ChatMessage, type StreamEvent } from "@/lib/llm";
+import { DEFAULT_MODEL, isModelKey, requestKey, streamChat, type ChatMessage, type StreamEvent } from "@/lib/llm";
 import { ACTIONS } from "@/lib/actions";
 import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
 import { MODELS, type Usage } from "@/lib/models";
@@ -31,20 +31,35 @@ export async function POST(req: Request) {
     return Response.json({ error: "Body must be JSON." }, { status: 400 });
   }
 
+  const isStr = (v: unknown): v is string => typeof v === "string";
+  if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ error: "Body must be a JSON object." }, { status: 400 });
   const { doc, thread } = body;
-  if (!doc?.title || !Array.isArray(doc.paras) || !thread || !(thread.action in ACTIONS)) {
+  if (
+    !doc?.title ||
+    !Array.isArray(doc.paras) ||
+    doc.paras.some((p) => !p || typeof p.n !== "number" || !isStr(p.text)) ||
+    !thread ||
+    !isStr(thread.action) ||
+    !Object.hasOwn(ACTIONS, thread.action) ||
+    (thread.quote != null && !isStr(thread.quote)) ||
+    (thread.question != null && !isStr(thread.question))
+  ) {
     return Response.json({ error: "doc and thread are required." }, { status: 400 });
   }
+  if (thread.action !== "ask" && !thread.quote?.trim()) return Response.json({ error: "Select some text first." }, { status: 400 });
   const docChars = doc.paras.reduce((a, p) => a + (p.text?.length ?? 0), 0);
   if (docChars > MAX_DOC_CHARS) return Response.json({ error: "This text is too long to send in one piece." }, { status: 413 });
   if ((thread.quote?.length ?? 0) > 12_000 || (thread.question?.length ?? 0) > 4_000) {
     return Response.json({ error: "That selection or question is too long." }, { status: 413 });
   }
-  const history = (body.history ?? []).slice(-12).filter((m) => m && (m.role === "user" || m.role === "assistant"));
+  const history = (Array.isArray(body.history) ? body.history : [])
+    .slice(-12)
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && isStr(m.content));
+  while (history.at(-1)?.role === "assistant") history.pop();
 
   const model = isModelKey(body.model) ? body.model : DEFAULT_MODEL;
   const headerKey = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-  const apiKey = body.apiKey?.trim() || headerKey || undefined;
+  const apiKey = requestKey(req) || (isStr(body.apiKey) ? body.apiKey.trim() : "") || (headerKey && headerKey !== "Bearer" ? headerKey : "") || undefined;
   // No key of their own: a few cents of answers a day on the shared key, then they bring one.
   let free: Awaited<ReturnType<typeof checkFree>> | null = null;
   if (!apiKey) {
@@ -58,7 +73,7 @@ export async function POST(req: Request) {
   // their daily budget; readers with their own key get a generous daily cap.
   const canSearch = () => searchEnabled() && (free !== null || allow(`search:${clientId(req)}`, 150, 86_400_000));
   const forced = thread.action === "check" && canSearch();
-  const offerTool = !forced && searchEnabled() && body.search !== false;
+  const offerTool = !forced && searchEnabled() && body.search !== false && (thread.action === "ask" || thread.action === "explain");
   const latest = [...history].reverse().find((m) => m.role === "user")?.content;
   const length = isLengthKey(body.length) ? body.length : "normal";
   const maxTokens = body.length === "long" ? 1400 : 900;
@@ -123,10 +138,12 @@ export async function POST(req: Request) {
         if (usage) controller.enqueue(send({ type: "usage", usage }));
         controller.enqueue(send({ type: "done" }));
       } catch (e) {
-        if (!req.signal.aborted) controller.enqueue(send({ type: "error", text: `Stream failed: ${String(e)}` }));
+        if (!req.signal.aborted) controller.enqueue(send({ type: "error", text: "The answer stopped early. Try again." }));
       } finally {
-        controller.close();
-        if (free) await chargeFree(free.subject, ((usage as Usage | null)?.costUsd ?? estimateUsd(docChars, MODELS[model].inPerM)) + searchUsd);
+        try {
+          controller.close();
+        } catch {}
+        if (free) await chargeFree(free.subject, ((usage as Usage | null)?.costUsd ?? estimateUsd(docChars, MODELS[model].inPerM)) + searchUsd).catch(() => {});
       }
     },
   });

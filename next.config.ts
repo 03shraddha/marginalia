@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
     ? { turbopack: { resolveAlias: { "@clerk/nextjs/server": "./lib/clerk-off/server.ts", "@clerk/nextjs": "./lib/clerk-off/index.tsx" } } }
     : {}),
   poweredByHeader: false,
+  // The library is hidden for now.
+  async redirects() {
+    return [{ source: "/library/:path*", destination: "/", permanent: false }];
+  },
   async headers() {
     return [
       {

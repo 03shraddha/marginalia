@@ -21,7 +21,7 @@ export const unmark = (s: string) => s.replace(/==/g, "");
  * the first sentence. Citations and Markdown are dropped.
  */
 export function keyLine(s: string): string {
-  const marked = s.match(/==([^=]+?)==/)?.[1];
+  const marked = s.match(/==((?:(?!==)[\s\S])+?)==/)?.[1];
   const src = marked ?? s.replace(/^\s*([-*•]|\d+[.)])\s+/gm, "").split(/\n+/).find((l) => l.trim()) ?? "";
   // A citation that is part of the sentence ("[¶1] and [¶4] agree") stays as plain ¶1; trailing ones go.
   const clean = undash(src)
@@ -118,7 +118,7 @@ function citesFrom(raw: string): ReactNode[] {
 function inline(text: string, plain = false, sources?: Source[]): ReactNode[] {
   if (!text.includes("==")) return tokens(text, plain, sources);
   const out: ReactNode[] = [];
-  const re = /==([^=]*?)(?:==|$)/g;
+  const re = /==((?:(?!==)[\s\S])*?)(?:==|$)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {

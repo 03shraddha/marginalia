@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SarvamLink } from "./Sarvam";
 import { BRAND } from "@/lib/brand";
 
 /** Lines of text with a note in the margin: the whole idea in 24px. */
@@ -27,12 +26,9 @@ export function GlossWordmark() {
 export function Lockup({ href = "/" }: { href?: string }) {
   return (
     <div className="flex h-9 items-center gap-3 max-[380px]:gap-2">
-      <Link href={href} aria-label={`${BRAND.name}, back to your library`} className="rounded-md">
+      <Link href={href} aria-label={BRAND.name} className="rounded-md">
         <GlossWordmark />
       </Link>
-      {/* Phones keep the bar for the tools; Sarvam is credited in the reader's footer. */}
-      <span aria-hidden className="h-[16px] w-[0.5px] bg-rule-strong max-[460px]:hidden" />
-      <SarvamLink className="max-[460px]:hidden" />
     </div>
   );
 }

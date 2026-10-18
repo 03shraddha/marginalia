@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { auth } from "@clerk/nextjs/server";
 import { Landing } from "@/components/landing/Landing";
 import { NAME } from "@/components/landing/name";
 import "./landing.css";
@@ -9,7 +8,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default async function Home() {
-  const { userId } = await auth();
-  return <Landing signedIn={Boolean(userId)} />;
+export default function Home() {
+  return <Landing />;
 }

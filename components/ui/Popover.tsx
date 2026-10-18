@@ -12,6 +12,7 @@ export function Popover({
   triggerClass = "",
   tip,
   openOn,
+  bare = false,
 }: {
   label: string;
   trigger: ReactNode;
@@ -23,6 +24,8 @@ export function Popover({
   tip?: string;
   /** A window event that opens the panel from elsewhere on the page. */
   openOn?: string;
+  /** No visible trigger: the panel opens only from the `openOn` event, beside where the trigger would be. */
+  bare?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -65,7 +68,8 @@ export function Popover({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className={`${triggerClass} ${open ? "!bg-fill text-ink" : ""}`}
+        tabIndex={bare ? -1 : undefined}
+        className={bare ? "sr-only" : `${triggerClass} ${open ? "!bg-fill text-ink" : ""}`}
       >
         {trigger}
       </button>

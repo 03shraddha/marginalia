@@ -17,8 +17,9 @@ export async function importFromUrl(raw: string, onProgress?: (p: number, label?
       if (r.ok) r.article.sourceUrl ??= raw.trim();
       return r;
     }
-    const j = (await res.json()) as { article?: Article; error?: string };
-    return j.article ? { ok: true, article: j.article } : { ok: false, error: j.error ?? "Could not import that page." };
+    // A gateway timeout or crash answers with a web page, not JSON: that is the importer failing, not the reader's network.
+    const j = (await res.json().catch(() => ({}))) as { article?: Article; error?: string };
+    return j.article ? { ok: true, article: j.article } : { ok: false, error: j.error ?? "The importer did not answer. Try again, or use Paste text." };
   } catch {
     return { ok: false, error: "Could not reach the importer. Check your connection." };
   }
@@ -68,4 +69,8 @@ export async function keep(a: Article, file?: Blob, extra?: Partial<LibraryItem>
   return null;
 }
 
-export const looksLikeUrl = (s: string) => /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i.test(s.trim()) && !/\s/.test(s.trim());
+/** One link with nothing else: a bare web address, or one in <angle brackets> or quotes. A port is fine; spaces are not. */
+export const looksLikeUrl = (s: string) => {
+  const t = s.trim().replace(/^[<"'\u201C\u2018]+|[>"'\u201D\u2019]+$/g, "");
+  return /^(https?:\/\/)?[\p{L}\p{N}_-]+(\.[\p{L}\p{N}_-]+)+(:\d+)?([/?#]\S*)?$/iu.test(t) && !/\s/.test(t);
+};

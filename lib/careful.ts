@@ -21,7 +21,7 @@ export async function readCarefully(shown: Article, signal?: AbortSignal): Promi
   const pdf = await loadPdf(article.id);
   if (!pdf) return { ok: false, error: "The PDF is not on this device. Open it again from the file to read it carefully." };
   const key = readApiKey();
-  if (!key) return { ok: false, error: "Reading carefully needs your Sarvam key.", needKey: true };
+  if (!key) return { ok: false, error: "Reading carefully needs your API key.", needKey: true };
 
   const form = new FormData();
   form.append("file", pdf, "document.pdf");

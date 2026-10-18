@@ -17,6 +17,12 @@ export function readApiKey(): string {
   }
 }
 
+/** Request headers that carry the reader's own Sarvam key, when they have added one. Never logged. */
+export function keyHeaders(): Record<string, string> {
+  const k = readApiKey().trim();
+  return k ? { "x-sarvam-key": k } : {};
+}
+
 const controllers = new Map<string, AbortController>();
 
 export function stopGloss(id: string) {
@@ -42,11 +48,15 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
   const g = (st.glosses[articleId] ?? []).find((x) => x.id === glossId);
   if (!g) return;
 
-  // History after the first answer: alternating user/assistant, ending with the new user turn.
-  const history = g.turns
-    .slice(1, -1)
-    .filter((t) => !t.error)
-    .map((t) => ({ role: t.role, content: t.content }));
+  // The first user turn is rebuilt server-side, so history starts at the first answer.
+  const history: { role: "user" | "assistant"; content: string }[] = [];
+  for (const t of g.turns.slice(0, -1)) {
+    if (t.role === "assistant" && t.error && !t.content) {
+      if (history.at(-1)?.role === "user") history.pop();
+      continue;
+    }
+    history.push({ role: t.role, content: t.content });
+  }
 
   const from = g.anchor ? ix.numbers.get(g.anchor.start.b) : undefined;
   const to = g.anchor ? ix.numbers.get(g.anchor.end.b) : undefined;
@@ -57,13 +67,11 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
   const update = (fn: (t: Turn) => Turn) => useStore.getState().updateGloss(articleId, glossId, (x) => lastAssistant(x, fn));
 
   try {
-    const apiKey = readApiKey();
     const res = await fetch("/api/ask", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...keyHeaders() },
       signal: ctrl.signal,
       body: JSON.stringify({
-        apiKey: apiKey || undefined,
         model: modelKey,
         length: st.settings.length,
         doc: docPayload(ix, g.anchor?.start.b ?? g.at),
@@ -186,16 +194,18 @@ export async function fetchBrief(ix: DocIndex) {
   const modelKey = modelOf(st.settings.model);
   st.setBrief(id, { status: "loading" });
   try {
-    const apiKey = readApiKey();
     const res = await fetch("/api/brief", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: apiKey || undefined, model: modelKey, doc: docPayload(ix) }),
+      headers: { "Content-Type": "application/json", ...keyHeaders() },
+      body: JSON.stringify({ model: modelKey, doc: docPayload(ix) }),
     });
     noteFree(res);
     const j = (await res.json()) as { brief?: BriefData; usage?: Usage; error?: string; code?: string };
     if (j.brief) useStore.getState().setBrief(id, { status: "ready", data: j.brief, usage: j.usage, modelKey, at: Date.now() });
-    else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not write the brief.", needKey: j.code === "need_key" });
+    else {
+      useStore.getState().setBrief(id, { status: "error", error: j.error ?? "Could not write the brief.", needKey: j.code === "need_key" });
+      if (j.code === "need_key") openKeyMenu();
+    }
   } catch (e) {
     useStore.getState().setBrief(id, { status: "error", error: `Connection lost: ${String(e)}` });
   }
@@ -211,7 +221,10 @@ function noteFree(res: Response) {
 async function failure(res: Response): Promise<{ error: string; needKey: boolean }> {
   try {
     const j = (await res.json()) as { error?: string; code?: string };
-    return { error: j.error ?? `Request failed (${res.status}).`, needKey: j.code === "need_key" };
+    const needKey = j.code === "need_key";
+    // The fix is a key: bring the key prompt up rather than leave the reader to find it.
+    if (needKey) openKeyMenu();
+    return { error: j.error ?? `Request failed (${res.status}).`, needKey };
   } catch {
     return { error: `Request failed (${res.status}).`, needKey: false };
   }
@@ -242,12 +255,11 @@ export async function streamAsk(
 ) {
   let full = "";
   try {
-    const apiKey = readApiKey();
     const res = await fetch("/api/ask", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...keyHeaders() },
       signal,
-      body: JSON.stringify({ ...body, apiKey: apiKey || undefined, model: modelOf(useStore.getState().settings.model) }),
+      body: JSON.stringify({ ...body, model: modelOf(useStore.getState().settings.model) }),
     });
     noteFree(res);
     if (!res.ok || !res.body) {

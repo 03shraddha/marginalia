@@ -1,3 +1,4 @@
+import { requestKey, sarvamKey } from "@/lib/llm";
 import { allow, clientId } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -36,8 +37,9 @@ export async function POST(req: Request) {
   if (!allow(`stt:${clientId(req)}`, 20, 60_000)) {
     return Response.json({ error: "Too many voice questions at once. Wait a moment and try again." }, { status: 429 });
   }
-  const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) return Response.json({ error: "Voice questions are not set up on this server." }, { status: 503 });
+  // The reader's own key first, then the server's.
+  const apiKey = sarvamKey(requestKey(req));
+  if (!apiKey) return Response.json({ error: "Add your API key to use this. It stays in this browser.", code: "need_key" }, { status: 401 });
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > MAX_BYTES + 64 * 1024) return Response.json({ error: "That recording is too long. Keep it under 30 seconds." }, { status: 413 });
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
       const j = (await res.json()) as { error?: { message?: string } | string };
       msg = typeof j.error === "string" ? j.error : j.error?.message ?? msg;
     } catch {}
+    if (res.status === 401 || res.status === 403) return Response.json({ error: "That API key was rejected. Check it and try again.", code: "need_key" }, { status: 401 });
     if (res.status === 422 || res.status === 400) msg = "Could not understand that recording. Try again, a little closer to the mic.";
     return Response.json({ error: msg }, { status: res.status === 429 ? 429 : 502 });
   }

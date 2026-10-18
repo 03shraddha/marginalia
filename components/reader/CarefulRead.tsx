@@ -70,7 +70,7 @@ export function CarefulRead({ article }: { article: Article }) {
           <button type="button" onClick={start} className={link}>
             Read it more carefully
           </button>
-          {!hasKey && <span className="text-ink-4"> · needs your Sarvam key</span>}
+          {!hasKey && <span className="text-ink-4"> · needs your API key</span>}
         </p>
       )}
       {state.kind === "confirm" && (
@@ -99,7 +99,7 @@ export function CarefulRead({ article }: { article: Article }) {
           <span className="text-rubric-text">{state.error}</span>{" "}
           {state.needKey ? (
             <button type="button" onClick={openKeyMenu} className={link}>
-              Add your Sarvam key
+              Add your API key
             </button>
           ) : (
             <button type="button" onClick={() => setState({ kind: "idle" })} className={link}>

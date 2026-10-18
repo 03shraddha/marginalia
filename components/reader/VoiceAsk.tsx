@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle, Mic, Square } from "lucide-react";
+import { keyHeaders, openKeyMenu } from "@/lib/ask";
 
 /** Saaras' sync endpoint takes 30 s at most; stop a little before that. */
 const MAX_MS = 29_000;
@@ -78,8 +79,9 @@ export function VoiceAsk({ onText, tone = "plain" }: { onText: (text: string) =>
     try {
       const form = new FormData();
       form.append("file", blob, "question");
-      const res = await fetch("/api/transcribe", { method: "POST", body: form, signal: ac.signal });
-      const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const res = await fetch("/api/transcribe", { method: "POST", headers: keyHeaders(), body: form, signal: ac.signal });
+      const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string; code?: string };
+      if (!res.ok && j.code === "need_key") openKeyMenu();
       if (!res.ok) throw new Error(j.error || "Could not transcribe that.");
       const text = (j.text ?? "").trim();
       if (!text) setError("Heard nothing. Try again, a little closer to the mic.");

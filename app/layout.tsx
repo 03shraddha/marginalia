@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Atkinson_Hyperlegible_Next, Literata, Newsreader } from "next/font/google";
+import { Atkinson_Hyperlegible_Next, Inter, Literata, Newsreader } from "next/font/google";
 import { BOOT_SCRIPT } from "@/lib/settings";
 import "./globals.css";
 import "./voice-ask.css";
@@ -10,18 +10,23 @@ import { SyncAgent } from "@/components/account/SyncAgent";
 import { BRAND, OG_IMAGE, SITE_URL } from "@/lib/brand";
 
 const serif = Newsreader({
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   axes: ["opsz"],
   style: ["normal", "italic"],
   variable: "--nf-serif",
   display: "swap",
 });
 
-// UI chrome uses the system face (San Francisco on Apple devices): see --font-ui in globals.css.
+// Inter for the whole interface and the default reading face, as on the maker's own site: see --font-ui in globals.css.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--nf-inter",
+  display: "swap",
+});
 
 // Optional reading faces: declared here, fetched only when a reader picks them.
 const book = Literata({
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   axes: ["opsz"],
   style: ["normal", "italic"],
   variable: "--nf-book",
@@ -30,7 +35,7 @@ const book = Literata({
 });
 
 const legible = Atkinson_Hyperlegible_Next({
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   style: ["normal", "italic"],
   variable: "--nf-legible",
   display: "swap",
@@ -52,10 +57,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Edge to edge on phones; bars pad themselves with the safe-area insets.
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f3ec" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1c1e" },
-  ],
+  themeColor: "#ffffff",
+  colorScheme: "light",
 };
 
 /** Clerk's sign-in and account screens, in the page's own ink and paper, in every theme. */
@@ -76,7 +79,7 @@ const CLERK_APPEARANCE = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${book.variable} ${legible.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${serif.variable} ${book.variable} ${legible.variable}`} data-theme="paper" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>

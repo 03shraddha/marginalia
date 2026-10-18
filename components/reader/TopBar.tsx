@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, NotebookPen } from "lucide-react";
-import { Account } from "@/components/account/Account";
-import { Lockup } from "@/components/brand/Gloss";
+import { GlossWordmark } from "@/components/brand/Gloss";
 import { KeyMenu } from "@/components/ui/KeyMenu";
-import { ListenButton } from "./Listen";
 import { SettingsMenu } from "@/components/ui/SettingsMenu";
-import { barBtn } from "@/components/ui/Popover";
-import { useGlosses, useHighlights, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
+import Link from "next/link";
+import { MoreMenu } from "./MoreMenu";
 import { useReader } from "./context";
 
 export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number | null; pastTitle: boolean; listenFrom: () => string | null }) {
@@ -20,9 +18,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
   const focusMode = useStore((s) => s.focusMode);
   const barRef = useRef<HTMLSpanElement>(null);
   const notebookOpen = useStore((s) => s.notebookOpen);
-  const setUI = useStore((s) => s.setUI);
   const brief = useStore((s) => s.briefs[ix.article.id]);
-  const count = useGlosses(ix.article.id).length + useHighlights(ix.article.id).length;
 
   // Tuck away while reading down, come back the moment the reader scrolls up.
   // The progress hairline is written straight to the DOM: no re-render per frame.
@@ -86,7 +82,9 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
       } ${scrolled ? "vibrancy" : ""}`}
     >
       <div className="mx-auto flex h-full max-w-[1440px] items-center gap-4 px-4 sm:px-6">
-        <Lockup />
+        <Link href="/" aria-label="Marginalia, back to the start" className="rounded-md">
+          <GlossWordmark />
+        </Link>
 
         {/* Always a spacer; the running title shows in it from tablet width up. */}
         <div className={`flex min-w-0 flex-1 justify-center transition-opacity duration-300 ${pastTitle ? "opacity-100" : "pointer-events-none opacity-0"}`}>
@@ -116,30 +114,9 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
         </div>
 
         <nav aria-label="Reader tools" className="flex items-center gap-0.5">
-          <span className="hidden sm:block">
-            <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="Keyboard shortcuts" data-tip="Shortcuts" data-tip-kbd="?">
-              <Keyboard size={17} strokeWidth={1.7} />
-            </button>
-          </span>
-          <ListenButton from={listenFrom} />
-          <SettingsMenu />
           <KeyMenu />
-          <button
-            type="button"
-            className={`${barBtn} !px-2.5 ${notebookOpen ? "!bg-fill text-ink" : ""}`}
-            onClick={() => setUI({ notebookOpen: !notebookOpen })}
-            aria-pressed={notebookOpen}
-            aria-label="Notebook"
-            data-tip={notebookOpen ? "Close notebook" : "Your notes and highlights"}
-            data-tip-kbd="N"
-          >
-            <NotebookPen size={16} strokeWidth={1.8} />
-            <span className="hidden sm:inline">Notebook</span>
-            {count > 0 && (
-              <span className="min-w-[18px] rounded-full bg-accent px-1.5 text-center text-[11px] font-semibold leading-[18px] tabular-nums text-white">{count}</span>
-            )}
-          </button>
-          <Account />
+          <SettingsMenu bare />
+          <MoreMenu listenFrom={listenFrom} />
         </nav>
       </div>
       <span ref={barRef} aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-accent opacity-90" style={{ transform: "scaleX(0)" }} />

@@ -3,17 +3,17 @@ import type { ModelKey } from "./models";
 /** Highlighter colours. */
 export type Marker = "yellow" | "green" | "blue" | "pink";
 export const MARKERS: { key: Marker; label: string; color: string }[] = [
-  { key: "yellow", label: "Yellow", color: "#f2c438" },
-  { key: "green", label: "Green", color: "#7cc66f" },
-  { key: "blue", label: "Blue", color: "#6aa8f0" },
-  { key: "pink", label: "Pink", color: "#f084ac" },
+  { key: "yellow", label: "Yellow", color: "#ffeb78" },
+  { key: "green", label: "Lavender", color: "#c8a0ff" },
+  { key: "blue", label: "Blue", color: "#8cbeff" },
+  { key: "pink", label: "Peach", color: "#ffb48c" },
 ];
 
 /** Reading faces. Literata and Atkinson load only when picked. */
 export const FACES: { key: Settings["face"]; label: string; css: string }[] = [
+  { key: "sans", label: "Inter", css: "var(--font-sans)" },
   { key: "serif", label: "Serif", css: "var(--font-serif)" },
   { key: "book", label: "Book", css: "var(--font-book)" },
-  { key: "sans", label: "Sans", css: "var(--font-sans)" },
   { key: "legible", label: "Legible", css: "var(--font-legible)" },
 ];
 
@@ -42,9 +42,9 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: "auto",
+  theme: "paper",
   pen: "vermilion",
-  face: "serif",
+  face: "sans",
   size: 20,
   leading: "normal",
   width: "normal",
@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: "flash",
   search: true,
   numbers: false,
-  rail: true,
+  rail: false,
   listen: false,
 };
 
@@ -82,15 +82,15 @@ export const LENGTH_WORDS: Record<Settings["length"], number> = { short: 50, nor
 
 export const SETTINGS_KEY = "gloss:settings";
 
-export function resolveTheme(theme: Settings["theme"]): Exclude<Settings["theme"], "auto"> {
-  if (theme !== "auto") return theme;
-  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "paper";
+/** Light only: every saved theme, dark or not, resolves to the one white page. */
+export function resolveTheme(_theme: Settings["theme"]): Exclude<Settings["theme"], "auto"> {
+  return "paper";
 }
 
 export function applySettings(s: Settings) {
   const el = document.documentElement;
   el.dataset.theme = resolveTheme(s.theme);
-  el.dataset.pen = s.pen;
+  el.dataset.pen = "vermilion";
   el.dataset.face = s.face;
   el.dataset.align = s.align;
   el.dataset.paras = s.paras;
@@ -103,4 +103,4 @@ export function applySettings(s: Settings) {
  * The same thing as applySettings, as an inline script for <head>, so the
  * first paint already has the reader's theme, pen and type. Kept in sync by hand.
  */
-export const BOOT_SCRIPT = `try{var s=JSON.parse(localStorage.getItem("${SETTINGS_KEY}")||"{}"),e=document.documentElement,t=s.theme||"auto";if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"night":"paper";e.dataset.theme=t;e.dataset.pen=s.pen||"vermilion";e.dataset.face=s.face||"serif";e.dataset.align=s.align||"left";e.dataset.paras=s.paras||"spaced";if(s.size)e.style.setProperty("--read-size",s.size+"px");var L={tight:1.5,normal:1.64,loose:1.82},M={narrow:28,normal:32,wide:37};if(s.leading)e.style.setProperty("--leading",L[s.leading]);if(s.width)e.style.setProperty("--measure-k",M[s.width])}catch(x){}`;
+export const BOOT_SCRIPT = `try{var s=JSON.parse(localStorage.getItem("${SETTINGS_KEY}")||"{}"),e=document.documentElement,e.dataset.theme="paper";e.dataset.pen="vermilion";e.dataset.face=s.face||"sans";e.dataset.align=s.align||"left";e.dataset.paras=s.paras||"spaced";if(s.size)e.style.setProperty("--read-size",s.size+"px");var L={tight:1.5,normal:1.64,loose:1.82},M={narrow:28,normal:32,wide:37};if(s.leading)e.style.setProperty("--leading",L[s.leading]);if(s.width)e.style.setProperty("--measure-k",M[s.width])}catch(x){}`;

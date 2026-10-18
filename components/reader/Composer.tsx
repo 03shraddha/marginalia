@@ -70,18 +70,23 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
               inputRef.current?.blur();
             }
           }}
-          placeholder="Ask about the whole text"
+          placeholder="Ask about this text"
           aria-label="Ask anything about the whole text"
           className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none focus-visible:outline-none placeholder:text-ink-3 max-sm:h-11"
         />
         {!focused && !q && <kbd className="hidden sm:inline">/</kbd>}
-        <VoiceAsk
-          onText={(t) => {
-            setQ((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t));
-            inputRef.current?.focus();
-          }}
-        />
-        <WebSwitch />
+        {/* Voice and web search stay out of sight until the box is in use, so the resting screen is one line. */}
+        {(focused || q) && (
+          <span className="flex items-center gap-2" onMouseDown={(e) => e.preventDefault()}>
+            <VoiceAsk
+              onText={(t) => {
+                setQ((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t));
+                inputRef.current?.focus();
+              }}
+            />
+            <WebSwitch />
+          </span>
+        )}
         <button
           type="submit"
           disabled={!q.trim()}

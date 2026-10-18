@@ -19,7 +19,7 @@ export function Peek({ peek }: { peek: { n: number; rect: DOMRect } | null }) {
   return (
     <div className="pop pointer-events-none fixed z-[70] p-4" style={{ ...style, width: w, ["--origin" as string]: below ? "top center" : "bottom center" }} role="tooltip">
       <p className="mb-1.5 text-[11.5px] font-semibold tabular-nums text-accent">¶{peek.n}</p>
-      <p className="line-clamp-6 font-serif text-[15px] leading-[1.5] text-ink">{text}</p>
+      <p className="line-clamp-6 font-sans text-[15px] leading-[1.5] text-ink">{text}</p>
       <p className="mt-2 text-[11.5px] text-ink-4">Click to jump there</p>
     </div>
   );

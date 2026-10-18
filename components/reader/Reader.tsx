@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, X } from "lucide-react";
 import { blockEl, selectBlock, spanIn } from "@/lib/anchor";
-import { displayArticle, isHeading, readingMinutes, titleClass, type Article } from "@/lib/article";
+import { displayArticle, isHeading, readingMinutes, type Article } from "@/lib/article";
 import { ARTICLE_QUESTIONS } from "@/lib/actions";
 import { SAMPLE_QUESTIONS } from "@/lib/samples";
 import { fetchBrief } from "@/lib/ask";
@@ -79,10 +79,10 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
       <main className="grid min-h-dvh place-items-center px-6 text-center">
         <div>
           <GlossWordmark />
-          <p className="mt-6 font-serif text-[26px] text-ink">This text is not on this device.</p>
+          <p className="mt-6 font-sans text-[26px] text-ink">This text is not on this device.</p>
           <p className="mt-2 text-[14px] text-ink-3">Imported texts live in the browser that imported them, or in your account when you are signed in.</p>
           <Link href="/" className="btn-accent mt-6 h-11 px-5 text-[15px]">
-            Back to the library
+            Back home
           </Link>
         </div>
       </main>
@@ -137,6 +137,14 @@ function ReaderInner({ article }: { article: Article }) {
 
   const wide = useMedia("(min-width: 1080px)", true);
   const withRail = useMedia("(min-width: 1260px)", true);
+
+  // Without a margin the answer is a sheet that would cover the key prompt: put it down first.
+  useEffect(() => {
+    if (wide) return;
+    const lower = () => setUI({ activeGloss: null });
+    window.addEventListener("gloss:key", lower);
+    return () => window.removeEventListener("gloss:key", lower);
+  }, [wide, setUI]);
 
   // Reset per-article UI when the article changes.
   useEffect(() => {
@@ -488,14 +496,14 @@ function ReaderInner({ article }: { article: Article }) {
             <div className="rg-numgap" aria-hidden />
 
             <div className="min-w-0">
-              <header className="mb-14">
+              <header className="mb-12">
                 {kicker && (
                   <p className="focus-hide rise mb-6 flex items-center gap-2 text-[13px] font-medium text-ink-3">
                     <span aria-hidden className="size-1.5 rounded-full bg-[var(--rubric)]" />
                     <span className="truncate">{kicker}</span>
                   </p>
                 )}
-                <h1 className={`rise font-serif font-[380] tracking-[-0.022em] text-ink text-balance [font-variation-settings:'opsz'_72] ${titleClass(article.title)}`} style={{ animationDelay: "40ms" }}>
+                <h1 className="rise text-[clamp(1.7rem,3.6vw,2.4rem)] font-semibold leading-[1.15] tracking-[-0.025em] text-ink text-balance" style={{ animationDelay: "40ms" }}>
                   {article.title}
                 </h1>
                 {article.dek && (
@@ -552,23 +560,16 @@ function ReaderInner({ article }: { article: Article }) {
               </div>
 
               <footer className="focus-hide mt-16 border-t border-rule pt-10 text-[13.5px] leading-relaxed text-ink-3">
-                <p aria-hidden className="mb-8 text-center font-serif text-[26px] leading-none text-[var(--rubric)]">
+                <p aria-hidden className="mb-8 text-center font-sans text-[26px] leading-none text-[var(--rubric)]">
                   ❦
                 </p>
                 {article.source && <p>From {article.source}.</p>}
-                <p className="mt-1">
-                  Glosses are powered by DeepSeek V4.1 Flash, served by{" "}
-                  <a href={BRAND.sarvamUrl} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
-                    Sarvam
-                  </a>
-                  .
-                </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button type="button" onClick={() => setUI({ notebookOpen: true })} className="btn-tinted h-9 px-4 text-[13px]">
                     Open your notebook
                   </button>
                   <Link href="/" className="btn-gray h-9 px-4 text-[13px]">
-                    Back to the library
+                    Back home
                   </Link>
                 </div>
               </footer>

@@ -16,7 +16,7 @@ function inline(line: string, key: string): ReactNode[] {
     if (part.startsWith("[")) {
       const n = part.replace(/[[\]\s¶]/g, "");
       return (
-        <sup key={k} className="mg-cite" aria-label={`Paragraph ${n}`}>
+        <sup key={k} className="lp-cite" aria-label={`Paragraph ${n}`}>
           ¶{n}
         </sup>
       );
@@ -50,7 +50,7 @@ export function MarginText({ text, caret }: { text: string; caret?: boolean }) {
               {inline(line, `${i}-${j}`)}
             </Fragment>
           ))}
-          {caret && i === paras.length - 1 && <span className="mg-caret" aria-hidden />}
+          {caret && i === paras.length - 1 && <span className="lp-caret" aria-hidden />}
         </p>
       ))}
     </>

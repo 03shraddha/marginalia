@@ -84,7 +84,7 @@ export function firstTurn(t: ThreadPayload): string {
 
 const LENGTHS = {
   short: "Length: very short. One to three sentences, under 50 words, unless a list of pointers is asked for.",
-  normal: "Length: concise. Under 90 words unless the task asks for more.",
+  normal: "Length: 2 to 3 sentences, under 60 words, unless the task asks for more.",
   long: "Length: thorough. Up to about 180 words, still with no filler.",
 } as const;
 

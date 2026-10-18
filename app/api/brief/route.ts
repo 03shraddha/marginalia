@@ -1,5 +1,5 @@
 import { BRIEF_TASK, systemFor, type DocPayload } from "@/lib/prompts";
-import { completeJSON, DEFAULT_MODEL, isModelKey } from "@/lib/llm";
+import { completeJSON, DEFAULT_MODEL, isModelKey, requestKey } from "@/lib/llm";
 import { undash, type BriefData } from "@/lib/article";
 import { chargeFree, checkFree, estimateUsd, needKey } from "@/lib/quota";
 import { MODELS } from "@/lib/models";
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "doc is required." }, { status: 400 });
   }
 
-  const apiKey = body.apiKey?.trim() || undefined;
+  const apiKey = requestKey(req) || body.apiKey?.trim() || undefined;
   // A gloss of the whole text spends from the same free allowance.
   let free: Awaited<ReturnType<typeof checkFree>> | null = null;
   if (!apiKey) {

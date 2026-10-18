@@ -337,7 +337,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
           <button
             type="button"
             onClick={toNote}
-            className="mb-1 block w-full max-w-[min(420px,calc(100vw-32px))] rounded-[8px] px-3 pb-2 pt-1.5 text-left font-serif text-[14.5px] leading-[1.45] text-lens-fg/90 transition-colors hover:bg-lens-hover"
+            className="mb-1 block w-full max-w-[min(420px,calc(100vw-32px))] rounded-[8px] px-3 pb-2 pt-1.5 text-left font-sans text-[14.5px] leading-[1.45] text-lens-fg/90 transition-colors hover:bg-lens-hover"
           >
             <span className="line-clamp-3 whitespace-pre-line">{existing.note}</span>
           </button>
@@ -369,7 +369,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               }}
               placeholder={existing ? "A note on this highlight" : "A note, in your own words"}
               aria-label="Your note on the selected passage"
-              className="block max-h-[168px] min-h-8 w-full resize-none bg-transparent px-3 pt-[7px] font-serif text-[15px] leading-[1.45] text-lens-fg outline-none focus-visible:outline-none placeholder:text-lens-mute"
+              className="block max-h-[168px] min-h-8 w-full resize-none bg-transparent px-3 pt-[7px] font-sans text-[15px] leading-[1.45] text-lens-fg outline-none focus-visible:outline-none placeholder:text-lens-mute"
             />
             <div className="flex items-center justify-between gap-3 pb-0.5 pl-3 pr-0.5 pt-1">
               <span className="text-[11.5px] text-lens-mute">

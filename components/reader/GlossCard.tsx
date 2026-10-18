@@ -52,7 +52,7 @@ function KeyButton() {
         onClick={openKeyMenu}
         className="btn-accent h-8 px-3.5 text-[13px]"
       >
-        Add your Sarvam key
+        Add your API key
       </button>
       <Show when="signed-out">
         <SignInButton mode="modal">
@@ -240,7 +240,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       </header>
 
       {gloss.anchor && gloss.action !== "ask" && (
-        <p className="mb-2.5 line-clamp-2 rounded-[8px] bg-fill px-2.5 py-1.5 font-serif text-[15px] leading-snug text-ink-2">{gloss.anchor.quote}</p>
+        <p className="mb-2.5 line-clamp-2 rounded-[8px] bg-fill px-2.5 py-1.5 font-sans text-[15px] leading-snug text-ink-2">{gloss.anchor.quote}</p>
       )}
       {gloss.question && <p className="mb-1.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-ink">{gloss.question}</p>}
 

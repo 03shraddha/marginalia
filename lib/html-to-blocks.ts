@@ -30,7 +30,7 @@ const BLOCK_TAGS: Record<string, BlockType> = {
   DD: "p",
 };
 
-const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "SVG", "IFRAME", "FORM", "BUTTON", "NAV", "FOOTER", "TABLE", "IMG", "PICTURE", "VIDEO", "AUDIO"]);
+const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "SVG", "IFRAME", "FORM", "BUTTON", "NAV", "FOOTER", "TABLE", "IMG", "PICTURE", "VIDEO", "AUDIO"]);
 
 /** Past this, a table is a page layout or a data dump, not something to read. */
 const MAX_ROWS = 80;
@@ -216,7 +216,8 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType !== 1 || !child.tagName) {
         // Stray text directly in a container becomes its own paragraph.
-        if (child.nodeType === 3 && (child.textContent ?? "").trim().length > 40) {
+        const stray = (child.textContent ?? "").trim();
+        if (child.nodeType === 3 && stray.length > 40 && stray.length < 20_000 && /\s/.test(stray)) {
           blocks.push({ id: `b${++i}`, type: "p", runs: tidyRuns([{ text: child.textContent ?? "" }]) });
         }
         continue;
@@ -265,7 +266,11 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
       if (type) {
         const runs = tidyRuns(inlineRuns(child));
         const text = runs.map((r) => r.text).join("");
-        if (text.trim().length > 0) blocks.push({ id: `b${++i}`, type, runs });
+        if (text.trim().length > 0) {
+          // "Figure 3: ..." under a chart that script draws is that figure's caption, not body text.
+          const caption = type === "p" && /^(figure|fig\.|chart|exhibit)\s*\d+[a-z]?\s*[:.\u2014-]\s/i.test(text.trim());
+          blocks.push({ id: `b${++i}`, type: caption ? "note" : type, runs });
+        }
         // Images inside a paragraph (often its only content) stand on their own after it.
         for (const img of descendants(child, "IMG")) figure(img);
         // So do data tables: Readability turns a div that only wraps one (arXiv's HTML papers) into a paragraph.
@@ -283,9 +288,16 @@ export function htmlToBlocks(root: El, base?: string): Block[] {
   const body = tailAt > 0 ? blocks.slice(0, tailAt) : blocks;
   const textOf = (b: Block) => b.runs.map((r) => r.text).join("").trim();
   const isCitation = (t: string) => /^(↑|\^)/.test(t) || /^\d+( \d+)+ /.test(t) || /(Retrieved|Archived from|ISBN|doi:)/.test(t);
+  // A long paragraph said twice (a promo box repeated in the page) is kept once.
+  const said = new Set<string>();
   let cleaned = body.filter((b) => {
     const t = textOf(b);
     if (b.type === "figure" || b.type === "table") return true;
+    if (t.length >= 60 && (b.type === "p" || b.type === "quote" || b.type === "note")) {
+      const key = t.toLowerCase().replace(/\s+/g, " ");
+      if (said.has(key)) return false;
+      said.add(key);
+    }
     return t.length > 1 && !/^\[?edit\]?$/i.test(t) && !/^From Wikipedia, the free encyclopedia$/i.test(t) && !(b.type === "li" && isCitation(t));
   });
   // A run of short list items after the last paragraph is a "see also" list.

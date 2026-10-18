@@ -40,8 +40,8 @@ export function KeyMenu() {
 
   return (
     <Popover
-      label="Sarvam API key"
-      tip={key ? "Using your Sarvam key" : "Add your Sarvam key"}
+      label="API key"
+      tip={key ? "Using your API key" : "Add your API key"}
       width={320}
       triggerClass={barBtn}
       openOn="gloss:key"
@@ -86,7 +86,7 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
 
   return (
     <div>
-      <p className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Your Sarvam API key</p>
+      <p className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Your API key</p>
       <p className="mt-1 text-[13px] leading-snug text-ink-3">
         {current
           ? "Answers use your key, with no daily limit."
@@ -117,14 +117,14 @@ function KeyPanel({ current, house, free, onSave, close }: { current: string; ho
         placeholder="Paste your API key"
         autoComplete="off"
         spellCheck={false}
-        aria-label="Sarvam API key"
+        aria-label="API key"
         className="field mt-3 h-9 w-full px-3 text-[13px] tracking-wide focus-visible:outline-none"
       />
-      {state === "bad" && <p className="mt-2 text-[12.5px] text-rubric-text">Sarvam rejected that key. Check it and try again.</p>}
+      {state === "bad" && <p className="mt-2 text-[12.5px] text-rubric-text">That key was rejected. Check it and try again.</p>}
       <p className="mt-2 text-[11.5px] leading-snug text-ink-4">Sent with your requests only. Stored in this browser, never on a server, never logged.</p>
       <div className="mt-3 flex items-center justify-between">
         <a href={BRAND.keysUrl} target="_blank" rel="noopener noreferrer" className="link-accent text-[13px]">
-          Get a key on Sarvam
+          Get a key
         </a>
         <div className="flex gap-1.5">
           {current && (

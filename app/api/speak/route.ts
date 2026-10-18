@@ -1,3 +1,4 @@
+import { requestKey, sarvamKey } from "@/lib/llm";
 import { allow, clientId } from "@/lib/ratelimit";
 import { DEFAULT_LANG, DEFAULT_VOICE, isVoice, isVoiceLang, TTS_MAX_CHARS, TTS_MODEL, TTS_URL } from "@/lib/voice";
 
@@ -21,8 +22,9 @@ export async function POST(req: Request) {
   const speaker = isVoice(body.voice) ? body.voice : DEFAULT_VOICE;
   const language_code = isVoiceLang(body.lang) ? body.lang : DEFAULT_LANG;
 
-  const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) return Response.json({ error: "Reading aloud is not set up on this server." }, { status: 503 });
+  // The reader's own key first, then the server's.
+  const apiKey = sarvamKey(requestKey(req));
+  if (!apiKey) return Response.json({ error: "Add your API key to use this. It stays in this browser.", code: "need_key" }, { status: 401 });
 
   // A clip is a paragraph or so, fetched two ahead of the voice: generous for one reader, a ceiling for a script.
   const who = clientId(req);
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
       const j = (await res.json()) as { error?: { message?: string } | string };
       msg = typeof j.error === "string" ? j.error : j.error?.message ?? msg;
     } catch {}
-    if (res.status === 401 || res.status === 403) msg = "The voice service rejected the server's key.";
+    if (res.status === 401 || res.status === 403) return Response.json({ error: "That API key was rejected. Check it and try again.", code: "need_key" }, { status: 401 });
     return Response.json({ error: msg }, { status: res.status === 429 ? 429 : 502 });
   }
   return new Response(res.body, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });

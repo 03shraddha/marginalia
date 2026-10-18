@@ -12,7 +12,6 @@ An AI reader for articles and PDFs. Select a line, ask a question, and get a sho
 - Read aloud. Pick a voice and listen to the article.
 - Get a short brief of the whole piece.
 - Highlight lines and keep notes. Export them as Markdown.
-- Keep a library of what you read.
 
 ## How it is built
 

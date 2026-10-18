@@ -62,7 +62,7 @@ async function record(subject: string, pages: number, usd: number) {
 
 export async function POST(req: Request) {
   const key = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-  if (!key) return Response.json({ error: "Reading carefully needs your Sarvam key. Add it from the key button.", code: "need_key" }, { status: 401 });
+  if (!key) return Response.json({ error: "Reading carefully needs your API key. Add it from the key button.", code: "need_key" }, { status: 401 });
   if (Number(req.headers.get("content-length") ?? 0) > MAX_BYTES + 10_000) return tooLarge();
 
   let file: File | null = null;
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (!file) return Response.json({ error: "Send the PDF as a file." }, { status: 400 });
   if (file.size > MAX_BYTES) return tooLarge();
 
-  if (!(await sarvamKeyWorks(key))) return Response.json({ error: "Sarvam did not accept your key. Check it in the key menu.", code: "need_key" }, { status: 401 });
+  if (!(await sarvamKeyWorks(key))) return Response.json({ error: "That key was not accepted. Check it in the key menu.", code: "need_key" }, { status: 401 });
 
   const subject = `careful:${hash(key)}`;
   const used = await pagesToday(subject);

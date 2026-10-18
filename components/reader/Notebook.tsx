@@ -137,7 +137,7 @@ export function Notebook() {
       {!entries.length ? (
         <div className="flex flex-1 flex-col items-center justify-center px-10 pb-16 text-center">
           <GlossMark className="size-11 text-ink-4" />
-          <p className="mt-5 font-serif text-[20px] leading-tight text-ink">Nothing here yet</p>
+          <p className="mt-5 font-sans text-[20px] leading-tight text-ink">Nothing here yet</p>
           <p className="mt-2 max-w-[270px] text-[13.5px] leading-relaxed text-ink-3">
             Select a line and type a question, or highlight it. Every question and answer lands here, in reading order.
           </p>
@@ -218,7 +218,7 @@ function GlossEntry({ g }: { g: Gloss }) {
       <button type="button" onClick={go} className="block w-full pr-7 text-left">
         <Meta n={n} label={label} at={g.createdAt} />
         {g.anchor && (
-          <span className="mt-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-3 font-serif text-[15px] leading-[1.45] text-ink-3 transition-colors group-hover:text-ink-2">
+          <span className="mt-2.5 line-clamp-2 border-l-2 border-[var(--rubric-line)] pl-3 font-sans text-[15px] leading-[1.45] text-ink-3 transition-colors group-hover:text-ink-2">
             {g.anchor.quote}
           </span>
         )}
@@ -229,7 +229,7 @@ function GlossEntry({ g }: { g: Gloss }) {
           <div key={i} className={i > 0 ? "border-t border-rule pt-3.5" : ""}>
             <div className="grid grid-cols-[16px_minmax(0,1fr)] items-baseline gap-x-2">
               <span aria-hidden className="text-[11.5px] font-semibold leading-none text-rubric-text">Q</span>
-              <p className="font-serif text-[16.5px] leading-[1.35] text-ink [font-variation-settings:'opsz'_24]">{p.q}</p>
+              <p className="font-sans text-[16.5px] leading-[1.35] text-ink [font-variation-settings:'opsz'_24]">{p.q}</p>
             </div>
             <div className="mt-2 grid grid-cols-[16px_minmax(0,1fr)] items-baseline gap-x-2">
               <span aria-hidden className="text-[11.5px] font-semibold leading-none text-ink-4">A</span>
@@ -308,7 +308,7 @@ function HighlightEntry({ h }: { h: Highlight }) {
         className="block w-full pr-7 text-left"
       >
         <Meta n={ix.numbers.get(h.anchor.start.b)} label={h.note ? "Note" : "Highlight"} at={h.createdAt} />
-        <span className="mt-2.5 block font-serif text-[15.5px] leading-[1.5] text-ink">
+        <span className="mt-2.5 block font-sans text-[15.5px] leading-[1.5] text-ink">
           <mark className="m-hl text-inherit" data-c={h.color && h.color !== "yellow" ? h.color : undefined}>
             {h.anchor.quote}
           </mark>

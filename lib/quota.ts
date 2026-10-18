@@ -111,11 +111,11 @@ export function needKey(state: FreeState | null, message?: string): Response {
   const error =
     message ??
     (!state
-      ? "Add your Sarvam API key to start. It stays in this browser."
+      ? "Add your API key to start. It stays in this browser."
       : state.reason === "everyone"
-        ? "Free answers are resting for today. Add your Sarvam API key to keep going."
+        ? "Free answers are resting for today. Add your API key to keep going."
         : state.signedIn
-          ? "That's today's free reading. Add your Sarvam API key to keep going, or come back tomorrow."
+          ? "That's today's free reading. Add your API key to keep going, or come back tomorrow."
           : "That's today's free reading. Sign in for more, or add your Sarvam API key to keep going.");
   return Response.json({ error, code: "need_key", signIn: Boolean(state && !state.signedIn && state.reason === "reader") }, { status: state ? 429 : 401, headers: { "X-Free-Left": "0" } });
 }

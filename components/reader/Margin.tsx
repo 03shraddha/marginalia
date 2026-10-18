@@ -225,7 +225,7 @@ export function Margin({
 function EmptyMargin({ top }: { top: number }) {
   return (
     <div
-      className="rise absolute inset-x-0 border-l-[1.5px] border-rule-strong py-1 pl-[15px] text-[13px] leading-relaxed text-ink-3"
+      className="rise absolute inset-x-0 rounded-2xl bg-fill px-4 py-3 text-[13px] leading-relaxed text-ink-3"
       style={{ top, animationDelay: "500ms" }}
     >
       <p className="font-medium text-ink-2">This area is for notes.</p>

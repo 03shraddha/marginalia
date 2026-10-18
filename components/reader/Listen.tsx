@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { Check, Headphones, LoaderCircle, Pause, Play, Square } from "lucide-react";
 import { blockEl } from "@/lib/anchor";
+import { keyHeaders, openKeyMenu } from "@/lib/ask";
 import { blockText, type Block } from "@/lib/article";
 import type { DocIndex } from "@/lib/doc";
 import { useStore } from "@/lib/store";
@@ -86,12 +87,13 @@ async function speak(i: number): Promise<Response> {
   const { voice, lang } = useListen.getState();
   const r = await fetch("/api/speak", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...keyHeaders() },
     body: JSON.stringify({ text: items[i].text, voice, lang }),
     signal: ctrl?.signal,
   });
   if (!r.ok) {
-    const j = (await r.json().catch(() => ({}))) as { error?: string };
+    const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string };
+    if (j.code === "need_key") openKeyMenu();
     throw new Error(j.error ?? "The voice did not answer.");
   }
   return r;
@@ -276,6 +278,19 @@ function pickVoice(ix: DocIndex, next: { voice?: VoiceId; lang?: VoiceLang }) {
 /* ---------------- the controls ---------------- */
 
 /** In the top bar, only when Listen is on in settings. Starts from the paragraph you are on. */
+/** Start reading aloud from where the reader is, or stop. Turns Listen on first, so its bar can show. */
+export function toggleListen(ix: DocIndex, from: () => string | null) {
+  if (useListen.getState().status !== "idle") return stopListening();
+  if (!useStore.getState().settings.listen) useStore.getState().setSettings({ listen: true });
+  const cursor = useStore.getState().cursor;
+  const r = cursor ? blockEl(cursor)?.getBoundingClientRect() : null;
+  startListening(ix, r && r.bottom > 0 && r.top < window.innerHeight ? cursor : from());
+}
+
+export function useListening() {
+  return useListen((s) => s.status !== "idle");
+}
+
 export function ListenButton({ from }: { from: () => string | null }) {
   const { ix } = useReader();
   const on = useStore((s) => s.settings.listen);

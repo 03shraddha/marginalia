@@ -2,7 +2,7 @@
 
 import { Show, SignInButton } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import { fetchBrief, openKeyMenu } from "@/lib/ask";
 import type { DocIndex } from "@/lib/doc";
 import { MODELS, modelOf } from "@/lib/models";
@@ -21,26 +21,10 @@ export function Brief() {
   const setUI = useStore((s) => s.setUI);
   const hydrated = useStore((s) => s.hydrated);
 
-  if (!hydrated) return <div className="mt-6 h-[72px]" />;
+  if (!hydrated) return null;
 
-  if (!brief) {
-    return (
-      <button
-        type="button"
-        onClick={() => fetchBrief(ix)}
-        className="group mt-6 flex w-full items-center gap-5 rounded-[16px] bg-raised py-4 pl-5 pr-4 text-left shadow-[var(--shadow-card)] transition-[transform,box-shadow] duration-200 hover:shadow-[var(--shadow-pop)] active:scale-[0.99]"
-      >
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[17px] font-semibold leading-none tracking-[-0.02em] text-ink">
-            Get the brief
-            <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-accent" aria-hidden />
-          </span>
-          <span className="mt-1.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
-        </span>
-        <kbd className="hidden sm:inline">B</kbd>
-      </button>
-    );
-  }
+  // Quiet until asked for: the "Brief" item in the reader's menu (or B) writes it.
+  if (!brief) return null;
 
   if (brief.status === "loading") return <BriefLoading ix={ix} />;
 
@@ -51,7 +35,7 @@ export function Brief() {
         {brief.needKey && (
           <>
             <button type="button" onClick={openKeyMenu} className="link-accent font-semibold">
-              Add your Sarvam key
+              Add your API key
             </button>
             <Show when="signed-out">
               <SignInButton mode="modal">
@@ -98,7 +82,7 @@ export function Brief() {
               <ol className="space-y-2.5">
                 {data.claims.map((c, i) => (
                   <li key={i} className="rise grid grid-cols-[1.4rem_minmax(0,1fr)] text-[14.5px] leading-[1.5] text-ink" style={{ animationDuration: "0.5s", animationDelay: `${120 + i * 60}ms` }}>
-                    <span className="font-serif text-[14px] leading-[1.55] tabular-nums text-ink-4">{i + 1}</span>
+                    <span className="font-sans text-[14px] leading-[1.55] tabular-nums text-ink-4">{i + 1}</span>
                     <span className="gloss-body !text-[14.5px]">
                       <Answer text={c.cite ? `${c.text} [¶${c.cite}]` : c.text} />
                     </span>
@@ -138,7 +122,7 @@ export function Brief() {
                         onClick={() => jumpTo(s.start)}
                         className="group flex w-full items-baseline gap-3 border-b border-rule py-2 text-left text-[14px] text-ink transition-colors hover:text-rubric-text"
                       >
-                        <span className="w-4 shrink-0 font-serif text-[14px] tabular-nums text-ink-4">{i + 1}</span>
+                        <span className="w-4 shrink-0 font-sans text-[14px] tabular-nums text-ink-4">{i + 1}</span>
                         <span className="min-w-0 flex-1 truncate">{s.title}</span>
                         <span className="shrink-0 text-[12px] tabular-nums text-ink-4 group-hover:text-rubric-text">
                           ¶{s.start}

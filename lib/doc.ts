@@ -25,7 +25,7 @@ export function indexArticle(article: Article): DocIndex {
 }
 
 /** Roughly 100k tokens. Past that, send a window around where the reader is. */
-const BUDGET = 400_000;
+const BUDGET = 200_000;
 
 export function docPayload(ix: DocIndex, focusBlock?: string): DocPayload {
   const paras = ix.article.blocks
