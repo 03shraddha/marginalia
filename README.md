@@ -1,34 +1,33 @@
-<a href="https://usegloss.io">
-  <img alt="Gloss" src="./public/og.png">
-  <h1 align="center">Gloss</h1>
-</a>
+# Marginalia
 
-<p align="center">
-  An open source AI reader for articles and PDFs. Select any line, ask a question, and get a cited answer in the margin. Powered by Together.ai.
-</p>
+An AI reader for articles and PDFs. Select a line, ask a question, and get a short answer in the margin.
 
-## Tech stack
+## What it does
 
-- [DeepSeek V4.1 Flash](https://togetherai.link/?utm_source=gloss&utm_medium=referral&utm_campaign=example-app) and Kimi K3 for the LLMs
-- [Together AI](https://togetherai.link/?utm_source=gloss&utm_medium=referral&utm_campaign=example-app) for LLM inference
-- [Exa](https://exa.ai) for web search
-- [LiteParse](https://github.com/run-llama/liteparse) for in-browser PDF parsing, with Qwen on Together for scanned pages
-- [Clerk](https://clerk.com) for optional auth and [Neon](https://neon.tech) for syncing your library
-- Next.js app router with Tailwind
+- Paste a link or drop a PDF to open it in a clean reader.
+- Select any line and ask about it. The answer shows up in the margin.
+- Answers cite the paragraph they come from, so you can check them.
+- Quick actions: Explain, Define, Simplify, Fact-check, Related, Counterpoint.
+- Ask by voice. Hold the mic button and speak your question.
+- Read aloud. Pick a voice and listen to the article.
+- Get a short brief of the whole piece.
+- Highlight lines and keep notes. Export them as Markdown.
+- Keep a library of what you read.
 
-## Cloning & running
+## How it is built
 
-1. Clone the repo: `git clone https://github.com/Nutlope/gloss`
-2. Create a `.env.local` file (use `.env.example` for reference) and add your API keys:
-   - **[Together AI API key](https://togetherai.link/?utm_source=gloss&utm_medium=referral&utm_campaign=example-app)**: `TOGETHER_API_KEY=`
-   - **Database URL** from [Neon](https://neon.tech): `DATABASE_URL=`
-   - **Clerk keys** from [Clerk](https://clerk.com): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=` and `CLERK_SECRET_KEY=`
-   - **Exa API key** (optional, for web search): `EXA_API_KEY=`
-3. Run `npm install` and `npm run db:migrate` to install dependencies and create the tables
-4. Run `npm run dev` and open http://localhost:3100
+- Answers come from DeepSeek V4.1 Flash on the Sarvam v2 chat completions API.
+- Thinking is off and the article sits in a fixed system prompt, so answers start fast and follow-ups hit the cache.
+- Read aloud uses Sarvam Bulbul. Ask by voice uses Sarvam Saaras.
+- Next.js app router with Tailwind.
+- Optional: Clerk for accounts, Neon for sync, Exa for web search.
 
-## Future Tasks
+## Run it
 
-- [ ] Ship it as a browser extension that opens the same margin on any page
-- [ ] Let a gloss compare two passages you pick at once
-- [ ] Move the shared-key rate limit to a store like Upstash so it holds across instances
+1. Clone the repo.
+2. Copy `.env.example` to `.env.local` and add your `SARVAM_API_KEY`.
+3. Run `npm install`.
+4. Run `npm run dev` and open http://localhost:3100.
+
+Accounts, sync and web search are optional. The app runs with only a Sarvam key.
+
