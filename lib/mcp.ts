@@ -1,5 +1,5 @@
 /**
- * The Gloss MCP server: a reader's agent saves articles (by link, or as text it
+ * The Marginalia MCP server: a reader's agent saves articles (by link, or as text it
  * has read itself) to their library and looks through it. Streamable HTTP, stateless: every request is one JSON-RPC
  * message answered with JSON, no session and no event stream.
  *
@@ -27,15 +27,15 @@ const MAX_TEXT = 400_000;
 const PER_DAY = 1000;
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://usegloss.io";
 
-const INSTRUCTIONS = `Gloss is a reader. This server is the reader's own library in Gloss: save articles to it, and look through what is there.
-When saving from social posts or bookmarks, send the URL of the article, essay or paper itself (the link inside the post), not the post. Gloss reads each page in, sorts it onto a topic, and it appears on the reader's shelves the next time they open Gloss.
-Gloss can't fetch posts on X and other social sites, videos, or pages behind a login. When the post itself is the piece (an X Article, a long post, a thread) or the reader wants a video's transcript, read it yourself and send the full text with save_text.`;
+const INSTRUCTIONS = `Marginalia is a reader. This server is the reader's own library in Marginalia: save articles to it, and look through what is there.
+When saving from social posts or bookmarks, send the URL of the article, essay or paper itself (the link inside the post), not the post. Marginalia reads each page in, sorts it onto a topic, and it appears on the reader's shelves the next time they open Marginalia.
+Marginalia can't fetch posts on X and other social sites, videos, or pages behind a login. When the post itself is the piece (an X Article, a long post, a thread) or the reader wants a video's transcript, read it yourself and send the full text with save_text.`;
 
 const TOOLS = [
   {
     name: "save_articles",
     title: "Save articles to the library",
-    description: `Save web articles, essays, blog posts or papers to the reader's Gloss library. Gloss fetches each page, keeps its full text and sorts it onto a topic. Up to ${PER_CALL} URLs per call. Send the article's own URL, not a link to a post on X or another social site. Links already in the library are skipped. Returns what happened to each URL.`,
+    description: `Save web articles, essays, blog posts or papers to the reader's Marginalia library. Marginalia fetches each page, keeps its full text and sorts it onto a topic. Up to ${PER_CALL} URLs per call. Send the article's own URL, not a link to a post on X or another social site. Links already in the library are skipped. Returns what happened to each URL.`,
     inputSchema: {
       type: "object",
       properties: { urls: { type: "array", items: { type: "string" }, minItems: 1, maxItems: PER_CALL, description: "Article URLs to save." } },
@@ -47,7 +47,7 @@ const TOOLS = [
   {
     name: "save_text",
     title: "Save a text to the library",
-    description: "Save a text you have read yourself to the reader's Gloss library, for what Gloss can't fetch from a link: an X Article, a long post or a thread on X, a video's transcript, a page behind a login. Send the whole text as Markdown (blank lines between paragraphs, # for headings), word for word, not a summary. Give the original URL so the reader can open the source and the text isn't saved twice. One text per call.",
+    description: "Save a text you have read yourself to the reader's Marginalia library, for what Marginalia can't fetch from a link: an X Article, a long post or a thread on X, a video's transcript, a page behind a login. Send the whole text as Markdown (blank lines between paragraphs, # for headings), word for word, not a summary. Give the original URL so the reader can open the source and the text isn't saved twice. One text per call.",
     inputSchema: {
       type: "object",
       properties: {
@@ -66,7 +66,7 @@ const TOOLS = [
   {
     name: "search_library",
     title: "Search the library",
-    description: "Find texts in the reader's Gloss library by words in the title, author, source or tags, by topic, or by reading status. With no arguments, lists the most recently added.",
+    description: "Find texts in the reader's Marginalia library by words in the title, author, source or tags, by topic, or by reading status. With no arguments, lists the most recently added.",
     inputSchema: {
       type: "object",
       properties: {
@@ -123,14 +123,14 @@ export async function handle(req: Request, pathToken?: string): Promise<Response
 
   const header = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   const token = looksLikeToken(header) ? header : looksLikeToken(pathToken) ? pathToken : null;
-  if (!process.env.DATABASE_URL) return fail(first.id, -32000, "The Gloss library is not available on this server.", 503);
+  if (!process.env.DATABASE_URL) return fail(first.id, -32000, "The Marginalia library is not available on this server.", 503);
   let who: { userId: string; label: string } | null = null;
   try {
     who = token ? await tokenUser(hashToken(token)) : null;
   } catch {
-    return fail(first.id, -32000, "The Gloss library is not reachable right now. Try again in a minute.", 503);
+    return fail(first.id, -32000, "The Marginalia library is not reachable right now. Try again in a minute.", 503);
   }
-  if (!who) return fail(first.id, -32001, `Missing or revoked Gloss token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
+  if (!who) return fail(first.id, -32001, `Missing or revoked Marginalia token. Make one in your library at ${SITE}/library, under Connect an agent.`, 401);
   const { userId, label } = who;
   if (!allow(`mcp:${userId}`, 60, 60_000)) return fail(first.id, -32002, "Too many requests. Wait a minute, then try again.", 429);
 
@@ -150,7 +150,7 @@ async function answer(msg: Rpc, userId: string, label: string): Promise<object |
       return ok({
         protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "gloss", title: "Gloss library", version: "1.0.0", websiteUrl: SITE },
+        serverInfo: { name: "gloss", title: "Marginalia library", version: "1.0.0", websiteUrl: SITE },
         instructions: INSTRUCTIONS,
       });
     }
@@ -201,7 +201,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
   const one = async ({ url, key }: { url: string; key: string }): Promise<Saved> => {
     const kind = notAnArticle(url);
     if (kind === "social") return { url, status: "failed", reason: "This is a social post, not an article. Send the link the post points to, or, if the post is the piece, read it and send its text with save_text." };
-    if (kind === "video") return { url, status: "failed", reason: "This is a video, not an article. Gloss reads text: send its transcript with save_text." };
+    if (kind === "video") return { url, status: "failed", reason: "This is a video, not an article. Marginalia reads text: send its transcript with save_text." };
     const known = have.get(key);
     if (known) return { url, status: "already_saved", title: String(known.data.title ?? ""), topic: TOPIC[isTopic(known.data.topic) ? known.data.topic : "unsorted"].name };
     if (budget <= 0) return { url, status: "failed", reason: `The daily limit of ${PER_DAY} saves is reached. Try again tomorrow.` };
@@ -212,7 +212,7 @@ async function saveArticles(userId: string, args: Record<string, unknown>, via: 
     let r = html ? await fetchArticle(html) : null;
     if (!r?.ok) r = await fetchArticle(url, { pdf: true });
     if (!r.ok) return { url, status: "failed", reason: r.error };
-    if ("pdf" in r) return { url, status: "failed", reason: "This link is a PDF. Agents can't save PDFs yet; open it in Gloss to read it." };
+    if ("pdf" in r) return { url, status: "failed", reason: "This link is a PDF. Agents can't save PDFs yet; open it in Marginalia to read it." };
     const a = r.article;
     if (have.has(normalizeUrl(a.sourceUrl ?? ""))) {
       const k = have.get(normalizeUrl(a.sourceUrl ?? ""))!;
