@@ -56,7 +56,7 @@ export function notesMarkdown(meta: NotesMeta, glosses: Gloss[], highlights: Hig
     if (meta.published) lines.push(`published: ${yaml(meta.published)}`);
     if (meta.source) lines.push(`source: ${yaml(meta.source)}`);
     if (meta.url) lines.push(`url: ${meta.url}`);
-    lines.push("tags: [gloss]", "---", "");
+    lines.push("tags: [marginalia]", "---", "");
   }
   lines.push(`# ${meta.title}`);
   const by = [meta.author, meta.published].filter(Boolean).join(", ");
@@ -121,7 +121,7 @@ export async function exportAll(): Promise<number> {
     let base = slugify(title);
     for (let k = 2; taken.has(base); k++) base = `${slugify(title)}-${k}`;
     taken.add(base);
-    files.push({ name: `Gloss/${base}.md`, text: notesMarkdown(meta, glosses, st.highlights[id] ?? [], place, { frontmatter: true }) });
+    files.push({ name: `Marginalia/${base}.md`, text: notesMarkdown(meta, glosses, st.highlights[id] ?? [], place, { frontmatter: true }) });
   }
 
   if (files.length) download(zip(files), `gloss-notes-${new Date().toISOString().slice(0, 10)}.zip`);

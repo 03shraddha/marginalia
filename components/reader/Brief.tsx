@@ -32,7 +32,7 @@ export function Brief() {
       >
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-[17px] font-semibold leading-none tracking-[-0.02em] text-ink">
-            Gloss this text
+            Get the brief
             <ArrowRight size={15} strokeWidth={2} className="translate-y-px text-ink-4 transition-[transform,color] duration-300 ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-accent" aria-hidden />
           </span>
           <span className="mt-1.5 block truncate text-[13px] leading-snug text-ink-3">The gist, the key claims and a map, before you start</span>
@@ -72,14 +72,14 @@ export function Brief() {
   const { data, usage, modelKey } = brief;
   const caveats = data.caveats ?? [];
   return (
-    <section aria-label="Gloss" className="mt-6 rounded-[16px] bg-raised px-5 shadow-[var(--shadow-card)]">
+    <section aria-label="Brief" className="mt-6 rounded-[16px] bg-raised px-5 shadow-[var(--shadow-card)]">
       <button
         type="button"
         onClick={() => setUI({ briefOpen: !open })}
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Gloss</span>
+        <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Brief</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} parts {"\u00b7"} {data.claims.length} claims
           {caveats.length > 0 && ` \u00b7 ${caveats.length} ${caveats.length === 1 ? "caveat" : "caveats"}`}

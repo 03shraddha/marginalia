@@ -18,7 +18,7 @@
 export const SARVAM_URL = "https://api.sarvam.ai/v2/chat/completions";
 /** Still used for the image and vision models that only Together serves (covers, scanned PDF pages). */
 export const TOGETHER_URL = "https://api.together.xyz/v1/chat/completions";
-export const APP_UA = "Gloss/0.1";
+export const APP_UA = "Marginalia/0.1";
 
 export const sarvamKey = (own?: string) => own?.trim() || process.env.SARVAM_API_KEY || "";
 
