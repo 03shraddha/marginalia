@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
+// Accounts are optional. With no Clerk keys, a signed-out stand-in replaces Clerk so the app still runs.
+const noClerk = !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["linkedom"],
+  ...(noClerk
+    ? { turbopack: { resolveAlias: { "@clerk/nextjs/server": "./lib/clerk-off/server.ts", "@clerk/nextjs": "./lib/clerk-off/index.tsx" } } }
+    : {}),
   poweredByHeader: false,
   async headers() {
     return [
