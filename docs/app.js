@@ -12,6 +12,15 @@ let settings = { ...DEFAULTS, ...store.get("marginalia.settings", {}) };
 let doc = store.get("marginalia.doc", null); // {title, paragraphs: []}
 let notes = store.get("marginalia.notes", []); // {pIndex, quote, question, answer, loading?, error?}
 let highlights = store.get("marginalia.highlights", []); // {pIndex, quote}
+
+// A note saved while its answer was still loading would animate forever: nothing
+// resumes the request after a reload. Mark it interrupted so it can be retried.
+for (const n of notes) {
+  if (n.loading) {
+    n.loading = false;
+    if (!n.answer) n.error = "This answer got interrupted when the page reloaded. Ask again to retry.";
+  }
+}
 let pendingSel = null; // {pIndex, quote}
 
 /* ---------- Settings ---------- */
