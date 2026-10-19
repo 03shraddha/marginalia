@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marginalia - read with a scholar in the margin</title>
+<meta name="description" content="Paste an article or drop a PDF, select any line, and ask about it. Answers appear in the margin.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✎</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">✎ Marginalia</div>
+  <div class="topbar-actions">
+    <button id="newDocBtn" class="btn ghost" type="button">New</button>
+    <button id="exportBtn" class="btn ghost" type="button" disabled>Export notes</button>
+    <button id="settingsBtn" class="btn" type="button">Settings</button>
+  </div>
+</header>
+
+<main>
+  <!-- Import view -->
+  <section id="importView" class="import-view">
+    <h1>Read anything with a scholar in the margin</h1>
+    <p class="lede">Open an article or PDF, select any line, and ask about it. The answer shows up in the margin and cites the paragraph it came from.</p>
+
+    <div class="import-grid">
+      <div class="card">
+        <h2>Paste a link</h2>
+        <div class="row">
+          <input id="urlInput" type="url" placeholder="https://example.com/article" autocomplete="off">
+          <button id="urlGo" class="btn" type="button">Open</button>
+        </div>
+        <p class="hint" id="urlStatus"></p>
+      </div>
+
+      <div class="card">
+        <h2>Drop a PDF</h2>
+        <label class="dropzone" id="dropzone">
+          <input id="pdfInput" type="file" accept="application/pdf" hidden>
+          <span>Drop a PDF here or click to choose</span>
+        </label>
+        <p class="hint" id="pdfStatus"></p>
+      </div>
+
+      <div class="card wide">
+        <h2>Or paste text</h2>
+        <textarea id="pasteInput" rows="6" placeholder="Paste the article text here..."></textarea>
+        <button id="pasteGo" class="btn" type="button">Read</button>
+      </div>
+    </div>
+    <p class="fineprint">Your documents, highlights and notes stay in this browser. Your API key is stored only in this browser and is sent only to the AI endpoint you configure in Settings.</p>
+  </section>
+
+  <!-- Reader view -->
+  <section id="readerView" class="reader-view" hidden>
+    <h1 id="docTitle" class="doc-title"></h1>
+    <div id="docBody" class="doc-body"></div>
+  </section>
+</main>
+
+<!-- Selection toolbar -->
+<div id="selBar" class="selbar" hidden>
+  <button data-act="ask" type="button">Ask</button>
+  <button data-act="explain" type="button">Explain</button>
+  <button data-act="simplify" type="button">Simplify</button>
+  <button data-act="define" type="button">Define</button>
+  <button data-act="factcheck" type="button">Fact-check</button>
+  <button data-act="highlight" type="button">Highlight</button>
+</div>
+
+<!-- Ask box -->
+<div id="askBox" class="askbox" hidden>
+  <blockquote id="askQuote"></blockquote>
+  <div class="row">
+    <input id="askInput" type="text" placeholder="Ask about this passage...">
+    <button id="askSend" class="btn" type="button">Ask</button>
+  </div>
+  <div class="row quick">
+    <button class="chip" data-q="Explain this in simpler words." type="button">Explain</button>
+    <button class="chip" data-q="What does this term mean here?" type="button">Define</button>
+    <button class="chip" data-q="Is this accurate? What is the evidence?" type="button">Fact-check</button>
+    <button class="chip" data-q="Give a counterpoint to this." type="button">Counterpoint</button>
+  </div>
+  <button id="askCancel" class="btn ghost" type="button">Cancel</button>
+</div>
+
+<!-- Settings modal -->
+<div id="settingsModal" class="modal" hidden>
+  <div class="modal-card">
+    <h2>Settings</h2>
+    <label>API key
+      <input id="setKey" type="password" placeholder="Paste your API key" autocomplete="off">
+    </label>
+    <label>API base URL
+      <input id="setBase" type="text" placeholder="https://api.sarvam.ai/v1">
+    </label>
+    <label>Model
+      <input id="setModel" type="text" placeholder="sarvam-m">
+    </label>
+    <p class="hint">OpenAI-compatible chat completions endpoint. Defaults point at Sarvam; any compatible endpoint works. Saved only in this browser (localStorage), never in the repo.</p>
+    <div class="row end">
+      <button id="setSave" class="btn" type="button">Save</button>
+      <button id="setClose" class="btn ghost" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
